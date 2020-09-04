@@ -1,5 +1,6 @@
 import math
 import srwlib
+import numpy as np
 from srwlib import *
 
 def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0):
@@ -123,3 +124,40 @@ def createBL1to1(L,dfof=0):
     optBL1to1 = SRWLOptC([optDrift1,optLens,optDrift2],[propagParDrift,propagParLens,propagParDrift])
     
     return optBL1to1
+
+
+def createReflectionOffFocusingMirrorBL(L,f,strDataFolderName,strMirSurfHeightErrInFileName):
+    """
+    #Create an SRW beamline container that will propagate a length L
+    #then reflect off a flat mirror followed by a lens. Finally, propagate by L again.
+    #L: length of propagation [m]
+    #f: focal length of mirror [m]
+    #strDataFolderName: Folder name where mirror data file is
+    #strMirSurfHeightErrInFileName: File name for mirror slope error file
+    #Assuming waist to waist propagation, we want f~L/2 (Note that this isn't a perfect identity
+    #map in phase space due to the Rayleigh length of the mode)
+    """
+    #Drift
+    optDrift1=SRWLOptD(L)
+    
+    #Transmission element to simulate mirror slope error
+    angM1 = np.pi #Incident Angle of M1 [rad]
+    heightProfData = srwl_uti_read_data_cols(os.path.join(os.getcwd(), strDataFolderName, strMirSurfHeightErrInFileName), _str_sep='\t', _i_col_start=0, _i_col_end=1)
+    opTrErM1 = srwl_opt_setup_surf_height_1d(heightProfData, _dim='y', _ang=angM1, _amp_coef=0)
+    
+    
+    
+    #Lens    
+    optLens = SRWLOptL(f, f) 
+    
+    #Propagation parameters
+    propagParLens = [0, 0, 1., 0, 0, 1.4, 2., 1.4, 2., 0, 0, 0]
+    propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+    #propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+    #propagParLens = [0, 0, 1.0, 0, 0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    prPar0 =    [0, 0, 1., 1, 0, 1.,   1., 1.,   1.,  0, 0, 0]
+    
+    #Construct beamline
+    #optBL = SRWLOptC([optDrift1,opTrErM1,optLens,optDrift1],[propagParDrift,prPar0,propagParLens,propagParDrift])
+    optBL = SRWLOptC([optDrift1,optLens,optDrift1],[propagParDrift,propagParLens,propagParDrift])
+    return optBL
