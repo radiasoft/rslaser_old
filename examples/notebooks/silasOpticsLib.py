@@ -141,10 +141,16 @@ def createReflectionOffFocusingMirrorBL(L,f,strDataFolderName,strMirSurfHeightEr
     optDrift1=SRWLOptD(L)
     
     #Transmission element to simulate mirror slope error
-    angM1 = np.pi #Incident Angle of M1 [rad]
+    #angM1 = np.pi #Incident Angle of M1 [rad] ( 1.8e-3 in Ex. 9 )
+    #angM1 =  3.14 #Incident Angle of M1 [rad]
+    angM1 = 1.e-2
     heightProfData = srwl_uti_read_data_cols(os.path.join(os.getcwd(), strDataFolderName, strMirSurfHeightErrInFileName), _str_sep='\t', _i_col_start=0, _i_col_end=1)
-    opTrErM1 = srwl_opt_setup_surf_height_1d(heightProfData, _dim='y', _ang=angM1, _amp_coef=0)
+    opTrErM1 = srwl_opt_setup_surf_height_1d(heightProfData, _dim='y', _ang=angM1, _amp_coef=1) #_amp_coef=1e4
     
+    #print('   Saving optical path difference data to file (for viewing/debugging) ... ', end='')
+    #opPathDifErM1 = opTrErM1.get_data(3, 3)
+    #srwl_uti_save_intens_ascii(opPathDifErM1, opTrErM1.mesh, os.path.join(os.getcwd(), strDataFolderName, strMirOptPathDifOutFileName01), 0,
+    #                       ['', 'Horizontal Position', 'Vertical Position', 'Opt. Path Diff.'], _arUnits=['', 'm', 'm', 'm'])
     
     
     #Lens    
@@ -158,6 +164,28 @@ def createReflectionOffFocusingMirrorBL(L,f,strDataFolderName,strMirSurfHeightEr
     prPar0 =    [0, 0, 1., 1, 0, 1.,   1., 1.,   1.,  0, 0, 0]
     
     #Construct beamline
-    #optBL = SRWLOptC([optDrift1,opTrErM1,optLens,optDrift1],[propagParDrift,prPar0,propagParLens,propagParDrift])
-    optBL = SRWLOptC([optDrift1,optLens,optDrift1],[propagParDrift,propagParLens,propagParDrift])
+    optBL = SRWLOptC([optDrift1,opTrErM1,optLens,optDrift1],[propagParDrift,prPar0,propagParLens,propagParDrift])
+    #optBL = SRWLOptC([optDrift1,optLens,optDrift1],[propagParDrift,propagParLens,propagParDrift])
+    return optBL
+
+def createABCDbeamline(A,B,C,D):
+    """
+    #Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
+    #Construct corresponding SRW beamline container object
+    #A,B,C,D are 2x2 matrix components.
+    """
+    
+    f1= B/(1-A)
+    L = B
+    f2 = B/(1-D)
+    
+    optLens1 = SRWLOptL(f1, f1)
+    optDrift=SRWLOptD(L)
+    optLens2 = SRWLOptL(f2, f2)
+    
+    propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+    propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+    propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+    
+    optBL = SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
     return optBL
