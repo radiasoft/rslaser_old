@@ -73,6 +73,34 @@ def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0)
     
     return wfr
 
+def createDriftLensBL(Lc,df):
+    """
+    #Create beamline for propagation from center of cell to end and through lens (representing a mirror)
+    #First propagate Lc/2, then through lens with focal length Lc/2 + df
+    #Lc: cavity length [m]
+    #df: focusing error
+    """
+    f=Lc/4 + df
+    optDrift=SRWLOptD(Lc/2)
+    optLens = SRWLOptL(f, f)
+    propagParLens = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+    propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+    #propagParLens = [0, 0, 1., 0, 0, 1.4, 2., 1.4, 2., 0, 0, 0]
+    #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+    DriftLensBL = SRWLOptC([optDrift,optLens],[propagParDrift,propagParLens])
+    return DriftLensBL
+
+def createDriftBL(Lc):
+    """
+    #Create drift beamline container that propagates the wavefront through half the cavity
+    #Lc is the length of the cavity
+    """
+    optDrift=SRWLOptD(Lc/2)
+    propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+    #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+    DriftBL = SRWLOptC([optDrift],[propagParDrift])
+    return DriftBL
+
 def createBL1to1(L,dfof=0):
 
     """
