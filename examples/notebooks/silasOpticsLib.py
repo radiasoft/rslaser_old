@@ -73,6 +73,23 @@ def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0)
     
     return wfr
 
+def createDriftLensBL2(Length,f):
+    """
+    #Create beamline for propagation from end of crystal to end of cavity and through lens (representing a mirror)
+    #First propagate by Length, then through lens with focal length f
+    #Length: drift length [m]
+    #f: focal length
+    """
+    #f=Lc/4 + df
+    optDrift=SRWLOptD(Length)
+    optLens = SRWLOptL(f, f)
+    propagParLens = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+    propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+    #propagParLens = [0, 0, 1., 0, 0, 1.4, 2., 1.4, 2., 0, 0, 0]
+    #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+    DriftLensBL = SRWLOptC([optDrift,optLens],[propagParDrift,propagParLens])
+    return DriftLensBL
+
 def createDriftLensBL(Lc,df):
     """
     #Create beamline for propagation from center of cell to end and through lens (representing a mirror)
@@ -84,7 +101,7 @@ def createDriftLensBL(Lc,df):
     optDrift=SRWLOptD(Lc/2)
     optLens = SRWLOptL(f, f)
     propagParLens = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
-    propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+    propagParDrift = [0, 0, 1., 1, 0, 1., 1., 1., 1., 0, 0, 0]
     #propagParLens = [0, 0, 1., 0, 0, 1.4, 2., 1.4, 2., 0, 0, 0]
     #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
     DriftLensBL = SRWLOptC([optDrift,optLens],[propagParDrift,propagParLens])
@@ -216,4 +233,27 @@ def createABCDbeamline(A,B,C,D):
     propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
     
     optBL = SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
+    return optBL
+
+def createCrystal(n0,n2,L_cryst):
+    """
+    #Create a set of optical elements representing a crystal.
+    #Treat as an optical duct
+    #ABCD matrix found here: https://www.rp-photonics.com/abcd_matrix.html
+    #n(r) = n0 - 0.5 n2 r^2 
+    #n0: Index of refraction along the optical axis
+    #n2: radial variation of index of refraction
+    """
+    
+    if n2==0:
+        optBL=createDriftBL(2*L_cryst/n0) #Note that this drift function divides length by 2
+        #print("L_cryst/n0=",L_cryst/n0)
+    else:
+        gamma = np.sqrt(n2/n0)
+        A = np.cos(gamma*L_cryst)
+        B = (1/(n0*gamma))*np.sin(gamma*L_cryst)
+        C = -n0*gamma*np.sin(gamma*L_cryst)
+        D = np.cos(gamma*L_cryst)
+        optBL=createABCDbeamline(A,B,C,D)
+    
     return optBL
