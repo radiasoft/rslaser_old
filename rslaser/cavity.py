@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import srwlib
+from array import array
 
 class LaserSlice:
     """
@@ -15,13 +16,17 @@ class LaserSlice:
 class Element:
     def propagate(self,laser_pulse):
         srwlib.srwl.PropagElecField(laser_pulse._wfr,self._srwc)
+        (sx,sy) = rmsWavefrontIntensity(laser_pulse._wfr)
+        print(f'RMS sizes:sx={sx} sy={sy}')
     
 class LaserPulse:
     """
     A laserPulse is a collection of laserSlices.
     """
     def __init__(self,length,wavelength):
-        self._wfr = _createGsnSrcSRW(sigrW=10e-6,propLen=15,pulseE=.01,poltype=1)
+        self._wfr = _createGsnSrcSRW(sigrW=100e-6,propLen=15,pulseE=.01,poltype=1)
+        (sx,sy) = rmsWavefrontIntensity(self._wfr)
+        print(f'RMS sizes:sx={sx} sy={sy}')
     
     
 class CrystalSlice:
@@ -53,12 +58,26 @@ class Drift(Element):
     def __init__(self,length):
         self._srwc = srwlib.SRWLOptC(
             [srwlib.SRWLOptD(length)],
-            [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0],
+            [[0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]],
         )
             
+class Lens(Element):
+    """
+    #Create lens element
+    #f: focal length
+    """
+    def __init__(self,f):
+        self._srwc = srwlib.SRWLOptC(
+            [srwlib.SRWLOptL(f, f)],
+            [[0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]]
+        )
             
-            
-def _createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=1.55,sampFact=15,mx=0,my=0):
+def _createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=1.55,sampFact=5,mx=0,my=0):
+    sigrW=0.00043698412731784714
+    propLen = 15
+    pulseE = 0.001
+    poltype = 1
+    sampFact = 5
     """
     #sigrW: beam size at waist [m]
     #propLen: propagation length [m] required by SRW to create numerical Gaussian
@@ -67,7 +86,7 @@ def _createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=1.55,sampFact=15,mx=0,my=0
     #phE: photon energy [eV]
     #sampFact: sampling factor to increase mesh density
     """
-    
+    print([sigrW,propLen,pulseE,poltype])
     constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
     rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad]
     sigrL=math.sqrt(sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
@@ -148,3 +167,34 @@ def _createABCDbeamline(A,B,C,D):
     propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
     
     return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
+
+def rmsWavefrontIntensity(wfr):
+    """
+    #Compute rms values from a wavefront object
+    """
+    IntensityArray2D = array('f', [0]*wfr.mesh.nx*wfr.mesh.ny) #"flat" array to take 2D intensity data
+    srwlib.srwl.CalcIntFromElecField(IntensityArray2D, wfr, 6, 0, 3, wfr.mesh.eStart, 0, 0) #extracts intensity
+    ##Reshaping electric field data from flat to 2D array
+    IntensityArray2D = np.array(IntensityArray2D).reshape((wfr.mesh.nx, wfr.mesh.ny), order='C')
+    xvals=np.linspace(wfr.mesh.xStart,wfr.mesh.xFin,wfr.mesh.nx)
+    yvals=np.linspace(wfr.mesh.yStart,wfr.mesh.yFin,wfr.mesh.ny)
+    (sx,sy) = rmsIntensity(IntensityArray2D,xvals,yvals)
+    return sx, sy
+
+def rmsIntensity(IntArray,xvals,yvals):
+    """
+    Compute rms values in x and y from array 
+    #IntArray is a 2D array representation of a function
+    #xvals represents the horizontal coordinates
+    #yvals represents the vertical coordinates
+    """
+    datax=np.sum(IntArray,axis=1) 
+    datay=np.sum(IntArray,axis=0)
+    sxsq=sum(datax*xvals*xvals)/sum(datax) 
+    xavg=sum(datax*xvals)/sum(datax)
+    sx=math.sqrt(sxsq-xavg*xavg)
+
+    sysq=sum(datay*yvals*yvals)/sum(datay) 
+    yavg=sum(datay*yvals)/sum(datay)
+    sy=math.sqrt(sysq-yavg*yavg)
+    return sx, sy
