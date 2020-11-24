@@ -15,18 +15,22 @@ class LaserSlice:
 
 class Element:
     def propagate(self,laser_pulse):
-        srwlib.srwl.PropagElecField(laser_pulse._wfr,self._srwc)
-        (sx,sy) = rmsWavefrontIntensity(laser_pulse._wfr)
-        print(f'RMS sizes:sx={sx} sy={sy}')
+        for w in laser_pulse._wfr:
+            srwlib.srwl.PropagElecField(w,self._srwc)
+            (sx,sy) = rmsWavefrontIntensity(w)
+            print(f'RMS sizes:sx={sx} sy={sy}')
     
 class LaserPulse:
     """
     A laserPulse is a collection of laserSlices.
     """
     def __init__(self,length,wavelength):
-        self._wfr = _createGsnSrcSRW(sigrW=100e-6,propLen=15,pulseE=.01,poltype=1)
-        (sx,sy) = rmsWavefrontIntensity(self._wfr)
-        print(f'RMS sizes:sx={sx} sy={sy}')
+        self._wfr = []
+        for i in range(2):
+            #Creation of laser slices i=0...nslice-1
+            self._wfr.append(_createGsnSrcSRW())
+            (sx,sy) = rmsWavefrontIntensity(self._wfr[-1])
+            print(f'RMS sizes:sx={sx} sy={sy}')
     
     
 class CrystalSlice:
@@ -47,6 +51,27 @@ class CrystalSlice:
         
 class Crystal(Element):
     def __init__(self,n0,n2,L_cryst):
+        def _createABCDbeamline(A,B,C,D):
+            """
+            #Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
+            #Construct corresponding SRW beamline container object
+            #A,B,C,D are 2x2 matrix components.
+            """
+    
+            f1= B/(1-A)
+            L = B
+            f2 = B/(1-D)
+    
+            optLens1 = srwlib.SRWLOptL(f1, f1)
+            optDrift= srwlib.SRWLOptD(L)
+            optLens2 = srwlib.SRWLOptL(f2, f2)
+    
+            propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+            propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+            propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+
+            return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
+
         gamma = np.sqrt(n2/n0)
         A = np.cos(gamma*L_cryst)
         B = (1/(n0*gamma))*np.sin(gamma*L_cryst)
@@ -72,12 +97,7 @@ class Lens(Element):
             [[0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]]
         )
             
-def _createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=1.55,sampFact=5,mx=0,my=0):
-    sigrW=0.00043698412731784714
-    propLen = 15
-    pulseE = 0.001
-    poltype = 1
-    sampFact = 5
+def _createGsnSrcSRW(sigrW=0.00043698412731784714,propLen=15,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0):
     """
     #sigrW: beam size at waist [m]
     #propLen: propagation length [m] required by SRW to create numerical Gaussian
@@ -147,26 +167,7 @@ def _createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=1.55,sampFact=5,mx=0,my=0)
     return wfr
 
 
-def _createABCDbeamline(A,B,C,D):
-    """
-    #Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
-    #Construct corresponding SRW beamline container object
-    #A,B,C,D are 2x2 matrix components.
-    """
-    
-    f1= B/(1-A)
-    L = B
-    f2 = B/(1-D)
-    
-    optLens1 = srwlib.SRWLOptL(f1, f1)
-    optDrift= srwlib.SRWLOptD(L)
-    optLens2 = srwlib.SRWLOptL(f2, f2)
-    
-    propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-    propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-    propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-    
-    return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
+
 
 def rmsWavefrontIntensity(wfr):
     """
