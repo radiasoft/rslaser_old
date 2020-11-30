@@ -74,8 +74,8 @@ class Crystal(Element):
 
         gamma = np.sqrt(n2/n0)
         A = np.cos(gamma*L_cryst)
-        B = (1/(n0*gamma))*np.sin(gamma*L_cryst)
-        C = -n0*gamma*np.sin(gamma*L_cryst)
+        B = (1/(gamma))*np.sin(gamma*L_cryst)
+        C = -gamma*np.sin(gamma*L_cryst)
         D = np.cos(gamma*L_cryst)
         self._srwc=_createABCDbeamline(A,B,C,D)
     

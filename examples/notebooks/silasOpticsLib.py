@@ -246,13 +246,13 @@ def createCrystal(n0,n2,L_cryst):
     """
     
     if n2==0:
-        optBL=createDriftBL(2*L_cryst/n0) #Note that this drift function divides length by 2
+        optBL=createDriftBL(2*L_cryst) #Note that this drift function divides length by 2
         #print("L_cryst/n0=",L_cryst/n0)
     else:
         gamma = np.sqrt(n2/n0)
         A = np.cos(gamma*L_cryst)
-        B = (1/(n0*gamma))*np.sin(gamma*L_cryst)
-        C = -n0*gamma*np.sin(gamma*L_cryst)
+        B = (1/(gamma))*np.sin(gamma*L_cryst)
+        C = -gamma*np.sin(gamma*L_cryst)
         D = np.cos(gamma*L_cryst)
         optBL=createABCDbeamline(A,B,C,D)
     
