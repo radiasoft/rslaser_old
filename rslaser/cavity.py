@@ -3,16 +3,6 @@ import numpy as np
 import srwlib
 from array import array
 
-class LaserSlice:
-    """
-    This class represents a longitudinal slice in a laser pulse.
-    There will be a number of wavefronts each with different wavelengths (energy).
-    The propagate method will propagate each of the wavefronts.
-    The slice can be propagated through a crystal, a drift space or a mirror.
-    """
-    def propagate_slice(self):
-        pass
-
 class Element:
     def propagate(self,laser_pulse):
         for w in laser_pulse._slice:
@@ -21,6 +11,12 @@ class Element:
             print(f'Element RMS sizes:sx={sx} sy={sy}')
 
 class LaserPulseSlice:
+    """
+    This class represents a longitudinal slice in a laser pulse.
+    There will be a number of wavefronts each with different wavelengths (energy).
+    The propagate method will propagate each of the wavefronts.
+    The slice can be propagated through a crystal, a drift space or a mirror.
+    """
     def __init__(self,nslice,slice_index,sigrW=0.00043698412731784714,propLen=15,sig_s=0.1,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0):
         """
         #nslice: number of slices of laser pulse
