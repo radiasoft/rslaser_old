@@ -14,8 +14,8 @@ class LaserPulseSlice:
     """
     This class represents a longitudinal slice in a laser pulse.
     There will be a number of wavefronts each with different wavelengths (energy).
-    The propagate method will propagate each of the wavefronts.
-    The slice can be propagated through a crystal, a drift space or a mirror.
+    The slice is composed of an SRW wavefront object, which is defined here:
+    https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
     def __init__(self,nslice,slice_index,sigrW=0.00043698412731784714,propLen=15,sig_s=0.1,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0):
         """
@@ -40,14 +40,14 @@ class LaserPulseSlice:
         GsnBm = srwlib.SRWLGsnBm() #Gaussian Beam structure (just parameters)
         GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
         GsnBm.y = 0
-        numsig = 3.
+        numsig = 3. #Number of sigma values to track. Total range is 2*numsig*sig_s
         ds = 2*numsig*sig_s/nslice
         self._pulse_pos = -numsig*sig_s+slice_index*ds
         GsnBm.z = propLen + self._pulse_pos #Longitudinal Position of Waist [m]
         GsnBm.xp = 0 #Average Angles of Gaussian Beam at Waist [rad]
         GsnBm.yp = 0
         GsnBm.avgPhotEn = phE #Photon Energy [eV]
-        GsnBm.pulseEn = pulseE #Energy per Pulse [J] - to be corrected
+        GsnBm.pulseEn = pulseE*np.exp(-self._pulse_pos**2/(2*sig_s**2)) #Energy per Pulse [J] - to be corrected
         GsnBm.repRate = 1 #Rep. Rate [Hz] - to be corrected
         GsnBm.polar = poltype #1- linear horizontal?
         GsnBm.sigX = sigrW #Horiz. RMS size at Waist [m]
@@ -117,6 +117,18 @@ class LaserPulse:
             
         return(sx,sy,s)
     
+    def intensity_vals(self):
+        intensity = []
+        s = []
+        for sl in self._slice:
+            slint = maxWavefrontIntensity(sl._wfr)
+            intensity.append(slint)
+            s.append(sl._pulse_pos)
+            
+        return(intensity,s)
+    
+    def slice_wfr(self,slice_index):
+        return self(slice_index)._slice._wfr
     
 class CrystalSlice:
     """
@@ -217,3 +229,12 @@ def rmsIntensity(IntArray,xvals,yvals):
     yavg=sum(datay*yvals)/sum(datay)
     sy=math.sqrt(sysq-yavg*yavg)
     return sx, sy
+
+def maxWavefrontIntensity(wfr):
+    """
+    Compute maximum value of wavefront intensity
+    """
+    IntensityArray2D = array('f', [0]*wfr.mesh.nx*wfr.mesh.ny) #"flat" array to take 2D intensity data
+    srwlib.srwl.CalcIntFromElecField(IntensityArray2D, wfr, 6, 0, 3, wfr.mesh.eStart, 0, 0) #extracts intensity
+    return(np.max(IntensityArray2D))
+    
