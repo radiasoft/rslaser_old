@@ -178,13 +178,23 @@ class Crystal(Element):
             propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
 
             return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
-
-        gamma = np.sqrt(n2/n0)
-        A = np.cos(gamma*L_cryst)
-        B = (1/(gamma))*np.sin(gamma*L_cryst)
-        C = -gamma*np.sin(gamma*L_cryst)
-        D = np.cos(gamma*L_cryst)
-        self._srwc=_createABCDbeamline(A,B,C,D)
+        
+        def _createDriftBL(Lc):
+            optDrift=srwlib.SRWLOptD(Lc/2)
+            propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+            #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+            return srwlib.SRWLOptC([optDrift],[propagParDrift])
+        
+        if n2==0:
+            self._srwc=_createDriftBL(2*L_cryst) #Note that this drift function divides length by 2
+            #print("L_cryst/n0=",L_cryst/n0)
+        else:
+            gamma = np.sqrt(n2/n0)
+            A = np.cos(gamma*L_cryst)
+            B = (1/(gamma))*np.sin(gamma*L_cryst)
+            C = -gamma*np.sin(gamma*L_cryst)
+            D = np.cos(gamma*L_cryst)
+            self._srwc=_createABCDbeamline(A,B,C,D)
     
 class Drift(Element):
     def __init__(self,length):
@@ -212,7 +222,7 @@ class LaserCavity:
         k=PKDict(kwargs).pksetdefault(
             n0 = 1.75,
             n2 = 0.001,
-            L_cryst=0.2,
+            L_half_cryst=0.2,
             laser_pulse_length=0.1,
             wavelength=800e-9,
             nslice=11,
@@ -221,7 +231,7 @@ class LaserCavity:
             lens_left_focal_length=0.2,
             lens_right_focal_length=0.2,
             
-            sigrW=0.00043698412731784714,
+            sigrW=0.000437,
             propLen=15,
             sig_s=0.1,
             pulseE=0.001,
@@ -233,9 +243,9 @@ class LaserCavity:
         )
         
         self.laser_pulse = LaserPulse(length = k.laser_pulse_length,**k)
-        self.crystal_right = Crystal(k.n0,k.n2,k.L_cryst)
+        self.crystal_right = Crystal(k.n0,k.n2,k.L_half_cryst)
        
-        self.crystal_left = Crystal(k.n0,k.n2,k.L_cryst)
+        self.crystal_left = Crystal(k.n0,k.n2,k.L_half_cryst)
         self.drift_right = Drift(k.drift_right_length)
         self.drift_left = Drift(k.drift_left_length)
         self.lens_right = Lens(k.lens_right_focal_length)
