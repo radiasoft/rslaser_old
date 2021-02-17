@@ -2,13 +2,19 @@ import math
 import numpy as np
 import srwlib
 from array import array
+from pykern.pkcollections import PKDict
 
 class Element:
     def propagate(self,laser_pulse):
+        x = len(laser_pulse._slice)//2
         for w in laser_pulse._slice:
             srwlib.srwl.PropagElecField(w._wfr,self._srwc)
+            if w.slice_index != x:
+                continue
             (sx,sy) = rmsWavefrontIntensity(w._wfr)
-            print(f'Element RMS sizes:sx={sx} sy={sy}')
+            laser_pulse._sxvals.append(sx)
+            laser_pulse._syvals.append(sy)
+            #print(f'Element RMS sizes:sx={sx} sy={sy}')
 
 class LaserPulseSlice:
     """
@@ -17,7 +23,7 @@ class LaserPulseSlice:
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
-    def __init__(self,nslice,slice_index,sigrW=0.00043698412731784714,propLen=15,sig_s=0.1,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0):
+    def __init__(self,nslice,slice_index,sigrW=0.00043698412731784714,propLen=15,sig_s=0.1,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0,**_ignore_kwargs):
         """
         #nslice: number of slices of laser pulse
         #slice_index: index of slice
@@ -30,7 +36,8 @@ class LaserPulseSlice:
         #phE: photon energy [eV]
         #sampFact: sampling factor to increase mesh density
         """
-        print([sigrW,propLen,pulseE,poltype])
+        #print([sigrW,propLen,pulseE,poltype])
+        self.slice_index = slice_index
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
         rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad]
         sigrL=math.sqrt(sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
@@ -98,13 +105,16 @@ class LaserPulse:
     """
     A laserPulse is a collection of laserSlices.
     """
-    def __init__(self,length,wavelength,nslice):
+    def __init__(self,length,wavelength,nslice,**kwargs):
         self._slice = []
         for i in range(nslice):
             #Creation of laser slices i=0...nslice-1
-            self._slice.append(LaserPulseSlice(nslice,i))
-            (sx,sy) = rmsWavefrontIntensity(self._slice[-1]._wfr)
-            print(f'Laser pulse RMS sizes:sx={sx} sy={sy}')
+            self._slice.append(LaserPulseSlice(nslice,i,**kwargs))
+            #(sx,sy) = rmsWavefrontIntensity(self._slice[-1]._wfr)
+            #print(f'Laser pulse RMS sizes:sx={sx} sy={sy}')
+        self._sxvals = []
+        self._syvals = []
+        
     def rmsvals(self):
         sx = []
         sy = []
@@ -168,13 +178,23 @@ class Crystal(Element):
             propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
 
             return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
-
-        gamma = np.sqrt(n2/n0)
-        A = np.cos(gamma*L_cryst)
-        B = (1/(gamma))*np.sin(gamma*L_cryst)
-        C = -gamma*np.sin(gamma*L_cryst)
-        D = np.cos(gamma*L_cryst)
-        self._srwc=_createABCDbeamline(A,B,C,D)
+        
+        def _createDriftBL(Lc):
+            optDrift=srwlib.SRWLOptD(Lc/2)
+            propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+            #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+            return srwlib.SRWLOptC([optDrift],[propagParDrift])
+        
+        if n2==0:
+            self._srwc=_createDriftBL(2*L_cryst) #Note that this drift function divides length by 2
+            #print("L_cryst/n0=",L_cryst/n0)
+        else:
+            gamma = np.sqrt(n2/n0)
+            A = np.cos(gamma*L_cryst)
+            B = (1/(gamma))*np.sin(gamma*L_cryst)
+            C = -gamma*np.sin(gamma*L_cryst)
+            D = np.cos(gamma*L_cryst)
+            self._srwc=_createABCDbeamline(A,B,C,D)
     
 class Drift(Element):
     def __init__(self,length):
@@ -194,11 +214,64 @@ class Lens(Element):
             [[0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]]
         )
        
-
-
-
-
-
+class LaserCavity:
+    """
+    create laser cavity
+    """
+    def __init__(self,**kwargs):
+        k=PKDict(kwargs).pksetdefault(
+            n0 = 1.75,
+            n2 = 0.001,
+            L_half_cryst=0.2,
+            laser_pulse_length=0.1,
+            wavelength=800e-9,
+            nslice=11,
+            drift_right_length=0.5,
+            drift_left_length=0.5,
+            lens_left_focal_length=0.2,
+            lens_right_focal_length=0.2,
+            
+            sigrW=0.000437,
+            propLen=15,
+            sig_s=0.1,
+            pulseE=0.001,
+            poltype=1,
+            phE=1.55,
+            sampFact=5,
+            mx=0,
+            my=0
+        )
+        
+        self.laser_pulse = LaserPulse(length = k.laser_pulse_length,**k)
+        self.crystal_right = Crystal(k.n0,k.n2,k.L_half_cryst)
+       
+        self.crystal_left = Crystal(k.n0,k.n2,k.L_half_cryst)
+        self.drift_right = Drift(k.drift_right_length)
+        self.drift_left = Drift(k.drift_left_length)
+        self.lens_right = Lens(k.lens_right_focal_length)
+        self.lens_left  = Lens(k.lens_left_focal_length)
+    
+        
+        
+    def propagate(self,num_cycles):
+        l = self.laser_pulse
+        l._sxvals = []
+        l._syvals = []
+        for n in range(num_cycles):
+            self.crystal_right.propagate(l)
+            self.drift_right.propagate(l)
+            self.lens_right.propagate(l)
+            self.drift_right.propagate(l)
+            self.crystal_right.propagate(l)
+            
+            self.crystal_left.propagate(l)
+            self.drift_left.propagate(l)
+            self.lens_left.propagate(l)
+            self.drift_left.propagate(l)
+            self.crystal_left.propagate(l)
+        
+        return(l._sxvals,l._syvals)
+            
 def rmsWavefrontIntensity(wfr):
     """
     #Compute rms values from a wavefront object
