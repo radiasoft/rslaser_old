@@ -97,3 +97,6 @@ mptextemp.mp
 mpxerr.mp
 mpxerr.tex
 
+# FEniCS
+jitfailure-dolfin_expression_*
+
