@@ -8,7 +8,7 @@ class Element:
     def propagate(self,laser_pulse):
         x = len(laser_pulse._slice)//2
         for w in laser_pulse._slice:
-            srwlib.srwl.PropagElecField(w._wfr,self._srwc)
+            srwlib.srwl.PropagElecField(w._wfr,self._srwc) 
             if w.slice_index != x:
                 continue
             (sx,sy) = rmsWavefrontIntensity(w._wfr)
@@ -47,7 +47,7 @@ class LaserPulseSlice:
         GsnBm = srwlib.SRWLGsnBm() #Gaussian Beam structure (just parameters)
         GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
         GsnBm.y = 0
-        numsig = 3. #Number of sigma values to track. Total range is 2*numsig*sig_s
+        numsig = 5. #Number of sigma values to track. Total range is 2*numsig*sig_s
         ds = 2*numsig*sig_s/nslice
         self._pulse_pos = -numsig*sig_s+slice_index*ds
         GsnBm.z = propLen + self._pulse_pos #Longitudinal Position of Waist [m]
