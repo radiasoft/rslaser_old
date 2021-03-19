@@ -16,7 +16,7 @@ class LaserPulseSlice:
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
-    def __init__(self,nslice,slice_index,sigrW=0.00043698412731784714,propLen=15,sig_s=0.1,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0,**_ignore_kwargs):
+    def __init__(self,slice_index,nslice,sigrW=0.00043698412731784714,propLen=15,sig_s=0.1,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0,**_ignore_kwargs):
         """
         #nslice: number of slices of laser pulse
         #slice_index: index of slice
@@ -31,6 +31,7 @@ class LaserPulseSlice:
         """
         #print([sigrW,propLen,pulseE,poltype])
         self.slice_index = slice_index
+        self.phE = phE
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
         rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad]
         sigrL=math.sqrt(sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
@@ -97,11 +98,15 @@ class LaserPulse:
     """
     A laserPulse is a collection of laserSlices.
     """
-    def __init__(self,length,wavelength,nslice,**kwargs):
+    def __init__(self,kwargs):
         self._slice = []
-        for i in range(nslice):
+        k=kwargs.copy()
+        k.phE-= k.energyChirp/2
+        de =k.energyChirp/k.nslice
+        for i in range(k.nslice):
             #Creation of laser slices i=0...nslice-1
-            self._slice.append(LaserPulseSlice(nslice,i,**kwargs))
+            self._slice.append(LaserPulseSlice(i,**k))
+            k.phE+=de
         self._sxvals = []
         self._syvals = []
 
@@ -115,24 +120,21 @@ class LaserPulse:
     def rmsvals(self):
         sx = []
         sy = []
-        s = []
         for sl in self._slice:
             (_, sigx,sigy, _, _) = rmsWavefrontIntensity(sl._wfr)
             sx.append(sigx)
             sy.append(sigy)
-            s.append(sl._pulse_pos)
 
-        return(sx,sy,s)
+        return(sx,sy)
 
     def intensity_vals(self):
-        intensity = []
-        s = []
-        for sl in self._slice:
-            slint = maxWavefrontIntensity(sl._wfr)
-            intensity.append(slint)
-            s.append(sl._pulse_pos)
-
-        return(intensity,s)
+        return [maxWavefrontIntensity(s._wfr) for s in self._slice]
+    
+    def pulsePos(self):
+        return [s._pulse_pos for s in self._slice]
+    
+    def energyvals(self):
+        return [s.phE for s in self._slice]
 
     def slice_wfr(self,slice_index):
         return self(slice_index)._slice._wfr
@@ -179,13 +181,13 @@ class Crystal(Element):
             return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
 
         def _createDriftBL(Lc):
-            optDrift=srwlib.SRWLOptD(Lc/2)
+            optDrift=srwlib.SRWLOptD(Lc)
             propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
             #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
             return srwlib.SRWLOptC([optDrift],[propagParDrift])
 
         if n2==0:
-            self._srwc=_createDriftBL(2*L_cryst) #Note that this drift function divides length by 2
+            self._srwc=_createDriftBL(L_cryst) 
             #print("L_cryst/n0=",L_cryst/n0)
         else:
             gamma = np.sqrt(n2/n0)
@@ -219,13 +221,12 @@ class LaserCavity:
     """
     create laser cavity
     """
-    def __init__(self,**kwargs):
+    def __init__(self,kwargs):
         k=PKDict(kwargs).pksetdefault(
             n0 = 1.75,
             n2 = 0.001,
             L_half_cryst=0.2,
             laser_pulse_length=0.1,
-            wavelength=800e-9,
             nslice=11,
             drift_right_length=0.5,
             drift_left_length=0.5,
@@ -237,11 +238,12 @@ class LaserCavity:
             pulseE=0.001,
             poltype=1,
             phE=1.55,
+            energyChirp=.01,
             sampFact=5,
             mx=0,
             my=0
         )
-        self.laser_pulse = LaserPulse(length = k.laser_pulse_length,**k)
+        self.laser_pulse = LaserPulse(k)
         self.crystal_right = Crystal(k.n0,k.n2,k.L_half_cryst)
 
         self.crystal_left = Crystal(k.n0,k.n2,k.L_half_cryst)
