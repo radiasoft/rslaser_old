@@ -1,6 +1,9 @@
 import math
 import numpy as np
-import srwlib
+import rslaser.rsoptics
+from rslaser.rsoptics.element import *
+import rslaser.rspulse
+from rslaser.rspulse.pulse import *
 from array import array
 from pykern.pkcollections import PKDict
 
