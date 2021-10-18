@@ -4,7 +4,7 @@ import numpy as np
 from srwlib import *
 
 def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0):
-    
+
     """
     #sigrW: beam size at waist [m]
     #propLen: propagation length [m] required by SRW to create numerical Gaussian
@@ -13,12 +13,12 @@ def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0)
     #phE: photon energy [eV]
     #sampFact: sampling factor to increase mesh density
     """
-    
+
     constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
     rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad]
     sigrL=math.sqrt(sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
-    
-        
+
+
     #***********Gaussian Beam Source
     GsnBm = SRWLGsnBm() #Gaussian Beam structure (just parameters)
     GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
@@ -52,25 +52,25 @@ def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0)
     #firstHorAp = 8.*rmsAngDiv*distSrc #[m]
     xAp = 8.*sigrL
     yAp = xAp #[m]
-    
+
     wfr.mesh.xStart = -0.5*xAp #Initial Horizontal Position [m]
     wfr.mesh.xFin = 0.5*xAp #Final Horizontal Position [m]
     wfr.mesh.yStart = -0.5*yAp #Initial Vertical Position [m]
     wfr.mesh.yFin = 0.5*yAp #Final Vertical Position [m]
-    
+
     sampFactNxNyForProp = sampFact #sampling factor for adjusting nx, ny (effective if > 0)
     arPrecPar = [sampFactNxNyForProp]
-    
+
     srwl.CalcElecFieldGaussian(wfr, GsnBm, arPrecPar)
-    
+
     ##Beamline to propagate to waist
-    
+
     optDriftW=SRWLOptD(propLen)
     propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
     optBLW = SRWLOptC([optDriftW],[propagParDrift])
     #wfrW=deepcopy(wfr)
     srwl.PropagElecField(wfr, optBLW)
-    
+
     return wfr
 
 def createDriftLensBL2(Length,f):
@@ -125,20 +125,20 @@ def createBL1to1(L,dfof=0):
     #L: drift length before and after lens
     #dfof: focal length variation factor (=0 for no variation; can be positive or negative)
     """
-    
-    
+
+
     ##Drift lengths between elements beginning with source to 1st crystal and ending with last crystal to start of undulator.
-    
-    
+
+
     ##focal length in meters
     f=(L/2)*(1+dfof)
-    
-    #Lens    
-    optLens = SRWLOptL(f, f) 
+
+    #Lens
+    optLens = SRWLOptL(f, f)
     #Drift spaces
     optDrift1=SRWLOptD(L)
     optDrift2=SRWLOptD(L)
-       
+
 
     #***********Wavefront Propagation Parameters:
     #[0]: Auto-Resize (1) or not (0) Before propagation
@@ -158,16 +158,16 @@ def createBL1to1(L,dfof=0):
     #[9]: Type of wavefront Shift before Resizing (not yet implemented)
     #[10]: New Horizontal wavefront Center position after Shift (not yet implemented)
     #[11]: New Vertical wavefront Center position after Shift (not yet implemented)
-    
+
     #propagParLens = [0, 0, 1., 0, 0, 1., 1.5, 1., 1.5, 0, 0, 0]
     #propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
-    
+
     propagParLens = [0, 0, 1., 0, 0, 1.4, 2., 1.4, 2., 0, 0, 0]
     propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
-    
+
     ##Beamline consruction
     optBL1to1 = SRWLOptC([optDrift1,optLens,optDrift2],[propagParDrift,propagParLens,propagParDrift])
-    
+
     return optBL1to1
 
 
@@ -184,30 +184,30 @@ def createReflectionOffFocusingMirrorBL(L,f,strDataFolderName,strMirSurfHeightEr
     """
     #Drift
     optDrift1=SRWLOptD(L)
-    
+
     #Transmission element to simulate mirror slope error
     #angM1 = np.pi #Incident Angle of M1 [rad] ( 1.8e-3 in Ex. 9 )
     #angM1 =  3.14 #Incident Angle of M1 [rad]
     angM1 = 1.e-2
     heightProfData = srwl_uti_read_data_cols(os.path.join(os.getcwd(), strDataFolderName, strMirSurfHeightErrInFileName), _str_sep='\t', _i_col_start=0, _i_col_end=1)
     opTrErM1 = srwl_opt_setup_surf_height_1d(heightProfData, _dim='y', _ang=angM1, _amp_coef=1) #_amp_coef=1e4
-    
+
     #print('   Saving optical path difference data to file (for viewing/debugging) ... ', end='')
     #opPathDifErM1 = opTrErM1.get_data(3, 3)
     #srwl_uti_save_intens_ascii(opPathDifErM1, opTrErM1.mesh, os.path.join(os.getcwd(), strDataFolderName, strMirOptPathDifOutFileName01), 0,
     #                       ['', 'Horizontal Position', 'Vertical Position', 'Opt. Path Diff.'], _arUnits=['', 'm', 'm', 'm'])
-    
-    
-    #Lens    
-    optLens = SRWLOptL(f, f) 
-    
+
+
+    #Lens
+    optLens = SRWLOptL(f, f)
+
     #Propagation parameters
     propagParLens = [0, 0, 1., 0, 0, 1.4, 2., 1.4, 2., 0, 0, 0]
     propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
     #propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
     #propagParLens = [0, 0, 1.0, 0, 0, 1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     prPar0 =    [0, 0, 1., 1, 0, 1.,   1., 1.,   1.,  0, 0, 0]
-    
+
     #Construct beamline
     optBL = SRWLOptC([optDrift1,opTrErM1,optLens,optDrift1],[propagParDrift,prPar0,propagParLens,propagParDrift])
     #optBL = SRWLOptC([optDrift1,optLens,optDrift1],[propagParDrift,propagParLens,propagParDrift])
@@ -219,19 +219,19 @@ def createABCDbeamline(A,B,C,D):
     #Construct corresponding SRW beamline container object
     #A,B,C,D are 2x2 matrix components.
     """
-    
+
     f1= B/(1-A)
     L = B
     f2 = B/(1-D)
-    
+
     optLens1 = SRWLOptL(f1, f1)
     optDrift=SRWLOptD(L)
     optLens2 = SRWLOptL(f2, f2)
-    
+
     propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
     propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
     propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-    
+
     optBL = SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
     return optBL
 
@@ -240,11 +240,11 @@ def createCrystal(n0,n2,L_cryst):
     #Create a set of optical elements representing a crystal.
     #Treat as an optical duct
     #ABCD matrix found here: https://www.rp-photonics.com/abcd_matrix.html
-    #n(r) = n0 - 0.5 n2 r^2 
+    #n(r) = n0 - 0.5 n2 r^2
     #n0: Index of refraction along the optical axis
     #n2: radial variation of index of refraction
     """
-    
+
     if n2==0:
         optBL=createDriftBL(2*L_cryst) #Note that this drift function divides length by 2
         #print("L_cryst/n0=",L_cryst/n0)
@@ -255,5 +255,43 @@ def createCrystal(n0,n2,L_cryst):
         C = -gamma*np.sin(gamma*L_cryst)
         D = np.cos(gamma*L_cryst)
         optBL=createABCDbeamline(A,B,C,D)
-    
+
     return optBL
+
+def rmsWavefrontIntensity(wfr):
+    """
+    #Compute rms values from a wavefront object
+    """
+    IntensityArray2D = array('f', [0]*wfr.mesh.nx*wfr.mesh.ny) #"flat" array to take 2D intensity data
+    srwlib.srwl.CalcIntFromElecField(IntensityArray2D, wfr, 6, 0, 3, wfr.mesh.eStart, 0, 0) #extracts intensity
+    ##Reshaping electric field data from flat to 2D array
+    IntensityArray2D = np.array(IntensityArray2D).reshape((wfr.mesh.nx, wfr.mesh.ny), order='C')
+    xvals=np.linspace(wfr.mesh.xStart,wfr.mesh.xFin,wfr.mesh.nx)
+    yvals=np.linspace(wfr.mesh.yStart,wfr.mesh.yFin,wfr.mesh.ny)
+    return (IntensityArray2D, *rmsIntensity(IntensityArray2D,xvals,yvals))
+
+def rmsIntensity(IntArray,xvals,yvals):
+    """
+    Compute rms values in x and y from array
+    #IntArray is a 2D array representation of a function
+    #xvals represents the horizontal coordinates
+    #yvals represents the vertical coordinates
+    """
+    datax=np.sum(IntArray,axis=1)
+    datay=np.sum(IntArray,axis=0)
+    sxsq=sum(datax*xvals*xvals)/sum(datax)
+    xavg=sum(datax*xvals)/sum(datax)
+    sx=math.sqrt(sxsq-xavg*xavg)
+
+    sysq=sum(datay*yvals*yvals)/sum(datay)
+    yavg=sum(datay*yvals)/sum(datay)
+    sy=math.sqrt(sysq-yavg*yavg)
+    return sx, sy, xavg, yavg
+
+def maxWavefrontIntensity(wfr):
+    """
+    Compute maximum value of wavefront intensity
+    """
+    IntensityArray2D = array('f', [0]*wfr.mesh.nx*wfr.mesh.ny) #"flat" array to take 2D intensity data
+    srwlib.srwl.CalcIntFromElecField(IntensityArray2D, wfr, 6, 0, 3, wfr.mesh.eStart, 0, 0) #extracts intensity
+    return(np.max(IntensityArray2D))
