@@ -3,7 +3,9 @@ import numpy as np
 import srwlib
 from array import array
 from pykern.pkcollections import PKDict
-from rslaser import rsoptics.element
+
+import rslaser.rsoptics
+from rslaser.rsoptics.element import *
 
 class CrystalSlice:
     """
