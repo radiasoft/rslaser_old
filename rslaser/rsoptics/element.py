@@ -6,33 +6,35 @@ import srwlib
 
 class Element:
     def propagate(self,laser_pulse):
-        for w in laser_pulse._slice:
-            srwlib.srwl.PropagElecField(w._wfr,self._srwc)
 
 class Crystal(Element):
     def __init__(self,n0,n2,L_cryst):
         self.length = L_cryst
 
-        def _createABCDbeamline(A,B,C,D):
-            """
-            #Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
-            #Construct corresponding SRW beamline container object
-            #A,B,C,D are 2x2 matrix components.
-            """
+    def propagate(self,laser_pulse):
+        for w in laser_pulse._slice:
+            srwlib.srwl.PropagElecField(w._wfr,self._srwc)
 
-            f1= B/(1-A)
-            L = B
-            f2 = B/(1-D)
+    def _createABCDbeamline(A,B,C,D):
+        """
+        #Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
+        #Construct corresponding SRW beamline container object
+        #A,B,C,D are 2x2 matrix components.
+        """
 
-            optLens1 = srwlib.SRWLOptL(f1, f1)
-            optDrift= srwlib.SRWLOptD(L)
-            optLens2 = srwlib.SRWLOptL(f2, f2)
+        f1= B/(1-A)
+        L = B
+        f2 = B/(1-D)
 
-            propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-            propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-            propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+        optLens1 = srwlib.SRWLOptL(f1, f1)
+        optDrift= srwlib.SRWLOptD(L)
+        optLens2 = srwlib.SRWLOptL(f2, f2)
 
-            return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
+        propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+        propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+        propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+
+        return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
 
         def _createDriftBL(Lc):
             optDrift=srwlib.SRWLOptD(Lc)
@@ -59,6 +61,10 @@ class Drift(Element):
             [[0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]],
         )
 
+    def propagate(self,laser_pulse):
+        for w in laser_pulse._slice:
+            srwlib.srwl.PropagElecField(w._wfr,self._srwc)
+
 class Lens(Element):
     """
     #Create lens element
@@ -70,3 +76,7 @@ class Lens(Element):
             [srwlib.SRWLOptL(f, f)],
             [[0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]]
         )
+
+    def propagate(self,laser_pulse):
+        for w in laser_pulse._slice:
+            srwlib.srwl.PropagElecField(w._wfr,self._srwc)
