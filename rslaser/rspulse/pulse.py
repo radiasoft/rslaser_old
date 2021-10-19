@@ -2,6 +2,8 @@ import math
 import numpy as np
 from array import array
 from pykern.pkcollections import PKDict
+import rslaser.rsoptics
+from rslaser.rsoptics.wavefront import *
 import srwlib
 
 class LaserPulse:
