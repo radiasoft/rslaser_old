@@ -5,6 +5,7 @@ from rslaser.rsoptics.element import *
 import rslaser.rscavity
 from rslaser.rscavity.laser_cavity import *
 
+import matplotlib
 from matplotlib import pyplot
 import numpy as np
 import time
@@ -69,6 +70,8 @@ svals = lc.laser_pulse.pulsePos()
 ivals = lc.laser_pulse.intensity_vals()
 evals = lc.laser_pulse.energyvals()
 
+# set the backend
+matplotlib.use('tkagg')
 
 #Plot rms values along laser pulse
 pyplot.plot(svals,lpsyvals)
