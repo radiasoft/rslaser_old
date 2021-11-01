@@ -19,16 +19,19 @@ from rslaser.rsoptics.element import *
 
 import matplotlib
 from matplotlib import pyplot
-# matplotlib.use("agg")  # for testing purposes
 
 import numpy as np
 
 from pykern.pkcollections import PKDict
 import time
 
-def pkplot(filename):
+# This is necessary on the JupyterHub commandline
+# Delete elsewhere to automatically use the local defaul GUI backend
+matplotlib.use("agg")
+
+# This is helpful for dealing with agg vs GUI backends
+def agg_plot(filename):
     if matplotlib.get_backend() == 'agg':
-        filename = 'img01.png'
         pyplot.savefig(filename)
         pyplot.close()
     else:
@@ -93,7 +96,7 @@ pyplot.plot(svals,lpsyvals)
 pyplot.xlabel('s [m]')
 pyplot.ylabel('rms x [m]')
 
-pkplot('img01.png')
+agg_plot('img01.png')
 
 print(" ")
 print("Plot the pulse intensity along the initial laser pulse...")
@@ -102,7 +105,7 @@ pyplot.plot(svals,ivals)
 pyplot.ylabel('pulse intensity []')
 pyplot.xlabel('s [m]')
 
-pkplot('img02.png')
+agg_plot('img02.png')
 
 print(" ")
 print("Plot the slice energy along the initial laser pulse...")
@@ -112,7 +115,7 @@ pyplot.plot(svals,evals)
 pyplot.xlabel('s [m]')
 pyplot.ylabel('Energy [ev]')
 
-pkplot('img03.png')
+agg_plot('img03.png')
 
 print(" ")
 print("Propagate the laser pulse several times through the cavity....")
@@ -128,7 +131,7 @@ print("Plot the transverse size of the pulse as it oscillates back and forth ...
 fig, ax = pyplot.subplots()
 ax.plot(svals, sxvals)
 
-pkplot('img04.png')
+agg_plot('img04.png')
 
 print(" ")
 print("Plot the RMS values along the final laser pulse...")
@@ -143,7 +146,7 @@ pyplot.plot(svals,lpsyvals)
 pyplot.xlabel('s [m]')
 pyplot.ylabel('rms x [m]')
 
-pkplot('img05.png')
+agg_plot('img05.png')
 
 print(" ")
 print("Plot the laser intensity along the final laser pulse...")
@@ -152,7 +155,7 @@ pyplot.plot(svals,ivals)
 pyplot.ylabel('pulse intensity []')
 pyplot.xlabel('s [m]')
 
-pkplot('img06.png')
+agg_plot('img06.png')
 
 print(" ")
 print("Plot the slice energy along the final laser pulse...")
@@ -161,4 +164,4 @@ pyplot.plot(svals,evals)
 pyplot.xlabel('s [m]')
 pyplot.ylabel('Energy [ev]')
 
-pkplot('img07.png')
+agg_plot('img07.png')
