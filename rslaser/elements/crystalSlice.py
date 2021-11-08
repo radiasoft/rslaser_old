@@ -23,14 +23,14 @@ class crystalSlice:
   Initially, these parameters are fixed. Later we will update
   these parameters as the laser passes through.
   """
-  def __init__(self, _label, _length, _n0=1.0, _n2=0.0, _pop_inv=1.0): 
+  def __init__(self, _label, _length, _n0=1.75, _n2=0.0, _pop_inv=1.0): 
     self.label = _label 
     self.length = _length 
     self.n0 = _n0
     self.n2 = _n2
     self.pop_inv = _pop_inv 
   
-  #  Assuming wfr0 exsts, created e.g. via  
+ #  Assuming wfr0 exsts, created e.g. via  
   #  wfr0=createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my) 
   #n_x = wfr0.mesh.nx  #  nr of grid points in x 
   #n_y = wfr0.mesh.ny  #  nr of grid points in y 
@@ -46,6 +46,7 @@ class crystalSlice:
     eta = n0_phot *c_light *tau_pulse
     gamma_degen = 1.0
     en_gain = np.log( 1. +np.exp(sig_cr_sec *pop_inv *element.length) *(
-              np.exp(gamma_degen *sig_cr_sec *eta) -1.0) ) /(gamma_degen *sig_cr_sec *eta)
+              np.exp(gamma_degen *sig_cr_sec *eta) -1.0) ) /(gamma_degen *sig_cr_sec *eta) 
+    return wfront 
 
 

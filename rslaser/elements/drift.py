@@ -6,7 +6,7 @@ import srwlib
 
 class drift():
   def __init__(self,_label,_length): 
-  	self.label = _label
+    self.label = _label
     self.length = _length
     self._srwc = srwlib.SRWLOptC(
     [srwlib.SRWLOptD(_length)],
@@ -14,7 +14,7 @@ class drift():
     )
 
   def propagate(self, laser_pulse, prop_type): 
-  	if prop_type == 'default': 
+    if prop_type == 'default': 
       for w in laser_pulse._slice:
-        srwlib.srwl.PropagElecField(w._wfr,self._srwc) 
+        srwlib.srwl.PropagElecField(w._wfr, self._srwc) 
     return laser_pulse 
