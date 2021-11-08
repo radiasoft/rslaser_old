@@ -12,13 +12,14 @@ class LaserPulse:
     """
     def __init__(self,kwargs):
         self._slice = []
-        k=kwargs.copy()
-        k.phE-= k.energyChirp/2
-        de =k.energyChirp/k.nslice
+        k = kwargs.copy()
+        k.phE -= k.energyChirp/2
+        #de = k.energyChirp/k.nslice 
+        de = k.energyChirp/k.nslices 
         for i in range(k.nslice):
             #Creation of laser slices i=0...nslice-1
             self._slice.append(LaserPulseSlice(i,**k))
-            k.phE+=de
+            k.phE += de
         self._sxvals = []
         self._syvals = []
 
@@ -82,7 +83,7 @@ class LaserPulseSlice:
         #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff 
         d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value 
         if d_to_w > d_to_w_cutoff:  propLen = d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example 
-        sigrL=math.sqrt(sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
+        sigrL = math.sqrt(sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
 
 
         #***********Gaussian Beam Source
