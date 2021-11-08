@@ -11,19 +11,28 @@ def main():
   
   #  Initialize the laser pulse: 
   
-  sigrW = ...
-  propLen = ... 
-  pulseE = ... 
-  poltype = ... 
-  phE = ...  # units - ? 
+  #  Pulse parameters: 
+  pupa = PKDict(
+    propLen = 15.0  # [m] 
+  ) 
+  pupa.sigrW = 0.000186  # 0.000436984 #  radial rms size at the waist [m] 
+  pupa.d_to_w = 0.10  #  [m] distance from the initial pulse location to the loc-n of the beam waist, > 0 if converging 
+  pupa.pulseE = 0.001  # pulse energy [J] 
+  pupa.poltype = 1  #  0 = linear horizontal, 1 = linear vertical, ... 
+  pupa.phE = 1.55  # Wavefront energy [eV]. 1.55 eV is 800 nm wavelength (seed laser); 532 nm for the pump laser 
+  pupa.energyChirp = 0.0 
+  pupa.nslices = 1  #  the number of slices the pulse is divided into 
+
   #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)  # creates Gaussian wavefront in SRW 
-  wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE)  # defualt values for omitted arguments 
+  #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE)  # defualt values for omitted arguments 
+  thisPulse = rspdev.LaserPulse(pupa)  
   
   #  Propagate the pulse through the optical beamline: 
   
   for i in lattice: 
     current_elem, prop_type = i 
-    wfront = current_elem.propagate(wfront, prop_type) 
+    #wfront = current_elem.propagate(wfront, prop_type) 
+    thisPulse = current_elem.propagate(thisPulse, prop_type) 
     current_position += current_elem.length 
 
   #  Diagnostics, visualization, saving the output, etc.: 
@@ -50,6 +59,7 @@ if __name__=="__main__":
   import rslaser.rscrystal as rscr 
   import rslaser.rsoptics as rso 
   import rslaser.rspulse as rsp 
+  import rslaser.pulse-dev as rspdev 
   import rslaser.rselements as els 
   
   import sys 
