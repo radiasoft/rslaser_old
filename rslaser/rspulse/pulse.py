@@ -6,6 +6,20 @@ import rslaser.rsoptics
 from rslaser.rsoptics.wavefront import *
 import srwlib
 
+# get some physical and mathematical constants ready to go
+# this code snippet is adapted from rsbeams.rsphysics.rsconst.py
+import math
+import scipy.constants as const
+
+TWO_PI = 2 * math.pi
+RT_TWO_PI = math.sqrt(2*math.pi)
+RT_2_OVER_PI = math.sqrt(2/math.pi)
+
+c_SQ = const.c**2
+c_INV  = 1./const.c
+MKS_factor = 1./(4.*math.pi*const.epsilon_0)
+m_e_EV = const.m_e * c_SQ / (-const.e)
+
 class LaserPulse:
     """
     A laserPulse is a collection of laserSlices.
@@ -134,3 +148,38 @@ class LaserPulseSlice:
         #wfrW=deepcopy(wfr)
         srwlib.srwl.PropagElecField(wfr, optBLW)
         self._wfr = wfr
+
+
+class LaserPulseEnvelope:
+    """
+    A Gaussian representation of a laser pulse, using the paraxial approximation.
+    See https://en.wikipedia.org/wiki/Gaussian_beam/ (or your favorite laser textbook) for details.
+    """
+    def __init__(self,kwargs):
+        k=kwargs.copy()
+        self._lambda_0 = k.lambda_0   # central wavelength [m]
+        self._a_0 = k.a_0             # amplitude [dimensionless]
+        self._w_0 = k.w_0             # waist size [m]
+        self._z_center = k.z_center   # longitudinal location of laser pulse center [m]
+        self._z_waist = k.z_waist     # longitidunal location of nearest focus
+        self._tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
+
+        # useful derived quantities
+        self._k_0 = 1. / self._lambda_0
+        self._f_0 = self._k_0 * const.c
+        self._omega_0 = TWO_PI * self._f_0
+
+        # Peak electric field [V/m]
+        self._efield_0 = self._a_0 * const.m_e * self._omega_0 * const.c / (const.e)
+
+        # FWHM pulse length
+        self._tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
+        self._L_fwhm = self._tau_fwhm * const.c
+
+    def E_field(x,y,z):
+        self._E_field = 0.
+        return self._E_field
+    
+    def tbd_intensity(self):
+        _tbd = 7.
+        return _tbd
