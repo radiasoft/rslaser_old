@@ -1,10 +1,13 @@
+# -*- coding: utf-8 -*-
+u"""Plotting methods specific to laser pulses
+Copyright (c) 2021 RadiaSoft LLC. All rights reserved
+"""
 import math
 import numpy as np
 from matplotlib.path import Path
 
 """
 Generalized algorithm for plotting contour and/or scatter plots.
-  plotFlag is queried to determine what's done.
 
 Adapted from open source method: scatter_contour.py
 https://github.com/astroML/astroML/blob/master/astroML/plotting/scatter_contour.py

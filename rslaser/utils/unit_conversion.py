@@ -1,6 +1,10 @@
+# -*- coding: utf-8 -*-
+u"""Routines to manage physical units
+Copyright (c) 2021 RadiaSoft LLC. All rights reserved
+"""
 import math
 
-from radtrack.util.stringTools import removeWhitespace
+from rslaser.utils.string_tools import removeWhitespace
 
 # How to use:
 #

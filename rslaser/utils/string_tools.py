@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+u"""Convenient string manipulation routines
+Copyright (c) 2021 RadiaSoft LLC. All rights reserved
+"""
 import string
 
 # Divides a string into lines of maximum width 'lineWidth'. 'endLine' specifies

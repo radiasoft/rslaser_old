@@ -8,20 +8,7 @@ import numpy as np
 from numpy.polynomial.hermite import hermval
 
 from pykern.pkcollections import PKDict
-
-# get some physical and mathematical constants ready to go
-# this code snippet is adapted from rsbeams.rsphysics.rsconst.py
-import math, cmath
-import scipy.constants as const
-
-TWO_PI = 2 * math.pi
-RT_TWO_PI = math.sqrt(2*math.pi)
-RT_2_OVER_PI = math.sqrt(2/math.pi)
-
-C_SQ = const.c**2
-C_INV  = 1./const.c
-MKS_FACTOR = 1./(4.*math.pi*const.epsilon_0)
-M_E_EV = const.m_e * C_SQ / (-const.e)
+import rslaser.utils.constants as rsc
 
 class GaussHermite:
     """Module defining a Hermite-Gaussian laser field of order (m,n).
@@ -52,7 +39,7 @@ class GaussHermite:
         # useful derived quantities
         self.k0 = 1. / self.lambda0
         self.f0 = self.k0 * const.c
-        self.omega0 = TWO_PI * self.f0
+        self.omega0 = rsc.TWO_PI * self.f0
 
         # Peak electric field [V/m]
         self.a0 = _k.a0               # amplitude [dimensionless]
