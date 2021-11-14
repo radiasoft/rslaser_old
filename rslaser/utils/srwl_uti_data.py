@@ -5,9 +5,7 @@ from numpy.fft import *
 from array import array
 from srwlib import *
 
-
 #Data processing functions
-
 
 #Read and plot generic SRW .dat files created
 def read_srw_file(filename):
