@@ -1,5 +1,5 @@
-"""
-Module defining a Hermite-Gaussian laser field of order (m,n).
+# -*- coding: utf-8 -*-
+u"""A Hermite-Gaussian laser field of order (m,n).
 Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 """
 
@@ -11,17 +11,17 @@ from pykern.pkcollections import PKDict
 
 # get some physical and mathematical constants ready to go
 # this code snippet is adapted from rsbeams.rsphysics.rsconst.py
-import math
+import math, cmath
 import scipy.constants as const
 
 TWO_PI = 2 * math.pi
 RT_TWO_PI = math.sqrt(2*math.pi)
 RT_2_OVER_PI = math.sqrt(2/math.pi)
 
-c_SQ = const.c**2
-c_INV  = 1./const.c
-MKS_factor = 1./(4.*math.pi*const.epsilon_0)
-m_e_EV = const.m_e * c_SQ / (-const.e)
+C_SQ = const.c**2
+C_INV  = 1./const.c
+MKS_FACTOR = 1./(4.*math.pi*const.epsilon_0)
+M_E_EV = const.m_e * C_SQ / (-const.e)
 
 class GaussHermite:
     """Module defining a Hermite-Gaussian laser field of order (m,n).
@@ -46,79 +46,65 @@ class GaussHermite:
         Raises:
             NA
         """
-        k=kwargs.copy()
-        self._a0 = k.a0               # amplitude [dimensionless]
-        self._w0x = k.w0              # horizontal waist size [m]
-        self._w0y = k.w0              # vertical waist size [m]
-        self._lambda0 = k.lambda0     # central wavelength [m]
-        self._tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
+        _k=kwargs.copy()
+        self.lambda0 = _k.lambda0     # central wavelength [m]
+        
+        # useful derived quantities
+        self.k0 = 1. / self.lambda0
+        self.f0 = self.k0 * const.c
+        self.omega0 = TWO_PI * self.f0
+
+        # Peak electric field [V/m]
+        self.a0 = _k.a0               # amplitude [dimensionless]
+        self.efield0 = self.a0 * const.m_e * self.omega0 * const.c / (const.e)
+
+        self.set_waist_x(_k.w0)       # horizontal waist size [m]
+        self.set_waist_y(_k.w0)       # vertical waist size [m]
+        self.tau_fwhm = _k.tau_fwhm   # FWHM laser pulse length [s]
 
         # set defaults
-        self.setXShift(0.)   # horiz. shift of the spot center
-        self.setYShift(0.)   #  vert. shift of the spot center
-        self.setZWaistX(0.)  # location (in z) of horiz. waist
-        self.setZWaistY(0.)  # location (in z) of  vert. waist
+        self.xShift = 0.     # horizontal shift of the spot center
+        self.yShift = 0.     # vertical shift of the spot center
+        self.zWaistX = 0.    # location (in z) of horiz. waist
+        self.zWaistY = 0.    # location (in z) of  vert. waist
 
         self.setCoeffSingleModeX(0, 1.)       # horiz. coeff of Hermite expansion 
         self.setCoeffSingleModeY(0, 1.)       # vert.  coeff of Hermite expansion 
 
+        self.wRotAngle = 0.
+
         return
 
     # set the horiz. waist size [m]
-    def setWaistX(self, kwargs):
+    def set_waist_x(self, _waistX):
         # error handling; very small waist will cause performance issues
         wFac = 20.
         minSize = wFac*self.lambda0
-        if waistX >= minSize:
-            self.waistX  = waistX
+        if _waistX >= minSize:
+            self.waistX  = _waistX
         else: 
-            message = 'waistX = ' + str(waistX) + '; must be > ' + str(minSize)
+            message = 'waistX = ' + str(_waistX) + '; must be > ' + str(minSize)
             raise Exception(message) 
             
-        self.piWxFac = math.sqrt(self.rt2opi/waistX)
-        self.zRx = 0.5*self.k0*waistX**2  # horiz. Rayleigh range [m]
+        self.piWxFac = math.sqrt(RT_2_OVER_PI/self.waistX)
+        self.zRx = 0.5*self.k0*self.waistX**2  # horiz. Rayleigh range [m]
         self.qx0 = 0.0 + self.zRx*1j
         return
 
     # set the vert.  waist size [m]
-    def setWaistY(self,waistY):
+    def set_waist_y(self, _waistY):
         # error handling; very small waist will cause performance issues
         wFac = 20.
         minSize = wFac*self.lambda0
-        if waistY >= minSize:
-            self.waistY  = waistY
+        if _waistY >= minSize:
+            self.waistY  = _waistY
         else: 
-            message = 'waistY = ' + str(waistY) + '; must be > ' + str(minSize)
+            message = 'waistY = ' + str(_waistY) + '; must be > ' + str(minSize)
             raise Exception(message) 
 
-        self.piWyFac = math.sqrt(self.rt2opi/waistY)
-        self.zRy = 0.5*self.k0*waistY**2  #  vert. Rayleigh range [m]
+        self.piWyFac = math.sqrt(RT_2_OVER_PI/self.waistY)
+        self.zRy = 0.5*self.k0*self.waistY**2  #  vert. Rayleigh range [m]
         self.qy0 = 0.0 + self.zRy*1j
-        return
-
-    # spot rotation angle [Rad]
-    def setWRotAngle(self,wRotAngle):
-        self.wRotAngle = wRotAngle
-        return
-
-    # horiz. shift of the spot center
-    def setXShift(self,xShift):
-        self.xShift = xShift
-        return
-
-    # vert. shift of the spot center
-    def setYShift(self,yShift):
-        self.yShift = yShift
-        return
-
-    # set location (in z) of horiz. waist
-    def setZWaistX(self,zWaistX):
-        self.zWaistX = zWaistX
-        return
-
-    # set location (in z) of  vert. waist
-    def setZWaistY(self,zWaistY):
-        self.zWaistY = zWaistY
         return
 
     # set array of horizontal coefficients (complex)
@@ -154,13 +140,13 @@ class GaussHermite:
     #   t can be an array, to evaluate at a sequence of times.
     #   x,y,t can all be arrays, for a particle distribution with fixed z
     #   z, the longitudinal coordinate, must always be a scalar.
-    def evaluateEx(self,xArray,yArray,z,tArray):
+    def evaluate_ex(self,xArray,yArray,z,tArray):
 
         # get the complex-valued envelope function
-        result = self.evalEnvelopeEx(xArray,yArray,z)
+        result = self.evaluate_envelope_ex(xArray,yArray,z)
 
         # multiply by the time-dependent term
-        result *= np.exp((self.omega * tArray - self.k0 * z)*1j)
+        result *= np.exp((self.omega0 * tArray - self.k0 * z)*1j)
 
         # return only the real part
         return np.real(result)
@@ -170,7 +156,7 @@ class GaussHermite:
     #   x,y,z can all be scalar, to evaluate at a single point.
     #   x,y can both be arrays (same length) to evaluate on a mesh.
     #   z, the longitudinal coordinate, must always be a scalar.
-    def evalEnvelopeEx(self,xArray,yArray,z):
+    def evaluate_envelope_ex(self,xArray,yArray,z):
 
         # assume array input; try to create temporary array
         try:
@@ -235,41 +221,21 @@ class GaussHermite:
         # return the complex valued result
         return result
 
-    def evaluateEy(self,xArray,yArray,z,t):
+    def evaluate_ey(self,xArray,yArray,z,t):
         return 0. 
 
-    def evaluateEz(self,x,y,z,t):
+    def evaluate_ez(self,x,y,z,t):
         return 0.
 
-    def evaluateBx(self,x,y,z,t):
+    def evaluate_bx(self,x,y,z,t):
         return 0.
 
-    def evaluateBy(self,x,y,z,t):
+    def evaluate_by(self,x,y,z,t):
         return 0.
 
-    def evaluateBz(self,x,y,z,t):
+    def evaluate_bz(self,x,y,z,t):
         return 0.
 
-    def tbd():
+    def tbd_or_delete():
         self._z_center = k.z_center   # longitudinal location of laser pulse center [m]
         self._z_waist = k.z_waist     # longitidunal location of nearest focus
-
-        # useful derived quantities
-        self._k_0 = 1. / self._lambda_0
-        self._f_0 = self._k_0 * const.c
-        self._omega_0 = TWO_PI * self._f_0
-
-        # Peak electric field [V/m]
-        self._efield_0 = self._a_0 * const.m_e * self._omega_0 * const.c / (const.e)
-
-        # FWHM pulse length
-        self._tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
-        self._L_fwhm = self._tau_fwhm * const.c
-
-        # set input data (cannot change lambda0, k0, omega)
-        self.lambda0 = lambda0         # central wavelength [m]
-        self.k0 = 2.*math.pi/lambda0   # central wavenumber [Rad/m]
-        self.omega = self.k0 * self.c  # central wavenumber [Rad/m]
-        self.setWaistX(waistX)         # horiz. waist size [m]
-        self.setWaistY(waistY)         #  vert. waist size [m]
-        self.setWRotAngle(wRotAngle)   # spot rotation angle [Rad]

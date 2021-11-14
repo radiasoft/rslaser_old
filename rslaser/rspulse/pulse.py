@@ -157,29 +157,21 @@ class LaserPulseEnvelope:
     """
     def __init__(self,kwargs):
         k=kwargs.copy()
-        self._lambda_0 = k.lambda_0   # central wavelength [m]
-        self._a_0 = k.a_0             # amplitude [dimensionless]
-        self._w_0 = k.w_0             # waist size [m]
-        self._z_center = k.z_center   # longitudinal location of laser pulse center [m]
-        self._z_waist = k.z_waist     # longitidunal location of nearest focus
-        self._tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
+        self.lambda0 = k.lambda0   # central wavelength [m]
+        self.a0 = k.a0             # amplitude [dimensionless]
+        self.w0 = k.w0             # waist size [m]
+        self.z_center = k.z_center   # longitudinal location of laser pulse center [m]
+        self.z_waist = k.z_waist     # longitidunal location of nearest focus
+        self.tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
 
         # useful derived quantities
-        self._k_0 = 1. / self._lambda_0
-        self._f_0 = self._k_0 * const.c
-        self._omega_0 = TWO_PI * self._f_0
+        self.k0 = 1. / self.lambda0
+        self.f0 = self.k0 * const.c
+        self.omega0 = TWO_PI * self.f0
 
         # Peak electric field [V/m]
-        self._efield_0 = self._a_0 * const.m_e * self._omega_0 * const.c / (const.e)
+        self.efield0 = self.a0 * const.m_e * self.omega0 * const.c / (const.e)
 
         # FWHM pulse length
-        self._tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
-        self._L_fwhm = self._tau_fwhm * const.c
-
-    def E_field(x,y,z):
-        self._E_field = 0.
-        return self._E_field
-    
-    def tbd_intensity(self):
-        _tbd = 7.
-        return _tbd
+        self.tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
+        self.L_fwhm = self.tau_fwhm * const.c
