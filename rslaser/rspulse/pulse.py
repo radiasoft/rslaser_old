@@ -18,25 +18,37 @@ from srwlib import srwl
 
 class LaserPulse:
     """
-    A laserPulse is a collection of laserSlices.
+    The LaserPulse contains a GaussHermite object to represent the initial envelope,
+    as well as an array of LaserPulseSlice instances, which track details of the evolution in time. 
+    
     """
     def __init__(self,kwargs):
-        self._slice = []
-        k=kwargs.copy()
-        k.phE-= k.energyChirp/2
-        de =k.energyChirp/k.nslice
-        for i in range(k.nslice):
-            #Creation of laser slices i=0...nslice-1
-            self._slice.append(LaserPulseSlice(i,**k))
-            k.phE+=de
-        self._sxvals = []
-        self._syvals = []
+        _k = kwargs.copy()
+        
+        # instantiate the laser envelope
+        self.envelope = rsgh.GaussHermite(_k)
+        
+        # instantiate the array of slices
+        self.slice = []
+        self.nslice = _k.nslice
+        
+        _phE = const.h * const.c / _k.lambda0
+        _chirp = _k.d_lambda
+        _phE -= 0.5*_chirp           # so central slice has the central photon energy
+        _de = _chirp / self.nslice   # photon energy shift from slice to slice
+        
+        for i in range(_k.nslice):
+            # add the slices; each (slowly) instantiates an SRW wavefront object
+            self.slice.append(LaserPulseSlice(i,**_k))
+            _phE += _de
+        self.sxvals = []  # horizontal slice data
+        self.syvals = []  # vertical slice data
 
     def compute_middle_slice_intensity(self):
-        wfr = self._slice[len(self._slice) // 2]._wfr
+        wfr = self.slice[len(self.slice) // 2]._wfr
         (ar2d, sx, sy, xavg, yavg) = rswf.rmsWavefrontIntensity(wfr)
-        self._sxvals.append(sx)
-        self._syvals.append(sy)
+        self.sxvals.append(sx)
+        self.syvals.append(sy)
         return (wfr, sx, sy)
 
     def rmsvals(self):
@@ -50,16 +62,16 @@ class LaserPulse:
         return(sx,sy)
 
     def intensity_vals(self):
-        return [rswf.maxWavefrontIntensity(s._wfr) for s in self._slice]
+        return [rswf.maxWavefrontIntensity(s.wfr) for s in self.slice]
 
     def pulsePos(self):
-        return [s._pulse_pos for s in self._slice]
+        return [s.pulse_pos for s in self.slice]
 
     def energyvals(self):
-        return [s.phE for s in self._slice]
+        return [s.phE for s in self.slice]
 
     def slice_wfr(self,slice_index):
-        return self(slice_index)._slice._wfr
+        return self.slice(slice_index).wfr
 
 class LaserPulseSlice:
     """
@@ -111,36 +123,35 @@ class LaserPulseSlice:
         GsnBm.my = my
 
         #***********Initial Wavefront
-        wfr = srwlib.SRWLWfr() #Initial Electric Field Wavefront
-        wfr.allocate(1, 1000, 1000) #Numbers of points vs Photon Energy (1), Horizontal and Vertical Positions (dummy)
-        wfr.mesh.zStart = 0.0 #Longitudinal Position [m] at which initial Electric Field has to be calculated, i.e. the position of the first optical element
-        wfr.mesh.eStart = GsnBm.avgPhotEn #Initial Photon Energy [eV]
-        wfr.mesh.eFin = GsnBm.avgPhotEn #Final Photon Energy [eV]
+        _wfr = srwlib.SRWLWfr() #Initial Electric Field Wavefront
+        _wfr.allocate(1, 1000, 1000) #Numbers of points vs Photon Energy (1), Horizontal and Vertical Positions (dummy)
+        _wfr.mesh.zStart = 0.0 #Longitudinal Position [m] at which initial Electric Field has to be calculated, i.e. the position of the first optical element
+        _wfr.mesh.eStart = GsnBm.avgPhotEn #Initial Photon Energy [eV]
+        _wfr.mesh.eFin = GsnBm.avgPhotEn #Final Photon Energy [eV]
 
-        wfr.unitElFld = 1 #Electric field units: 0- arbitrary, 1- sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or sqrt(W/mm^2), depending on representation (freq. or time)
+        _wfr.unitElFld = 1 #Electric field units: 0- arbitrary, 1- sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or sqrt(W/mm^2), depending on representation (freq. or time)
 
-        distSrc = wfr.mesh.zStart - GsnBm.z
+        distSrc = _wfr.mesh.zStart - GsnBm.z
         #Horizontal and Vertical Position Range for the Initial Wavefront calculation
         #can be used to simulate the First Aperture (of M1)
         #firstHorAp = 8.*rmsAngDiv*distSrc #[m]
         xAp = 8.*sigrL
         yAp = xAp #[m]
 
-        wfr.mesh.xStart = -0.5*xAp #Initial Horizontal Position [m]
-        wfr.mesh.xFin = 0.5*xAp #Final Horizontal Position [m]
-        wfr.mesh.yStart = -0.5*yAp #Initial Vertical Position [m]
-        wfr.mesh.yFin = 0.5*yAp #Final Vertical Position [m]
+        _wfr.mesh.xStart = -0.5*xAp #Initial Horizontal Position [m]
+        _wfr.mesh.xFin = 0.5*xAp #Final Horizontal Position [m]
+        _wfr.mesh.yStart = -0.5*yAp #Initial Vertical Position [m]
+        _wfr.mesh.yFin = 0.5*yAp #Final Vertical Position [m]
 
         sampFactNxNyForProp = sampFact #sampling factor for adjusting nx, ny (effective if > 0)
         arPrecPar = [sampFactNxNyForProp]
 
-        srwlib.srwl.CalcElecFieldGaussian(wfr, GsnBm, arPrecPar)
+        srwlib.srwl.CalcElecFieldGaussian(_wfr, GsnBm, arPrecPar)
 
         ##Beamline to propagate to waist
 
         optDriftW=srwlib.SRWLOptD(propLen)
         propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
         optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
-        #wfrW=deepcopy(wfr)
-        srwlib.srwl.PropagElecField(wfr, optBLW)
-        self._wfr = wfr
+        srwlib.srwl.PropagElecField(_wfr, optBLW)
+        self.wfr = _wfr

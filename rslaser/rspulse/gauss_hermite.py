@@ -2,13 +2,14 @@
 u"""A Hermite-Gaussian laser field of order (m,n).
 Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 """
-
-# SciPy imports
+import math, cmath
 import numpy as np
 from numpy.polynomial.hermite import hermval
 
 from pykern.pkcollections import PKDict
 import rslaser.utils.constants as rsc
+
+import scipy.constants as const
 
 class GaussHermite:
     """Module defining a Hermite-Gaussian laser field of order (m,n).
@@ -73,7 +74,7 @@ class GaussHermite:
             message = 'waistX = ' + str(_waistX) + '; must be > ' + str(minSize)
             raise Exception(message) 
             
-        self.piWxFac = math.sqrt(RT_2_OVER_PI/self.waistX)
+        self.piWxFac = math.sqrt(rsc.RT_2_OVER_PI/self.waistX)
         self.zRx = 0.5*self.k0*self.waistX**2  # horiz. Rayleigh range [m]
         self.qx0 = 0.0 + self.zRx*1j
         return
@@ -89,10 +90,17 @@ class GaussHermite:
             message = 'waistY = ' + str(_waistY) + '; must be > ' + str(minSize)
             raise Exception(message) 
 
-        self.piWyFac = math.sqrt(RT_2_OVER_PI/self.waistY)
+        self.piWyFac = math.sqrt(rsc.RT_2_OVER_PI/self.waistY)
         self.zRy = 0.5*self.k0*self.waistY**2  #  vert. Rayleigh range [m]
         self.qy0 = 0.0 + self.zRy*1j
         return
+
+    # for users who assume the vertical and horizontal waists are the same
+    def get_w0(self):
+        if self.waistX == self.waistY:
+            return self.waistX
+        else:
+            return math.sqrt(self.waistX * self.waistY)
 
     # set array of horizontal coefficients (complex)
     def setMCoef(self,hCoefs):

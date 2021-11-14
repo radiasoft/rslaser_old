@@ -82,7 +82,7 @@ def plot_zy(_pulse, _ax):
     # generate the contour plot
     _ax.clear()
 
-    n_levels = 40
+    n_levels = 10
     levels = rspt.generate_contour_levels(zyEData, n_levels)
     _ax.contourf(zArr, yArr, zyEData, levels, extent='none')
 
