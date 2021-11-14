@@ -1,24 +1,20 @@
+# -*- coding: utf-8 -*-
+u"""Definition of a laser pulse
+Copyright (c) 2021 RadiaSoft LLC. All rights reserved
+"""
+
 import math
 import numpy as np
-from array import array
-from pykern.pkcollections import PKDict
-import rslaser.rsoptics
-from rslaser.rsoptics.wavefront import *
-import srwlib
-
-# get some physical and mathematical constants ready to go
-# this code snippet is adapted from rsbeams.rsphysics.rsconst.py
-import math
 import scipy.constants as const
 
-TWO_PI = 2 * math.pi
-RT_TWO_PI = math.sqrt(2*math.pi)
-RT_2_OVER_PI = math.sqrt(2/math.pi)
+from pykern.pkcollections import PKDict
+import rslaser.rsoptics.wavefront as rswf
+import rslaser.rspulse.gauss_hermite as rsgh
+import rslaser.utils.constants as rsc
+# import rslaser.utils.srwl_uti_data as rsdata
 
-c_SQ = const.c**2
-c_INV  = 1./const.c
-MKS_factor = 1./(4.*math.pi*const.epsilon_0)
-m_e_EV = const.m_e * c_SQ / (-const.e)
+import srwlib
+from srwlib import srwl
 
 class LaserPulse:
     """
@@ -38,23 +34,23 @@ class LaserPulse:
 
     def compute_middle_slice_intensity(self):
         wfr = self._slice[len(self._slice) // 2]._wfr
-        (ar2d, sx, sy, xavg, yavg) = rmsWavefrontIntensity(wfr)
+        (ar2d, sx, sy, xavg, yavg) = rswf.rmsWavefrontIntensity(wfr)
         self._sxvals.append(sx)
         self._syvals.append(sy)
-        return (wfr, ar2d, sx, sy, xavg, yavg)
+        return (wfr, sx, sy)
 
     def rmsvals(self):
         sx = []
         sy = []
         for sl in self._slice:
-            (_, sigx,sigy, _, _) = rmsWavefrontIntensity(sl._wfr)
+            (_, sigx,sigy, _, _) = rswf.rmsWavefrontIntensity(sl._wfr)
             sx.append(sigx)
             sy.append(sigy)
 
         return(sx,sy)
 
     def intensity_vals(self):
-        return [maxWavefrontIntensity(s._wfr) for s in self._slice]
+        return [rswf.maxWavefrontIntensity(s._wfr) for s in self._slice]
 
     def pulsePos(self):
         return [s._pulse_pos for s in self._slice]
@@ -148,30 +144,3 @@ class LaserPulseSlice:
         #wfrW=deepcopy(wfr)
         srwlib.srwl.PropagElecField(wfr, optBLW)
         self._wfr = wfr
-
-
-class LaserPulseEnvelope:
-    """
-    A Gaussian representation of a laser pulse, using the paraxial approximation.
-    See https://en.wikipedia.org/wiki/Gaussian_beam/ (or your favorite laser textbook) for details.
-    """
-    def __init__(self,kwargs):
-        k=kwargs.copy()
-        self.lambda0 = k.lambda0   # central wavelength [m]
-        self.a0 = k.a0             # amplitude [dimensionless]
-        self.w0 = k.w0             # waist size [m]
-        self.z_center = k.z_center   # longitudinal location of laser pulse center [m]
-        self.z_waist = k.z_waist     # longitidunal location of nearest focus
-        self.tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
-
-        # useful derived quantities
-        self.k0 = 1. / self.lambda0
-        self.f0 = self.k0 * const.c
-        self.omega0 = TWO_PI * self.f0
-
-        # Peak electric field [V/m]
-        self.efield0 = self.a0 * const.m_e * self.omega0 * const.c / (const.e)
-
-        # FWHM pulse length
-        self.tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
-        self.L_fwhm = self.tau_fwhm * const.c
