@@ -179,7 +179,74 @@ class GaussHermite:
     #   x,y,z can all be scalar, to evaluate at a single point.
     #   x,y can both be arrays (same length) to evaluate on a mesh.
     #   z, the longitudinal coordinate, must always be a scalar.
+    # 
+    # We ignore x/y differences in the waist size and location
+    # Also, we ignore the higher-order Hermite modes here.
+    
     def evaluate_envelope_ex(self,xArray,yArray,z):
+
+        # assume array input; try to create temporary array
+        try:
+            numVals = xArray.size
+            result  = np.zeros(numVals, complex)
+        except AttributeError:
+            # above failed, so input must be a float
+            result = 0. + 0.*1j
+            
+        # radius at which the field amplitudes fall to exp(-1) of their axial values
+        #     i.e., where the intensity values fall to exp(-2)
+        wZ = self.w0 * math.sqrt(1+(z/self.zR)**2)
+        
+        # the radius squared
+        rSq = np.power(xArray,2) + np.power(yArray,2)
+        
+        # the radius of curvature of wavefronts at location z
+        invR = z / (z**2 + self.zR**2)
+        
+        # first exponential
+        exp_1 = np.exp(-rSq * np.power(wZ,-2))
+        
+        # Gouy phase at position z
+        psi_z = np.arctan(z / self.zR)
+        
+        # 2nd exponential
+        arg_2 = 0.5*self.k0*rSq*invR
+        exp_2 = np.exp(-1j*(self.k0*z + arg_2 - psi_z))
+
+        # return the complex valued result
+        # here, we apply a longitudinal Gaussian profile
+        return (self.w0 / wZ) * exp_1 * exp_2 * np.exp(-np.power(z/self.L_fwhm, 2)) * self.efield0
+
+    # For now, we assume this is the polarization direction
+    # Handling of arguments is flexible:
+    #   x,y,z,t can all be scalar, to evaluate at a single point.
+    #   x,y can both be arrays (same length) to evaluate on a mesh.
+    #   t can be an array, to evaluate at a sequence of times.
+    #   x,y,t can all be arrays, for a particle distribution with fixed z
+    #   z, the longitudinal coordinate, must always be a scalar.
+    #
+    # There is no longitudinal profile implemented here
+    
+    def eval_gh_ex(self,xArray,yArray,z,tArray):
+
+        # get the complex-valued envelope function
+        result = self.eval_gh_envelope_ex(xArray,yArray,z)
+
+        # multiply by the time-dependent term
+        result *= np.exp((self.omega0 * tArray - self.k0 * z)*1j)
+
+        # return only the real part
+        return np.real(result)*self.efield0
+
+    # For now, we assume this is the polarization direction
+    # Handling of arguments is flexible:
+    #   x,y,z can all be scalar, to evaluate at a single point.
+    #   x,y can both be arrays (same length) to evaluate on a mesh.
+    #   z, the longitudinal coordinate, must always be a scalar.
+    #
+    # The complicated logic below requires further testing.
+    
+    def eval_gh_envelope_ex(self,xArray,yArray,z):
 
         # assume array input; try to create temporary array
         try:

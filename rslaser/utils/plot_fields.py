@@ -12,18 +12,10 @@ def plot_zx(_zArr, _xArr, _pulse, _ax):
     numX = np.size(_xArr)
     minX = np.min(_xArr)
     maxX = np.max(_xArr)
-    delX = (maxX-minX) / (numX-1)
         
     numZ = np.size(_zArr)
     minZ = np.min(_zArr)
     maxZ = np.max(_zArr)
-    delZ = (maxZ-minZ) / (numZ-1)
-
-    for iLoop in range(numZ):
-        _zArr[iLoop] = minZ + iLoop * delZ
-
-    for jLoop in range(numX):
-        _xArr[jLoop] = minX + jLoop * delX
 
     # specify y position for plot
     yValue = 0.
@@ -31,9 +23,8 @@ def plot_zx(_zArr, _xArr, _pulse, _ax):
     # Calculate Ex at the 2D array of x,y values
     zxEData = np.zeros((numX, numZ))
     for iLoop in range(numZ):
-        for jLoop in range(numX):
-            contour_value = np.real(_pulse.evaluate_envelope_ex(_xArr[jLoop], yValue, _zArr[iLoop]))
-            zxEData[jLoop, iLoop] = contour_value
+        zxEData[:, iLoop] = _pulse.evaluate_ex(_xArr, yValue, _zArr[iLoop], 0.)
+#        zxEData[:, iLoop] = np.real(_pulse.evaluate_envelope_ex(_xArr, yValue, _zArr[iLoop]))
 
     # generate the contour plot
     n_levels = 10
@@ -54,8 +45,8 @@ def plot_zy(_pulse, _ax):
     zyNumCells = zyNumH * zyNumV
 
     # specify the min's and max's
-    zyMinH = -20. * _pulse.lambda0
-    zyMaxH =  20. * _pulse.lambda0
+    zyMinH = -14. * _pulse.lambda0
+    zyMaxH =  14. * _pulse.lambda0
 
     zyMinV = -2. * _pulse.waist_y
     zyMaxV =  2. * _pulse.waist_y
@@ -76,8 +67,7 @@ def plot_zy(_pulse, _ax):
     # Calculate Ex at the 2D array of x,y values
     zyEData = np.zeros((zyNumV, zyNumH))
     for iLoop in range(zyNumH):
-        for jLoop in range(zyNumV):
-            zyEData[jLoop, iLoop] = _pulse.evaluate_ex(xValue, yArr[jLoop], zArr[iLoop], tValue)
+        zyEData[:, iLoop] = _pulse.evaluate_ex(xValue, yArr, zArr[iLoop], tValue)
 
     # generate the contour plot
     _ax.clear()
@@ -97,9 +87,8 @@ def plot_zy(_pulse, _ax):
 def plot_xy(_z_waist, _pulse, _ax):
 
     # Specify the desired grid size
-    xyNumH = 64
-    xyNumV = 64
-    xyNumCells = xyNumH * xyNumV
+    xyNumH = 128
+    xyNumV = 128
 
     # specify the min's and max's
     xyMinH = -2. * _pulse.waist_x
@@ -110,7 +99,6 @@ def plot_xy(_z_waist, _pulse, _ax):
 
     xArr = np.zeros(xyNumH)
     yArr = np.zeros(xyNumV)
-    xTmp = np.zeros(xyNumV)
 
     for iLoop in range(xyNumH):
         xArr[iLoop] = xyMinH + iLoop * (xyMaxH-xyMinH) / (xyNumH-1)
@@ -119,22 +107,15 @@ def plot_xy(_z_waist, _pulse, _ax):
         yArr[jLoop] = xyMinV + jLoop * (xyMaxV-xyMinV) / (xyNumV-1)
 
     # Calculate Ex at the 2D array of x,y values
-    xyEData = np.zeros((xyNumV, xyNumH))
-    for iLoop in range(xyNumH):
-        for jLoop in range(xyNumV):
-            xTmp[jLoop] = xArr[iLoop]
-        xyEData[0:xyNumV, iLoop] = _pulse.evaluate_envelope_ex(xTmp, yArr, _z_waist)
+    xyEData = np.zeros((xyNumH, xyNumV))
+    for iLoop in range(xyNumV):
+        xyEData[:, iLoop] = np.real(_pulse.evaluate_envelope_ex(xArr, yArr, _z_waist))
 
     # generate the contour plot
     _ax.clear()
-
-    n_levels = 20
-    levels = rspt.generate_contour_levels(xyEData, n_levels)
-    _ax.contourf(xArr, yArr, xyEData, levels, extent='none')
-
     _ax.axis([xyMinH, xyMaxH, xyMinV, xyMaxV])
     _ax.set_xlabel('x [m]')
     _ax.set_ylabel('y [m]')
     _ax.set_title('XY slice, at waist location')
 
-    rspt.scatter_contour('contour', 'linear', xArr, yArr, _ax, 10, n_levels)
+    rspt.scatter_contour('contour', 'linear', xArr, yArr, _ax)
