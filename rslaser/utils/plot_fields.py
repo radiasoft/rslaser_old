@@ -9,7 +9,7 @@ import rslaser.rspulse.gauss_hermite as rsgh
 import rslaser.utils.plot_tools as rspt
 
 def plot_zx(_zArr, _xArr, _pulse, _ax):
-    numX = np.size(_xArr)        
+    numX = np.size(_xArr)
     minX = np.min(_xArr)
     maxX = np.max(_xArr)
     delX = (maxX-minX) / (numX-1)
@@ -57,8 +57,8 @@ def plot_zy(_pulse, _ax):
     zyMinH = -20. * _pulse.lambda0
     zyMaxH =  20. * _pulse.lambda0
 
-    zyMinV = -2. * _pulse.waistY
-    zyMaxV =  2. * _pulse.waistY
+    zyMinV = -2. * _pulse.waist_y
+    zyMaxV =  2. * _pulse.waist_y
 
     zArr = np.zeros(zyNumH)
     yArr = np.zeros(zyNumV)
@@ -102,11 +102,11 @@ def plot_xy(_z_waist, _pulse, _ax):
     xyNumCells = xyNumH * xyNumV
 
     # specify the min's and max's
-    xyMinH = -2. * _pulse.waistX
-    xyMaxH =  2. * _pulse.waistX
+    xyMinH = -2. * _pulse.waist_x
+    xyMaxH =  2. * _pulse.waist_x
 
-    xyMinV = -2. * _pulse.waistY
-    xyMaxV =  2. * _pulse.waistY
+    xyMinV = -2. * _pulse.waist_y
+    xyMaxV =  2. * _pulse.waist_y
 
     xArr = np.zeros(xyNumH)
     yArr = np.zeros(xyNumV)
