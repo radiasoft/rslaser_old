@@ -15,6 +15,8 @@ class drift():
 
   def propagate(self, laser_pulse, prop_type): 
     if prop_type == 'default': 
-      for w in laser_pulse._slice:
-        srwlib.srwl.PropagElecField(w._wfr, self._srwc) 
+      nslices = len(laser_pulse._slice) 
+      for i in np.arange(nslices):
+        thisSlice = laser_pulse._slice[i] 
+        srwlib.srwl.PropagElecField(thisSlice._wfr, self._srwc) 
     return laser_pulse 
