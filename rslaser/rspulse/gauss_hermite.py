@@ -185,14 +185,26 @@ class GaussHermite:
     
     def evaluate_envelope_ex(self,xArray,yArray,z):
 
-        # assume array input; try to create temporary array
+        # account for the waist location
+        z_env = z
+        z -= self.z_waist
+        
+        # determine whether xArray is really a Numpy array
         try:
-            numVals = xArray.size
-            result  = np.zeros(numVals, complex)
+            num_vals_x = xArray.size
+            x_is_array = True
         except AttributeError:
             # above failed, so input must be a float
-            result = 0. + 0.*1j
-            
+            x_is_array = False
+
+        # determine whether yArray is really a Numpy array
+        try:
+            num_vals_y = yArray.size
+            y_is_array = True
+        except AttributeError:
+            # above failed, so input must be a float
+            y_is_array = False
+
         # radius at which the field amplitudes fall to exp(-1) of their axial values
         #     i.e., where the intensity values fall to exp(-2)
         wZ = self.w0 * math.sqrt(1+(z/self.zR)**2)
@@ -215,7 +227,7 @@ class GaussHermite:
 
         # return the complex valued result
         # here, we apply a longitudinal Gaussian profile
-        return (self.w0 / wZ) * exp_1 * exp_2 * np.exp(-np.power(z/self.L_fwhm, 2)) * self.efield0
+        return (self.w0 / wZ) * exp_1 * exp_2 * np.exp(-np.power(z_env/self.L_fwhm, 2)) * self.efield0
 
     # For now, we assume this is the polarization direction
     # Handling of arguments is flexible:
