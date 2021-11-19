@@ -83,10 +83,12 @@ class LaserPulseSlice:
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
-    def __init__(self,slice_index,nslice,sigrW=0.00043698412731784714,propLen=15,sig_s=0.1,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0,**_ignore_kwargs):
+    def __init__(self, slice_index, nslice, d_to_w, sigrW=0.000186, propLen=15, sig_s=0.1, 
+                 pulseE=0.001, poltype=1, phE=1.55, sampFact=5, mx=0, my=0, **_ignore_kwargs):
         """
         #nslice: number of slices of laser pulse
-        #slice_index: index of slice
+        #slice_index: index of slice 
+        #d_to_w: distance from the pulse center at t = 0 to the intended waist location [m] 
         #sigrW: beam size at waist [m]
         #propLen: propagation length [m] required by SRW to create numerical Gaussian
         #propLen=15,
@@ -100,7 +102,11 @@ class LaserPulseSlice:
         self.slice_index = slice_index
         self.phE = phE
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
-        rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad]
+        rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad] 
+        #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
+        #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
+        d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
+        if d_to_w > d_to_w_cutoff:  propLen = d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
         sigrL=math.sqrt(sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
 
 
@@ -108,7 +114,7 @@ class LaserPulseSlice:
         GsnBm = srwlib.SRWLGsnBm() #Gaussian Beam structure (just parameters)
         GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
         GsnBm.y = 0
-        numsig = 5. #Number of sigma values to track. Total range is 2*numsig*sig_s
+        numsig = 3. #Number of sigma values to track. Total range is 2*numsig*sig_s
         ds = 2*numsig*sig_s/(nslice - 1)
         self._pulse_pos = -numsig*sig_s+slice_index*ds
         GsnBm.z = propLen + self._pulse_pos #Longitudinal Position of Waist [m]
@@ -151,10 +157,10 @@ class LaserPulseSlice:
 
         srwlib.srwl.CalcElecFieldGaussian(_wfr, GsnBm, arPrecPar)
 
-        ##Beamline to propagate to waist
-
-        optDriftW=srwlib.SRWLOptD(propLen)
-        propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
-        optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
-        srwlib.srwl.PropagElecField(_wfr, optBLW)
+        ##Beamline to propagate to waist ( only if d_to_w(t=0) < d_to_w_cutoff )
+        if d_to_w < d_to_w_cutoff:
+          optDriftW=srwlib.SRWLOptD(propLen)
+          propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+          optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
+          srwlib.srwl.PropagElecField(_wfr, optBLW)
         self.wfr = _wfr
