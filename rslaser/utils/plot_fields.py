@@ -8,29 +8,38 @@ import numpy as np
 import rslaser.rspulse.gauss_hermite as rsgh
 import rslaser.utils.plot_tools as rspt
 
-def plot_z(_zArr, _pulse, _ax, _x=0., _y=0.):
+def plot_1d_z(_zArr, _pulse, _ax, _x=0., _y=0., _t=0., _time_explicit=False):
     """Plot a 1D (longitudinal, along z) lineout of a laser pulse field.
 
     For now, we are assuming the field is Ex
 
     Args:
-        _x (float): horizontal location of the lineout
-        _y (float): vertical location of the lineout
         _zArr (1D numpy array): z positions where the field is to be evaluated
         _pulse (object): instance of the GaussHermite() class.
         _ax (matplotlib axis): used to generate plot
+        _x (float): [m] horizontal location of the lineout
+        _y (float): [m] vertical location of the lineout
+        _t (float): [m] time of the lineout
+        _time_explicit (bool): envelope only (False) or time explicit (True)
     """
     numZ = np.size(_zArr)
 
     # Calculate Ex at the 2D array of x,y values
     em_field = np.zeros(numZ)
-    for iLoop in range(numZ):
-        em_field[iLoop] = np.real(_pulse.evaluate_envelope_ex(_x, _y, _zArr[iLoop]))
+    if (_time_explicit):
+        for iLoop in range(numZ):
+            em_field[iLoop] = _pulse.evaluate_ex(_x, _y, _zArr[iLoop], _t)
+    else:
+        for iLoop in range(numZ):
+            em_field[iLoop] = np.real(_pulse.evaluate_envelope_ex(_x, _y, _zArr[iLoop]))
 
     _ax.plot(_zArr, em_field)
     _ax.set_xlabel('z [m]')
     _ax.set_ylabel('Ex [V/m]')
-    _ax.set_title('Ex [V/m], at (x,y)=({0:4.2f},{0:4.2f}) [m]'.format(_x, _y))
+    if (_time_explicit):
+        _ax.set_title('Ex [V/m], at (x,y)=({0:4.2f},{0:4.2f}) [m] and t={0:4.2f} [s]'.format(_x, _y, _t))
+    else:
+        _ax.set_title('Ex (envelope) [V/m], at (x,y)=({0:4.2f},{0:4.2f}) [m]'.format(_x, _y))
     
     
 def plot_zy(_pulse, _ax):
@@ -78,7 +87,7 @@ def plot_zy(_pulse, _ax):
     # Calculate Ex at the 2D array of x,y values
     zyEData = np.zeros((zyNumV, zyNumH))
     for iLoop in range(zyNumH):
-        zyEData[:, iLoop] = np.real(_pulse.evaluate_envelope_ex(xValue, yArr, zArr[iLoop]))
+        zyEData[:, iLoop] = _pulse.evaluate_ex(xValue, yArr, zArr[iLoop], 0.)
 
     # generate the contour plot
     _ax.clear()

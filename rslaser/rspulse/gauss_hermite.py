@@ -169,7 +169,7 @@ class GaussHermite:
         result = self.evaluate_envelope_ex(xArray,yArray,z)
 
         # multiply by the time-dependent term
-        result *= np.exp((self.omega0 * tArray - self.k0 * z)*1j)
+        result *= np.exp((self.k0*z - self.omega0*tArray)*1j)
 
         # return only the real part
         return np.real(result)
@@ -223,7 +223,7 @@ class GaussHermite:
         
         # 2nd exponential
         arg_2 = 0.5*self.k0*rSq*invR
-        exp_2 = np.exp(-1j*(self.k0*z + arg_2 - psi_z))
+        exp_2 = np.exp(-1j*(arg_2 - psi_z))
 
         # return the complex valued result
         # here, we apply a longitudinal Gaussian profile
