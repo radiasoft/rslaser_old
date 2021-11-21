@@ -8,6 +8,43 @@ import numpy as np
 import rslaser.rspulse.gauss_hermite as rsgh
 import rslaser.utils.plot_tools as rspt
 
+def plot_1d_x(_xArr, _pulse, _ax, _y=0., _z=0., _t=0., _time_explicit=False):
+    """Plot a 1D (longitudinal, along z) lineout of a laser pulse field.
+
+    For now, we are assuming the field is Ex
+
+    Args:
+        _xArr (1D numpy array): x positions where the field is to be evaluated
+        _pulse (object): instance of the GaussHermite() class.
+        _ax (object): matplotlib 'axis', used to generate the plot
+        _y (float): [m] vertical location of the lineout
+        _z (float): [m] longitudinal location of the lineout
+        _t (float): [m] time of the lineout
+        _time_explicit (bool): envelope only (False) or time explicit (True)
+    """
+    numX = np.size(_xArr)
+#    print('\n _xArr = ', _xArr)
+
+    # Calculate Ex at the 2D array of x,y values
+    em_field = np.zeros(numX)
+    if (_time_explicit):
+#        for iLoop in range(numX):
+#            em_field[iLoop] = _pulse.evaluate_ex(_xArr[iLoop], _y, _z, _t)
+        em_field = _pulse.evaluate_ex(_xArr, _y, _z, _t)
+    else:
+#        for iLoop in range(numX):
+#            em_field[iLoop] = np.real(_pulse.evaluate_envelope_ex(_xArr[iLoop], _y, _z))
+        em_field = np.real(_pulse.evaluate_envelope_ex(_xArr, _y, _z))
+
+    _ax.plot(_xArr, em_field)
+    _ax.set_xlabel('x [m]')
+    _ax.set_ylabel('Ex [V/m]')
+    if (_time_explicit):
+        _ax.set_title('Ex [V/m], at (y,z)=({0:4.2f},{0:4.2f}) [m] and t={0:4.2f} [s]'.format(_y, _z, _t))
+    else:
+        _ax.set_title('Ex (envelope) [V/m], at (y,z)=({0:4.2f},{0:4.2f}) [m]'.format(_y, _z))
+
+        
 def plot_1d_z(_zArr, _pulse, _ax, _x=0., _y=0., _t=0., _time_explicit=False):
     """Plot a 1D (longitudinal, along z) lineout of a laser pulse field.
 

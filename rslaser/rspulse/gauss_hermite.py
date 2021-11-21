@@ -60,6 +60,9 @@ class GaussHermite:
         self.tau_fwhm = _k.tau_fwhm               # FWHM laser pulse length [s]
         self.L_fwhm = self.tau_fwhm * const.c     # FWHM laser pulse length [m]
 
+        # longitudinal location of pulse center
+        self.z_center = _k.z_center
+
         # bulk transverse offsets of the laser pulse
         self.x_shift = _k.x_shift                 # horizontal shift of the spot center
         self.y_shift = _k.y_shift                 # vertical shift of the spot center
@@ -186,7 +189,7 @@ class GaussHermite:
     def evaluate_envelope_ex(self,xArray,yArray,z):
 
         # account for the waist location
-        z_env = z
+        z_local = z - self.z_center
         z -= self.z_waist
         
         # determine whether xArray is really a Numpy array
@@ -204,30 +207,45 @@ class GaussHermite:
         except AttributeError:
             # above failed, so input must be a float
             y_is_array = False
+            
+        if (x_is_array and y_is_array):
+            rSq = np.zeros(num_vals_x, complex)
+            exp_1 = np.zeros(num_vals_x, complex)
+            exp_2 = np.zeros(num_vals_x, complex)
+            arg_2 = np.zeros(num_vals_x, complex)
 
         # radius at which the field amplitudes fall to exp(-1) of their axial values
         #     i.e., where the intensity values fall to exp(-2)
         wZ = self.w0 * math.sqrt(1+(z/self.zR)**2)
+#        print('w(z)/w0 = ', wZ / self.w0)
         
         # the radius squared
         rSq = np.power(xArray,2) + np.power(yArray,2)
+#        print('\n rSq = ', rSq)
         
         # the radius of curvature of wavefronts at location z
         invR = z / (z**2 + self.zR**2)
         
         # first exponential
-        exp_1 = np.exp(-rSq * np.power(wZ,-2))
+        exp_1 = np.exp(-rSq / wZ**2)
         
         # Gouy phase at position z
         psi_z = np.arctan(z / self.zR)
         
         # 2nd exponential
-        arg_2 = 0.5*self.k0*rSq*invR
+        arg_2 = 0.5*self.k0*invR*rSq
         exp_2 = np.exp(-1j*(arg_2 - psi_z))
+        print(' k0 = ', self.k0)
+        print(' invR = ', invR)
+        print(' rSq = ', rSq)
+        print(' arg_2 = ', arg_2)
+        print(' psi_z = ', psi_z)
+        print(' Re[exp_2] = ', np.real(exp_2))
+        print(' cos(arg_2-psi_z) = ', np.cos(arg_2 - psi_z))
 
         # return the complex valued result
         # here, we apply a longitudinal Gaussian profile
-        return (self.w0 / wZ) * exp_1 * exp_2 * np.exp(-np.power(z_env/self.L_fwhm, 2)) * self.efield0
+        return (self.w0 / wZ) * exp_1 * np.exp(-(z_local/self.L_fwhm)**2) * self.efield0 * exp_2
 
     # For now, we assume this is the polarization direction
     # Handling of arguments is flexible:
