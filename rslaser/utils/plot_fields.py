@@ -5,6 +5,7 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+from pykern.pkdebug import pkdc, pkdexc, pkdp
 import rslaser.rspulse.gauss_hermite as rsgh
 import rslaser.utils.plot_tools as rspt
 

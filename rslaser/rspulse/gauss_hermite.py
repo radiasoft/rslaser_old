@@ -7,6 +7,7 @@ import numpy as np
 from numpy.polynomial.hermite import hermval
 
 from pykern.pkcollections import PKDict
+from pykern.pkdebug import pkdc, pkdexc, pkdp
 import rslaser.utils.constants as rsc
 
 import scipy.constants as const
@@ -187,7 +188,6 @@ class GaussHermite:
     # Also, we ignore the higher-order Hermite modes here.
     
     def evaluate_envelope_ex(self,xArray,yArray,z):
-
         # account for the waist location
         z_local = z - self.z_center
         z -= self.z_waist
@@ -218,10 +218,10 @@ class GaussHermite:
         #     i.e., where the intensity values fall to exp(-2)
         wZ = self.w0 * math.sqrt(1+(z/self.zR)**2)
 #        print('w(z)/w0 = ', wZ / self.w0)
-        
+        pkdc('w(z)/w0 = ' + str(wZ/self.w0))
+
         # the radius squared
         rSq = np.power(xArray,2) + np.power(yArray,2)
-#        print('\n rSq = ', rSq)
         
         # the radius of curvature of wavefronts at location z
         invR = z / (z**2 + self.zR**2)
@@ -235,13 +235,22 @@ class GaussHermite:
         # 2nd exponential
         arg_2 = 0.5*self.k0*invR*rSq
         exp_2 = np.exp(-1j*(arg_2 - psi_z))
-        print(' k0 = ', self.k0)
-        print(' invR = ', invR)
-        print(' rSq = ', rSq)
-        print(' arg_2 = ', arg_2)
-        print(' psi_z = ', psi_z)
-        print(' Re[exp_2] = ', np.real(exp_2))
-        print(' cos(arg_2-psi_z) = ', np.cos(arg_2 - psi_z))
+        
+        noisy_output = False
+        if noisy_output:
+            print(' k0 = ', self.k0)
+            print(' invR = ', invR)
+            print(' rSq = ', rSq)
+            print(' arg_2 = ', arg_2)
+            print(' psi_z = ', psi_z)
+            print(' Re[exp_2] = ', np.real(exp_2))
+
+        pkdc(' k0 = ' + str(self.k0))
+        pkdc(' invR = ' + str(invR))
+        pkdc(' rSq = ' + str(rSq))
+        pkdc(' arg_2 = ' + str(arg_2))
+        pkdc(' psi_z = ' + str(psi_z))
+        pkdc(' Re[exp_2] = ' + str(np.real(exp_2)))
 
         # return the complex valued result
         # here, we apply a longitudinal Gaussian profile
