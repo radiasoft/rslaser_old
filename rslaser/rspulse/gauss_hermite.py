@@ -166,31 +166,32 @@ class GaussHermite:
     #   x,y can both be arrays (same length) to evaluate on a mesh.
     #   t can be an array, to evaluate at a sequence of times.
     #   x,y,t can all be arrays, for a particle distribution with fixed z
-    #   z, the longitudinal coordinate, must always be a scalar.
-    def evaluate_ex(self,xArray,yArray,z,tArray):
+    #   _z, the longitudinal coordinate, must always be a scalar.
+    def evaluate_ex(self,xArray,yArray,_z,tArray):
 
         # get the complex-valued envelope function
-        result = self.evaluate_envelope_ex(xArray,yArray,z)
+        result = self.evaluate_envelope_ex(xArray,yArray,_z)
+        
+        # account for location of pulse center
+        z_local = _z - self.z_center
 
         # multiply by the time-dependent term
-        result *= np.exp((self.k0*z - self.omega0*tArray)*1j)
-
-        # return only the real part
-        return np.real(result)
+        return result * np.exp((self.k0*z_local - self.omega0*tArray)*1j)
 
     # For now, we assume this is the polarization direction
     # Handling of arguments is flexible:
     #   x,y,z can all be scalar, to evaluate at a single point.
     #   x,y can both be arrays (same length) to evaluate on a mesh.
-    #   z, the longitudinal coordinate, must always be a scalar.
+    #   _z, the longitudinal coordinate, must always be a scalar.
     # 
     # We ignore x/y differences in the waist size and location
     # Also, we ignore the higher-order Hermite modes here.
     
-    def evaluate_envelope_ex(self,xArray,yArray,z):
+    def evaluate_envelope_ex(self,xArray,yArray,_z):
+        # account for location of pulse center
+        z_local = _z - self.z_center
         # account for the waist location
-        z_local = z - self.z_center
-        z -= self.z_waist
+        _z -= self.z_waist
         
         # determine whether xArray is really a Numpy array
         try:
@@ -216,34 +217,101 @@ class GaussHermite:
 
         # radius at which the field amplitudes fall to exp(-1) of their axial values
         #     i.e., where the intensity values fall to exp(-2)
-        wZ = self.w0 * math.sqrt(1+(z/self.zR)**2)
-#        print('w(z)/w0 = ', wZ / self.w0)
+        wZ = self.w0 * math.sqrt(1+(_z/self.zR)**2)
         pkdc('w(z)/w0 = ' + str(wZ/self.w0))
 
         # the radius squared
         rSq = np.power(xArray,2) + np.power(yArray,2)
         
         # the radius of curvature of wavefronts at location z
-        invR = z / (z**2 + self.zR**2)
+        invR = _z / (_z**2 + self.zR**2)
         
         # first exponential
         exp_1 = np.exp(-rSq / wZ**2)
         
         # Gouy phase at position z
-        psi_z = np.arctan(z / self.zR)
+        psi_z = np.arctan(_z / self.zR)
         
         # 2nd exponential
         arg_2 = 0.5*self.k0*invR*rSq
         exp_2 = np.exp(-1j*(arg_2 - psi_z))
+
+        pkdc(' k0 = ' + str(self.k0))
+        pkdc(' invR = ' + str(invR))
+        pkdc(' rSq = ' + str(rSq))
+        pkdc(' arg_2 = ' + str(arg_2))
+        pkdc(' psi_z = ' + str(psi_z))
+        pkdc(' Re[exp_2] = ' + str(np.real(exp_2)))
+
+        # return the complex valued result
+        # here, we apply a longitudinal Gaussian profile
+        return (self.w0 / wZ) * exp_1 * np.exp(-(z_local/self.L_fwhm)**2) * self.efield0 * exp_2
+
+    
+    # Evaluate the radial electric field of a circularly polarized laser pulse in r-z geometry.
+    # Handling of arguments is flexible:
+    #   rArray can be a scalar, to evaluate at a single point.
+    #   rArray can be a Numpy array to evaluate along a line.
+    #   _z, the longitudinal coordinate, must always be a scalar.
+    #   tArray can be a scalar (works) or a Numpy array (not tested)
+    def evaluate_er(self,rArray,_z,tArray):
+
+        # get the complex-valued envelope function
+        result = self.evaluate_envelope_er(rArray,_z)
         
-        noisy_output = False
-        if noisy_output:
-            print(' k0 = ', self.k0)
-            print(' invR = ', invR)
-            print(' rSq = ', rSq)
-            print(' arg_2 = ', arg_2)
-            print(' psi_z = ', psi_z)
-            print(' Re[exp_2] = ', np.real(exp_2))
+        # account for location of pulse center
+        z_local = _z - self.z_center
+
+        # multiply by the time-dependent term
+        return result * np.exp((self.k0*z_local - self.omega0*tArray)*1j)
+
+    
+    # Calculate the laser pulse envelope in radial r-z coordinates
+    # Handling of arguments is flexible:
+    #   rArray can be a scalar, to evaluate at a single point.
+    #   rArray can be a Numpy array to evaluate along a line
+    #   _z, the longitudinal coordinate, must always be a scalar.
+    # 
+    # We ignore x/y differences in the waist size and location
+    # Also, we ignore the higher-order Hermite modes here.
+    
+    def evaluate_envelope_er(self,rArray,_z):
+        # account for the waist location
+        z_local = _z - self.z_center
+        _z -= self.z_waist
+        
+        # determine whether xArray is really a Numpy array
+        try:
+            num_vals_r = rArray.size
+            r_is_array = True
+            rSq = np.zeros(num_vals_r, complex)
+            exp_1 = np.zeros(num_vals_r, complex)
+            exp_2 = np.zeros(num_vals_r, complex)
+            arg_2 = np.zeros(num_vals_r, complex)
+        except AttributeError:
+            # above failed, so input must be a float
+            r_is_array = False
+
+        # radius at which the field amplitudes fall to exp(-1) of their axial values
+        #     i.e., where the intensity values fall to exp(-2)
+        wZ = self.w0 * math.sqrt(1+(_z/self.zR)**2)
+        pkdc('w(z)/w0 = ' + str(wZ/self.w0))
+
+        # the radius squared
+        rSq = np.power(rArray,2)
+        
+        # the radius of curvature of wavefronts at location z
+        invR = _z / (_z**2 + self.zR**2)
+        
+        # first exponential
+        exp_1 = np.exp(-rSq / wZ**2)
+        
+        # Gouy phase at position z
+        psi_z = np.arctan(_z / self.zR)
+        
+        # 2nd exponential
+        arg_2 = 0.5*self.k0*invR*rSq
+        exp_2 = np.exp(-1j*(arg_2 - psi_z))
 
         pkdc(' k0 = ' + str(self.k0))
         pkdc(' invR = ' + str(invR))
