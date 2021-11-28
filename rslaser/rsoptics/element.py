@@ -52,8 +52,8 @@ class Crystal(Element):
             self._srwc=_createABCDbeamline(A,B,C,D)
 
     def propagate(self,laser_pulse):
-        for w in laser_pulse._slice:
-            srwlib.srwl.PropagElecField(w._wfr,self._srwc)
+        for w in laser_pulse.slice:
+            srwlib.srwl.PropagElecField(w.wfr,self._srwc)
 
 class Drift(Element):
     def __init__(self,length):
@@ -64,8 +64,8 @@ class Drift(Element):
         )
 
     def propagate(self,laser_pulse):
-        for w in laser_pulse._slice:
-            srwlib.srwl.PropagElecField(w._wfr,self._srwc)
+        for w in laser_pulse.slice:
+            srwlib.srwl.PropagElecField(w.wfr,self._srwc)
 
 class Lens(Element):
     """
@@ -80,5 +80,5 @@ class Lens(Element):
         )
 
     def propagate(self,laser_pulse):
-        for w in laser_pulse._slice:
-            srwlib.srwl.PropagElecField(w._wfr,self._srwc)
+        for w in laser_pulse.slice:
+            srwlib.srwl.PropagElecField(w.wfr,self._srwc)

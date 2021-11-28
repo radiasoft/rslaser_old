@@ -44,21 +44,21 @@ class LaserPulse:
             # add the slices; each (slowly) instantiates an SRW wavefront object
             self.slice.append(LaserPulseSlice(i,**_k))
             _phE += _de
-        self.sxvals = []  # horizontal slice data
-        self.syvals = []  # vertical slice data
+        self._sxvals = []  # horizontal slice data
+        self._syvals = []  # vertical slice data
 
     def compute_middle_slice_intensity(self):
-        wfr = self.slice[len(self.slice) // 2]._wfr
+        wfr = self.slice[len(self.slice) // 2].wfr
         (ar2d, sx, sy, xavg, yavg) = rswf.rmsWavefrontIntensity(wfr)
-        self.sxvals.append(sx)
-        self.syvals.append(sy)
+        self._sxvals.append(sx)
+        self._syvals.append(sy)
         return (wfr, sx, sy)
 
     def rmsvals(self):
         sx = []
         sy = []
-        for sl in self._slice:
-            (_, sigx,sigy, _, _) = rswf.rmsWavefrontIntensity(sl._wfr)
+        for sl in self.slice:
+            (_, sigx,sigy, _, _) = rswf.rmsWavefrontIntensity(sl.wfr)
             sx.append(sigx)
             sy.append(sigy)
 
@@ -68,7 +68,7 @@ class LaserPulse:
         return [rswf.maxWavefrontIntensity(s.wfr) for s in self.slice]
 
     def pulsePos(self):
-        return [s.pulse_pos for s in self.slice]
+        return [s._pulse_pos for s in self.slice]
 
     def energyvals(self):
         return [s.phE for s in self.slice]
