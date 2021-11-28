@@ -147,12 +147,12 @@ def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _n
     # Calculate Ex at the 2D array of x,y values
 #    zyEData = np.zeros((numZ, numY))
     zyEData = np.zeros((numY, numZ))
-#    print('_zArr = ', _zArr)
-#    print('_yArr = ', _yArr)
-#    print('zyEData = ', zyEData)
-    for i in range(numZ):
-        for j in range(numY):
-            zyEData[j, i] = np.real(_pulse.evaluate_ex(_x, _yArr[j], _zArr[i], _t))
+    if _time_explicit:
+        for i in range(numZ):
+            zyEData[:, i] = np.real(_pulse.evaluate_ex(_x, _yArr, _zArr[i], _t))
+    else:
+        for i in range(numZ):
+            zyEData[:, i] = np.real(_pulse.evaluate_envelope_ex(_x, _yArr, _zArr[i]))
 
     # generate the contour plot
     _ax.clear()
@@ -161,10 +161,17 @@ def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _n
     _ax.set_ylabel('y [m]')
     _ax.set_title('ZY slice, at  x={0:4.2f} [m]'.format(_x))
 
-    del_level = rspt.round_sig_fig(0.202*zyEData.max(), 3)
-    n_cbar_labels = 10  # choose an even number
-    max_level = n_cbar_labels * del_level / 2
-    _levels = np.linspace(-max_level, max_level, _nlevels)
+    if _time_explicit:
+        del_level = rspt.round_sig_fig(0.202*zyEData.max(), 3)
+        n_cbar_labels = 10  # choose an even number
+        max_level = n_cbar_labels * del_level / 2
+        _levels = np.linspace(-max_level, max_level, _nlevels)
+    else:
+        del_level = rspt.round_sig_fig(0.101*zyEData.max(), 3)
+        n_cbar_labels = 10  # choose an even number
+        max_level = n_cbar_labels * del_level
+        _levels = np.linspace(0., max_level, _nlevels)
+        
     contours = _ax.contourf(_zArr, _yArr, zyEData, _levels, extent='none')
     
     # generate the colorbar
@@ -172,9 +179,12 @@ def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _n
     _cax = divider.append_axes("right", size="5%", pad=0.1)
     cbar = plt.colorbar(contours, format='%3.2e', cax=_cax)
     tick_values = []
-    for i in range(n_cbar_labels+1):
-        tick_values.append(-max_level + i * del_level)
-#    print(' tick_values = ', tick_values)
+    if _time_explicit:
+        for i in range(n_cbar_labels+1):
+            tick_values.append(-max_level + i * del_level)
+    else:
+        for i in range(n_cbar_labels+1):
+            tick_values.append(i * del_level)
     cbar.set_ticks(tick_values)
 
 
