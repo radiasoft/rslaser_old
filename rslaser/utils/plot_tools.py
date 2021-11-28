@@ -141,3 +141,14 @@ def generate_contour_levels(field, nLevels=40, multiplier=1.1):
         eLevels.append(eMin + iLoop*deltaE)
 
     return eLevels
+
+
+# Round number x to sig significant figures
+def round_sig_fig(x, sig):
+    try:
+        # find a, b such that x = a*10^b (1 <= a < 10)
+        b = math.floor(math.log10(abs(x)))
+        a = x/(10**b)
+        return round(a, sig-1)*(10**b)
+    except ValueError:
+        return 0

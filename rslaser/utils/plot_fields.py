@@ -4,8 +4,11 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 """
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from pykern.pkdebug import pkdc
 import numpy as np
-from pykern.pkdebug import pkdc, pkdexc, pkdp
+
 import rslaser.rspulse.gauss_hermite as rsgh
 import rslaser.utils.plot_tools as rspt
 
@@ -136,69 +139,46 @@ def plot_1d_z(_zArr, _pulse, _ax, _x=0., _y=0., _t=0., _time_explicit=False):
         _ax.set_title('Ex (envelope) [V/m], at (x,y)=({0:4.2f},{0:4.2f}) [m]'.format(_x, _y))
     
     
-def plot_zy(_pulse, _ax):
-    
-    # longitudinal resolution
-    hres = 16
-    dh = _pulse.lambda0 / hres
+def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _nlevels=40):
 
-    # specify the horizontal min's and max's
-    zyMinH = -16. * _pulse.lambda0
-    zyMaxH =  16. * _pulse.lambda0
-
-    # specify the number of horizontal mesh points
-    zyNumH = int((zyMaxH - zyMinH) / dh)
-    
-    # vertical resolution
-    vres = 64
-    dv = _pulse.waist_y / vres
-
-    # specify the number of vertical mesh points
-    zyNumV = zyNumH
-
-    # specify the vertical min's and max's
-    zyMaxV =  zyNumV * dv / 2
-    zyMinV = -zyMaxV
-
-    # specify the number of cells in the 2D mesh
-    zyNumCells = zyNumH * zyNumV
-    
-    print('nx, ny, n_cells = ', zyNumH, zyNumV, zyNumCells)
-
-    zArr = np.zeros(zyNumH)
-    yArr = np.zeros(zyNumV)
-
-    for iLoop in range(zyNumH):
-        zArr[iLoop] = zyMinH + iLoop * (zyMaxH-zyMinH) / (zyNumH-1)
-
-    for jLoop in range(zyNumV):
-        yArr[jLoop] = zyMinV + jLoop * (zyMaxV-zyMinV) / (zyNumV-1)
-
-    # Choose values of x,t for plot
-    xValue = 0.
-    tValue = 0.
+    numZ = np.size(_zArr)
+    numY = np.size(_yArr)
 
     # Calculate Ex at the 2D array of x,y values
-    zyEData = np.zeros((zyNumV, zyNumH))
-    for iLoop in range(zyNumH):
-        zyEData[:, iLoop] = np.real(_pulse.evaluate_ex(xValue, yArr, zArr[iLoop], 0.))
+#    zyEData = np.zeros((numZ, numY))
+    zyEData = np.zeros((numY, numZ))
+#    print('_zArr = ', _zArr)
+#    print('_yArr = ', _yArr)
+#    print('zyEData = ', zyEData)
+    for i in range(numZ):
+        for j in range(numY):
+            zyEData[j, i] = np.real(_pulse.evaluate_ex(_x, _yArr[j], _zArr[i], _t))
 
     # generate the contour plot
     _ax.clear()
-
-    n_levels = 10
-    levels = rspt.generate_contour_levels(zyEData, n_levels)
-    _ax.contourf(zArr, yArr, zyEData, levels, extent='none')
-
-    _ax.axis([zyMinH, zyMaxH, zyMinV, zyMaxV])
+    _ax.axis([_zArr.min(), _zArr.max(), _yArr.min(), _yArr.max()])
     _ax.set_xlabel('z [m]')
     _ax.set_ylabel('y [m]')
-    _ax.set_title('ZY slice, at  x={0:4.2f} [m]'.format(xValue))
+    _ax.set_title('ZY slice, at  x={0:4.2f} [m]'.format(_x))
 
-    rspt.scatter_contour('contour', 'linear', yArr, zArr, _ax, 10, n_levels)
+    del_level = rspt.round_sig_fig(0.202*zyEData.max(), 3)
+    n_cbar_labels = 10  # choose an even number
+    max_level = n_cbar_labels * del_level / 2
+    _levels = np.linspace(-max_level, max_level, _nlevels)
+    contours = _ax.contourf(_zArr, _yArr, zyEData, _levels, extent='none')
+    
+    # generate the colorbar
+    divider = make_axes_locatable(_ax)
+    _cax = divider.append_axes("right", size="5%", pad=0.1)
+    cbar = plt.colorbar(contours, format='%3.2e', cax=_cax)
+    tick_values = []
+    for i in range(n_cbar_labels+1):
+        tick_values.append(-max_level + i * del_level)
+#    print(' tick_values = ', tick_values)
+    cbar.set_ticks(tick_values)
 
 
-def plot_zx(_zArr, _xArr, _pulse, _ax):
+def plot_2d_zx(_zArr, _xArr, _pulse, _ax):
     numX = np.size(_xArr)
     minX = np.min(_xArr)
     maxX = np.max(_xArr)
@@ -216,48 +196,63 @@ def plot_zx(_zArr, _xArr, _pulse, _ax):
         zxEData[:, iLoop] = np.real(_pulse.evaluate_envelope_ex(_xArr, yValue, _zArr[iLoop]))
 
     # generate the contour plot
-    n_levels = 10
-    levels = rspt.generate_contour_levels(zxEData, n_levels)
     _ax.axis([minZ, maxZ, minX, maxX])
     _ax.set_xlabel('z [m]')
     _ax.set_ylabel('x [m]')
     _ax.set_title('ZX slice, at  y={0:4.2f} [{1}]'.format(yValue, '[m]'))
-
-    rspt.scatter_contour('contour', 'linear', _xArr, _zArr, _ax, 10, n_levels)
+    _ax.contourf(_xArr, _zArr, zxEData)
 
     
-def plot_xy(_z_waist, _pulse, _ax):
+def plot_2d_xy(_xArr, _yArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False, _nlevels=40):
+    """Generate a 2D contour plot of Ex in the transverse plane.
 
-    # Specify the desired grid size
-    xyNumH = 128
-    xyNumV = 128
+    For now, we are assuming the field is Ex
 
-    # specify the min's and max's
-    xyMinH = -2. * _pulse.waist_x
-    xyMaxH =  2. * _pulse.waist_x
-
-    xyMinV = -2. * _pulse.waist_y
-    xyMaxV =  2. * _pulse.waist_y
-
-    xArr = np.zeros(xyNumH)
-    yArr = np.zeros(xyNumV)
-
-    for iLoop in range(xyNumH):
-        xArr[iLoop] = xyMinH + iLoop * (xyMaxH-xyMinH) / (xyNumH-1)
-
-    for jLoop in range(xyNumV):
-        yArr[jLoop] = xyMinV + jLoop * (xyMaxV-xyMinV) / (xyNumV-1)
+    Args:
+        _xArr (1D numpy array): x positions where the field is to be evaluated
+        _yArr (1D numpy array): x positions where the field is to be evaluated
+        _pulse (object): instance of the GaussHermite() class.
+        _ax (object): matplotlib 'axis', used to generate the plot
+        _z (float): [m] longitudinal location of the lineout
+        _t (float): [m] time of the lineout
+        _time_explicit (bool): envelope only (False) or time explicit (True)
+    """
+    numX = np.size(_xArr)
+    numY = np.size(_yArr)
 
     # Calculate Ex at the 2D array of x,y values
-    xyEData = np.zeros((xyNumH, xyNumV))
-    for iLoop in range(xyNumV):
-        xyEData[:, iLoop] = np.real(_pulse.evaluate_envelope_ex(xArr, yArr, _z_waist))
+    xyEData = np.zeros((numX, numY))
+    for iLoop in range(numY):
+        xyEData[iLoop, :] = np.real(_pulse.evaluate_envelope_ex(_xArr[iLoop], _yArr, _z))
+
+    # manually set the plot limits
+    xMin = np.min(_xArr)
+    xMax = np.max(_xArr)
+    yMin = np.min(_yArr)
+    yMax = np.max(_yArr)
 
     # generate the contour plot
     _ax.clear()
-    _ax.axis([xyMinH, xyMaxH, xyMinV, xyMaxV])
+    _ax.axis([xMin, xMax, yMin, yMax])
+    _ax.axis('equal')
     _ax.set_xlabel('x [m]')
     _ax.set_ylabel('y [m]')
-    _ax.set_title('XY slice, at waist location')
+    if (_time_explicit):
+        _ax.set_title('Ex [V/m], at z=({0:4.2f} [m] and t={0:4.2f} [s]'.format(_z, _t))
+    else:
+        _ax.set_title('Ex (envelope) [V/m], at z={0:4.2f} [m]'.format(_z))
 
-    rspt.scatter_contour('contour', 'linear', xArr, yArr, _ax)
+    del_level = rspt.round_sig_fig(0.101*xyEData.max(), 3)
+    n_cbar_labels = 10
+    max_level = n_cbar_labels * del_level
+    _levels = np.linspace(0., max_level, _nlevels)
+    contours = _ax.contourf(_xArr, _yArr, xyEData, _levels, extent='none')
+    
+    # generate the colorbar
+    divider = make_axes_locatable(_ax)
+    _cax = divider.append_axes("right", size="5%", pad=0.1)
+    cbar = plt.colorbar(contours, format='%3.2e', cax=_cax)
+    tick_values = []
+    for i in range(n_cbar_labels+1):
+        tick_values.append(i * del_level)
+    cbar.set_ticks(tick_values)
