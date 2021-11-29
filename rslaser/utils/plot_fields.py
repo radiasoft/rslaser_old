@@ -144,7 +144,7 @@ def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _n
     numZ = np.size(_zArr)
     numY = np.size(_yArr)
 
-    # Calculate Ex at the 2D array of x,y values
+    # Calculate Ex at the 2D array of z,y values
 #    zyEData = np.zeros((numZ, numY))
     zyEData = np.zeros((numY, numZ))
     if _time_explicit:
@@ -187,31 +187,6 @@ def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _n
             tick_values.append(i * del_level)
     cbar.set_ticks(tick_values)
 
-
-def plot_2d_zx(_zArr, _xArr, _pulse, _ax):
-    numX = np.size(_xArr)
-    minX = np.min(_xArr)
-    maxX = np.max(_xArr)
-        
-    numZ = np.size(_zArr)
-    minZ = np.min(_zArr)
-    maxZ = np.max(_zArr)
-
-    # specify y position for plot
-    yValue = 0.
-
-    # Calculate Ex at the 2D array of x,y values
-    zxEData = np.zeros((numX, numZ))
-    for iLoop in range(numZ):
-        zxEData[:, iLoop] = np.real(_pulse.evaluate_envelope_ex(_xArr, yValue, _zArr[iLoop]))
-
-    # generate the contour plot
-    _ax.axis([minZ, maxZ, minX, maxX])
-    _ax.set_xlabel('z [m]')
-    _ax.set_ylabel('x [m]')
-    _ax.set_title('ZX slice, at  y={0:4.2f} [{1}]'.format(yValue, '[m]'))
-    _ax.contourf(_xArr, _zArr, zxEData)
-
     
 def plot_2d_xy(_xArr, _yArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False, _nlevels=40):
     """Generate a 2D contour plot of Ex in the transverse plane.
@@ -252,10 +227,12 @@ def plot_2d_xy(_xArr, _yArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False, _n
     else:
         _ax.set_title('Ex (envelope) [V/m], at z={0:4.2f} [m]'.format(_z))
 
-    del_level = rspt.round_sig_fig(0.101*xyEData.max(), 3)
     n_cbar_labels = 10
-    max_level = n_cbar_labels * del_level
-    _levels = np.linspace(0., max_level, _nlevels)
+    min_level = rspt.round_sig_fig(1.01*min(xyEData.min(), 0.), 3)
+    max_level = rspt.round_sig_fig(1.01*xyEData.max(), 3)
+    del_level = rspt.round_sig_fig((max_level-min_level)/n_cbar_labels, 3)
+
+    _levels = np.linspace(min_level, max_level, _nlevels)
     contours = _ax.contourf(_xArr, _yArr, xyEData, _levels, extent='none')
     
     # generate the colorbar
@@ -264,5 +241,54 @@ def plot_2d_xy(_xArr, _yArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False, _n
     cbar = plt.colorbar(contours, format='%3.2e', cax=_cax)
     tick_values = []
     for i in range(n_cbar_labels+1):
-        tick_values.append(i * del_level)
+        tick_values.append(min_level + i*del_level)
+    cbar.set_ticks(tick_values)
+
+        
+def plot_2d_zr(_zArr, _rArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _nlevels=40):
+
+    numZ = np.size(_zArr)
+    numR = np.size(_rArr)
+
+    # Calculate Ex at the 2D array of z,r values
+    zrEData = np.zeros((numR, numZ))
+    if _time_explicit:
+        for i in range(numZ):
+            for j in range(numR):
+                zrEData[j, i] = np.real(_pulse.evaluate_er(_rArr[j], _zArr[i], _t))
+    else:
+        for i in range(numZ):
+            zrEData[:, i] = np.real(_pulse.evaluate_envelope_er(_rArr, _zArr[i]))
+
+    # generate the contour plot
+    _ax.clear()
+    _ax.axis([_zArr.min(), _zArr.max(), 0., _rArr.max()])
+    _ax.set_xlabel('z [m]')
+    _ax.set_ylabel('r [m]')
+    _ax.set_title('ZY slice, at  x={0:4.2f} [m]'.format(_x))
+
+    if _time_explicit:
+        del_level = rspt.round_sig_fig(0.202*zrEData.max(), 3)
+        n_cbar_labels = 10  # choose an even number
+        max_level = n_cbar_labels * del_level / 2
+        _levels = np.linspace(-max_level, max_level, _nlevels)
+    else:
+        del_level = rspt.round_sig_fig(0.101*zrEData.max(), 3)
+        n_cbar_labels = 10  # choose an even number
+        max_level = n_cbar_labels * del_level
+        _levels = np.linspace(0., max_level, _nlevels)
+        
+    contours = _ax.contourf(_zArr, _rArr, zrEData, _levels, extent='none')
+    
+    # generate the colorbar
+    divider = make_axes_locatable(_ax)
+    _cax = divider.append_axes("right", size="5%", pad=0.1)
+    cbar = plt.colorbar(contours, format='%3.2e', cax=_cax)
+    tick_values = []
+    if _time_explicit:
+        for i in range(n_cbar_labels+1):
+            tick_values.append(-max_level + i * del_level)
+    else:
+        for i in range(n_cbar_labels+1):
+            tick_values.append(i * del_level)
     cbar.set_ticks(tick_values)

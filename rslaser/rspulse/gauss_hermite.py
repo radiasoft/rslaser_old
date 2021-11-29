@@ -55,7 +55,8 @@ class GaussHermite:
         self.z_waist_y = _k.dzwy                  # location (in z) of vertical waist
         
         # Rayleigh range
-        self.zR = 0.5*self.k0*self.w0*2           # Rayleigh range, ignoring horizontal/vertical differences
+        self.zR = 0.5*self.k0*(self.w0)**2        # Rayleigh range, ignoring horizontal/vertical differences
+#        print('\n ****** \n zR = ', self.zR)
 
         # pulse length
         self.tau_fwhm = _k.tau_fwhm               # FWHM laser pulse length [s]
@@ -80,12 +81,12 @@ class GaussHermite:
     # set the horizontal waist size [m]
     def set_waist_x(self, _waistX):
         # error handling; very small waist will cause performance issues
-        wFac = 20.
+        wFac = 4.0
         minSize = wFac*self.lambda0
         if _waistX >= minSize:
             self.waist_x  = _waistX
         else: 
-            message = 'waistX = ' + str(_waistX) + '; must be > ' + str(minSize)
+            message = 'waistX = ' + str(_waistX) + '; must be >= ' + str(minSize)
             raise Exception(message) 
         
         # error handling; require that deviations from w0 are small
@@ -102,12 +103,12 @@ class GaussHermite:
     # set the vertical waist size [m]
     def set_waist_y(self, _waistY):
         # error handling; very small waist will cause performance issues
-        wFac = 20.
+        wFac = 4.0
         minSize = wFac*self.lambda0
         if _waistY >= minSize:
             self.waist_y  = _waistY
         else: 
-            message = 'waistY = ' + str(_waistY) + '; must be > ' + str(minSize)
+            message = 'waistY = ' + str(_waistY) + '; must be >= ' + str(minSize)
             raise Exception(message) 
         
         # error handling; require that deviations from w0 are small
@@ -168,15 +169,15 @@ class GaussHermite:
     #   x,y,t can all be arrays, for a particle distribution with fixed z
     #   _z, the longitudinal coordinate, must always be a scalar.
     def evaluate_ex(self,xArray,yArray,_z,tArray):
-
-        # get the complex-valued envelope function
-        result = self.evaluate_envelope_ex(xArray,yArray,_z)
         
         # account for location of pulse center
         z_local = _z - self.z_center
 
+        # get the complex-valued envelope function
+        result = self.evaluate_envelope_ex(xArray, yArray, _z)
+
         # multiply by the time-dependent term
-        return result * np.exp((self.k0*z_local - self.omega0*tArray)*1j)
+        return result * np.exp((self.omega0*tArray - self.k0*z_local)*1j)
 
     # For now, we assume this is the polarization direction
     # Handling of arguments is flexible:
@@ -218,7 +219,7 @@ class GaussHermite:
         # radius at which the field amplitudes fall to exp(-1) of their axial values
         #     i.e., where the intensity values fall to exp(-2)
         wZ = self.w0 * math.sqrt(1+(_z/self.zR)**2)
-        pkdc('w(z)/w0 = ' + str(wZ/self.w0))
+#        pkdc('w(z)/w0 = ' + str(wZ/self.w0))
 
         # the radius squared
         rSq = np.power(xArray,2) + np.power(yArray,2)
@@ -236,12 +237,12 @@ class GaussHermite:
         arg_2 = 0.5*self.k0*invR*rSq
         exp_2 = np.exp(-1j*(arg_2 - psi_z))
 
-        pkdc(' k0 = ' + str(self.k0))
-        pkdc(' invR = ' + str(invR))
-        pkdc(' rSq = ' + str(rSq))
-        pkdc(' arg_2 = ' + str(arg_2))
-        pkdc(' psi_z = ' + str(psi_z))
-        pkdc(' Re[exp_2] = ' + str(np.real(exp_2)))
+#        pkdc(' k0 = ' + str(self.k0))
+#        pkdc(' invR = ' + str(invR))
+#        pkdc(' rSq = ' + str(rSq))
+#        pkdc(' arg_2 = ' + str(arg_2))
+#        pkdc(' psi_z = ' + str(psi_z))
+#        pkdc(' Re[exp_2] = ' + str(np.real(exp_2)))
 
         # return the complex valued result
         # here, we apply a longitudinal Gaussian profile
@@ -255,15 +256,15 @@ class GaussHermite:
     #   _z, the longitudinal coordinate, must always be a scalar.
     #   tArray can be a scalar (works) or a Numpy array (not tested)
     def evaluate_er(self,rArray,_z,tArray):
-
-        # get the complex-valued envelope function
-        result = self.evaluate_envelope_er(rArray,_z)
         
         # account for location of pulse center
         z_local = _z - self.z_center
 
+        # get the complex-valued envelope function
+        result = self.evaluate_envelope_er(rArray, _z)
+
         # multiply by the time-dependent term
-        return result * np.exp((self.k0*z_local - self.omega0*tArray)*1j)
+        return result * np.exp((self.omega0*tArray - self.k0*z_local)*1j)
 
     
     # Calculate the laser pulse envelope in radial r-z coordinates
@@ -279,7 +280,8 @@ class GaussHermite:
         # account for the waist location
         z_local = _z - self.z_center
         _z -= self.z_waist
-        
+#        pkdc('z_local, _z = ' + str(z_local) + ', ' + str(_z))
+       
         # determine whether xArray is really a Numpy array
         try:
             num_vals_r = rArray.size
@@ -295,7 +297,7 @@ class GaussHermite:
         # radius at which the field amplitudes fall to exp(-1) of their axial values
         #     i.e., where the intensity values fall to exp(-2)
         wZ = self.w0 * math.sqrt(1+(_z/self.zR)**2)
-        pkdc('w(z)/w0 = ' + str(wZ/self.w0))
+#        pkdc('w(z)/w0 = ' + str(wZ/self.w0))
 
         # the radius squared
         rSq = np.power(rArray,2)
@@ -310,50 +312,28 @@ class GaussHermite:
         psi_z = np.arctan(_z / self.zR)
         
         # 2nd exponential
-        arg_2 = 0.5*self.k0*invR*rSq
-        exp_2 = np.exp(-1j*(arg_2 - psi_z))
+        arg_2 = 0.5*self.k0*invR*rSq - psi_z
+        exp_2 = np.exp(-1j*arg_2)
 
-        pkdc(' k0 = ' + str(self.k0))
-        pkdc(' invR = ' + str(invR))
-        pkdc(' rSq = ' + str(rSq))
-        pkdc(' arg_2 = ' + str(arg_2))
-        pkdc(' psi_z = ' + str(psi_z))
-        pkdc(' Re[exp_2] = ' + str(np.real(exp_2)))
+#        pkdc(' k0 = ' + str(self.k0))
+#        pkdc(' invR = ' + str(invR))
+#        pkdc(' rSq = ' + str(rSq))
+#        pkdc(' arg_2 min/max = ' + str(np.min(arg_2)) + ', ' + str(np.max(arg_2)))
+#        pkdc(' psi_z = ' + str(psi_z))
+#        pkdc(' Re[exp_2] = ' + str(np.real(exp_2)))
 
         # return the complex valued result
         # here, we apply a longitudinal Gaussian profile
         return (self.w0 / wZ) * exp_1 * np.exp(-(z_local/self.L_fwhm)**2) * self.efield0 * exp_2
 
-    # For now, we assume this is the polarization direction
-    # Handling of arguments is flexible:
-    #   x,y,z,t can all be scalar, to evaluate at a single point.
-    #   x,y can both be arrays (same length) to evaluate on a mesh.
-    #   t can be an array, to evaluate at a sequence of times.
-    #   x,y,t can all be arrays, for a particle distribution with fixed z
-    #   z, the longitudinal coordinate, must always be a scalar.
-    #
-    # There is no longitudinal profile implemented here
-    
-    def eval_gh_ex(self,xArray,yArray,z,tArray):
-
-        # get the complex-valued envelope function
-        result = self.eval_gh_envelope_ex(xArray,yArray,z)
-
-        # multiply by the time-dependent term
-        result *= np.exp((self.omega0 * tArray - self.k0 * z)*1j)
-
-        # return only the real part
-        return np.real(result)*self.efield0
-
-    # For now, we assume this is the polarization direction
-    # Handling of arguments is flexible:
+    # This is old, untested code with no concept of a longitudinal envelope
     #   x,y,z can all be scalar, to evaluate at a single point.
     #   x,y can both be arrays (same length) to evaluate on a mesh.
     #   z, the longitudinal coordinate, must always be a scalar.
     #
     # The complicated logic below requires further testing.
     
-    def eval_gh_envelope_ex(self,xArray,yArray,z):
+    def eval_gh_ex(self,xArray,yArray,z):
 
         # assume array input; try to create temporary array
         try:
