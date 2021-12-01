@@ -1,9 +1,9 @@
 import math
 import numpy as np
-from array import array
+#from array import array
 from pykern.pkcollections import PKDict
-import rslaser.rsoptics
-from rslaser.rsoptics.wavefront import *
+#import rslaser.rsoptics
+#from rslaser.rsoptics.wavefront import *
 import srwlib
 
 class LaserPulse:
@@ -13,8 +13,8 @@ class LaserPulse:
     def __init__(self,kwargs):
         self._slice = []
         k = kwargs.copy()
-        k.phE -= k.energyChirp/2
-        de = k.energyChirp/k.nslice
+        k.phE -= k.energyChirp /2
+        de = k.energyChirp /k.nslice
         for i in range(k.nslice):
             #Creation of laser slices i=0...nslice-1
             self._slice.append(LaserPulseSlice(i,**k))
@@ -57,7 +57,7 @@ class LaserPulseSlice:
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
-    def __init__(self, slice_index, nslice, d_to_w, sigrW=0.000436984, propLen=15, sig_s=0.1,
+    def __init__(self, slice_index, nslice, d_to_w, sigrW=0.000186, propLen=15, sig_s=0.1,
                  pulseE=0.001, poltype=1, phE=1.55, sampFact=5, mx=0, my=0, **_ignore_kwargs):
         """
         #nslice: number of slices of laser pulse

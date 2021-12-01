@@ -11,40 +11,82 @@ The wavefront is propagated through the crystal and then to the end of the cavit
 
 from __future__ import absolute_import, division, print_function
 
-import rslaser.rscavity
-from rslaser.rscavity.laser_cavity import *
-
-import rslaser.rsoptics
-from rslaser.rsoptics.element import *
-
-import matplotlib
-from matplotlib import pyplot
+import math
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 import numpy as np
 
 from pykern.pkcollections import PKDict
+from pykern import pkdebug
+
+import rslaser.rscavity.laser_cavity as rslc
+import rslaser.rsoptics.element as rse
+import rslaser.utils.constants as rsc
+
+import scipy.constants as const
 import time
 
 # This is necessary on the JupyterHub commandline
 # Delete elsewhere to automatically use the local defaul GUI backend
-matplotlib.use("agg")
+mpl.use("agg")
 
 # This is helpful for dealing with agg vs GUI backends
 def agg_plot(filename):
-    if matplotlib.get_backend() == 'agg':
-        pyplot.savefig(filename)
-        pyplot.close()
+    if mpl.get_backend() == 'agg':
+        plt.savefig(filename)
+        plt.close()
     else:
-        pyplot.show()
+        plt.show()
 
 print(" ")
 print("Define laser pulse, crystal and cavity parameters...")
+
+# central laser pulse values
+a0 = 0.01             # 0.85e-9 * lambda [microns] * Sqrt(Intensity [W/cm^2])
+lambda0 = 8.e-7       # wavelength [m]
+tau_fwhm = 0.1 / const.c / math.sqrt(2.)   # FWHM pulse length [s]
+z_waist = 0.          # longitudinal waist position [m]
+z_center = 0.0        # longitudinal position of pulse center [m]
+
+# deviations
+d_lambda = 0.         # full wavelength chirp across laser pulse [m]
+dw0x = 0.0            # deviation of horizontal waist from w0
+dw0y = 0.0            # deviation of vertical waist from w0
+dzwx = 0.0            # deviation of horizontal waist position from z_waist
+dzwy = 0.0            # deviation of vertical waist position from z_waist
+x_shift = 0.          # bulk horizontal shift of pulse position
+y_shift = 0.          # bulk vertical shift of pulse position
+
+# numerical values
+num_slices = 5        # desired number of slices (i.e. SRW wavefronts) to represent the pulse
+
+# other DERIVED quantities
+d_to_w = z_waist - z_center   # so-called 'drift to waist' (required by SRW)
 
 # local Pykern dictionary object to hold all physical parameters
 k=PKDict(
   L_cav = 1, #Length of cavity [m]
   df = 0.3, #Focal length difference from confocal case [m]
 )
+
+#Define parameters for laser pulse starting at center of crystal
+k.a0 = a0
+k.lambda0 = lambda0
+k.tau_fwhm = tau_fwhm
+k.z_center = z_center
+k.z_waist = z_waist
+k.d_to_w = d_to_w
+
+k.d_lambda = d_lambda
+k.dw0x = dw0x
+k.dw0y = dw0y
+k.dzwx = dzwx
+k.dzwy = dzwy
+k.x_shift = x_shift
+k.y_shift = y_shift
+
+k.nslice = num_slices
 
 # Define right and left mirror focal lengths
 k.dfR = k.df
@@ -61,59 +103,54 @@ k.n2=0.0          # radial variation of index of refraction: n(r) = n0 - 0.5 n2 
 k.drift_right_length=k.L_cav/2-k.L_cryst/2
 k.drift_left_length=k.drift_right_length
 
-#Define parameters for laser pulse starting at center of crystal
-k.wavefrontEnergy = 1.55 #Wavefront Energy [eV]. 1.55 eV is 800 nm wavelength
-k.lam = 1239.8*1e-9/k.wavefrontEnergy # convert energy [eV] to wavelength [m]
-print('lam = %1.9f m' % k.lam)
-
 k.L_eff = k.L_cav+(1/k.n0 - 1)*k.L_cryst #Define effective length as path length reduced by index of refraction n0
 print("L_eff = %f m" % k.L_eff)
 k.beta0 = np.sqrt(k.L_eff*k.f-k.L_eff**2/4)
 print("beta0 = %f m" % k.beta0)
-k.sigx0 = np.sqrt(k.lam*k.beta0/4/np.pi)
+k.sigx0 = np.sqrt(k.lambda0*k.beta0/4/np.pi)
 print("sigx0 = %f m" % k.sigx0)
 k.sigrW = k.sigx0
+k.w0 = k.sigx0 * math.sqrt(2.)
 
-k.nslice=5
-k.sig_s=0.1 #rms length of Gaussian laser pulse [m]
+k.sig_s=tau_fwhm*const.c/math.sqrt(2.) #rms length of Gaussian laser pulse [m]
 
 k.L_half_cryst=k.L_cryst/2
 
 print(" ")
 print("Initialize the laser cavity object...")
-lc = LaserCavity(k)
+LC = rslc.LaserCavity(k)
 
-svals = lc.laser_pulse.pulsePos()
-(lpsxvals,lpsyvals) = lc.laser_pulse.rmsvals()
-ivals = lc.laser_pulse.intensity_vals()
-evals = lc.laser_pulse.energyvals()
+svals = LC.laser_pulse.pulsePos()
+(lpsxvals,lpsyvals) = LC.laser_pulse.rmsvals()
+ivals = LC.laser_pulse.intensity_vals()
+evals = LC.laser_pulse.energyvals()
 
 print(" ")
 print("Plot the RMS values along the initial laser pulse...")
 
-pyplot.title('RMS Beam size along laser pulse')
-pyplot.plot(svals,lpsyvals)
-pyplot.xlabel('s [m]')
-pyplot.ylabel('rms x [m]')
+plt.title('RMS Beam size along laser pulse')
+plt.plot(svals,lpsyvals)
+plt.xlabel('s [m]')
+plt.ylabel('rms x [m]')
 
 agg_plot('img01.png')
 
 print(" ")
 print("Plot the pulse intensity along the initial laser pulse...")
 
-pyplot.plot(svals,ivals)
-pyplot.ylabel('pulse intensity []')
-pyplot.xlabel('s [m]')
+plt.plot(svals,ivals)
+plt.ylabel('pulse intensity []')
+plt.xlabel('s [m]')
 
 agg_plot('img02.png')
 
 print(" ")
 print("Plot the slice energy along the initial laser pulse...")
 
-pyplot.title('Slice energy along laser pulse')
-pyplot.plot(svals,evals)
-pyplot.xlabel('s [m]')
-pyplot.ylabel('Energy [ev]')
+plt.title('Slice energy along laser pulse')
+plt.plot(svals,evals)
+plt.xlabel('s [m]')
+plt.ylabel('Energy [ev]')
 
 agg_plot('img03.png')
 
@@ -121,14 +158,14 @@ print(" ")
 print("Propagate the laser pulse several times through the cavity....")
 
 start_time = time.time()
-(svals, sxvals, syvals) = lc.propagate(num_cycles=4)
+(svals, sxvals, syvals) = LC.propagate(num_cycles=4)
 
 print("Simulation time: %s seconds" %(round((time.time() - start_time),5)))
 
 print(" ")
 print("Plot the transverse size of the pulse as it oscillates back and forth ...")
 
-fig, ax = pyplot.subplots()
+fig, ax = plt.subplots()
 ax.plot(svals, sxvals)
 
 agg_plot('img04.png')
@@ -136,32 +173,32 @@ agg_plot('img04.png')
 print(" ")
 print("Plot the RMS values along the final laser pulse...")
 
-svals = lc.laser_pulse.pulsePos()
-(lpsxvals,lpsyvals) = lc.laser_pulse.rmsvals()
-ivals = lc.laser_pulse.intensity_vals()
-evals = lc.laser_pulse.energyvals()
+svals = LC.laser_pulse.pulsePos()
+(lpsxvals, lpsyvals) = LC.laser_pulse.rmsvals()
+ivals = LC.laser_pulse.intensity_vals()
+evals = LC.laser_pulse.energyvals()
 
-pyplot.title('RMS Beam size along laser pulse')
-pyplot.plot(svals,lpsyvals)
-pyplot.xlabel('s [m]')
-pyplot.ylabel('rms x [m]')
+plt.title('RMS Beam size along laser pulse')
+plt.plot(svals, lpsyvals)
+plt.xlabel('s [m]')
+plt.ylabel('rms x [m]')
 
 agg_plot('img05.png')
 
 print(" ")
 print("Plot the laser intensity along the final laser pulse...")
-pyplot.title('Intensity along laser pulse')
-pyplot.plot(svals,ivals)
-pyplot.ylabel('pulse intensity []')
-pyplot.xlabel('s [m]')
+plt.title('Intensity along laser pulse')
+plt.plot(svals,ivals)
+plt.ylabel('pulse intensity []')
+plt.xlabel('s [m]')
 
 agg_plot('img06.png')
 
 print(" ")
 print("Plot the slice energy along the final laser pulse...")
-pyplot.title('Slice energy along laser pulse')
-pyplot.plot(svals,evals)
-pyplot.xlabel('s [m]')
-pyplot.ylabel('Energy [ev]')
+plt.title('Slice energy along laser pulse')
+plt.plot(svals, evals)
+plt.xlabel('s [m]')
+plt.ylabel('Energy [ev]')
 
 agg_plot('img07.png')

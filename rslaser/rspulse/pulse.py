@@ -1,69 +1,80 @@
+# -*- coding: utf-8 -*-
+u"""Definition of a laser pulse
+Copyright (c) 2021 RadiaSoft LLC. All rights reserved
+"""
+
 import math
 import numpy as np
-from array import array
-from pykern.pkcollections import PKDict
-import rslaser.rsoptics
-from rslaser.rsoptics.wavefront import *
-import srwlib
-
-# get some physical and mathematical constants ready to go
-# this code snippet is adapted from rsbeams.rsphysics.rsconst.py
-import math
 import scipy.constants as const
 
-TWO_PI = 2 * math.pi
-RT_TWO_PI = math.sqrt(2*math.pi)
-RT_2_OVER_PI = math.sqrt(2/math.pi)
+from pykern.pkcollections import PKDict
+import rslaser.rsoptics.wavefront as rswf
+import rslaser.rspulse.gauss_hermite as rsgh
+import rslaser.utils.constants as rsc
+# import rslaser.utils.srwl_uti_data as rsdata
 
-c_SQ = const.c**2
-c_INV  = 1./const.c
-MKS_factor = 1./(4.*math.pi*const.epsilon_0)
-m_e_EV = const.m_e * c_SQ / (-const.e)
+import srwlib
+from srwlib import srwl
 
 class LaserPulse:
     """
-    A laserPulse is a collection of laserSlices.
+    The LaserPulse contains a GaussHermite object to represent the initial envelope,
+    as well as an array of LaserPulseSlice instances, which track details of the evolution in time. 
+    
     """
     def __init__(self,kwargs):
-        self._slice = []
-        k=kwargs.copy()
-        k.phE-= k.energyChirp/2
-        de =k.energyChirp/k.nslice
-        for i in range(k.nslice):
-            #Creation of laser slices i=0...nslice-1
-            self._slice.append(LaserPulseSlice(i,**k))
-            k.phE+=de
-        self._sxvals = []
-        self._syvals = []
+        _k = kwargs.copy()
+        
+        # instantiate the laser envelope
+        self.envelope = rsgh.GaussHermite(_k)
+        
+        # instantiate the array of slices
+        self.slice = []
+        self.nslice = _k.nslice
+        
+        _lambda0 = abs(_k.lambda0)
+        _phE = const.h * const.c / _lambda0
+        _lambda_p = _lambda0 + 0.5 * _k.d_lambda
+        _lambda_m = _lambda0 - 0.5 * _k.d_lambda
+        _chirp = const.h * const.c * (1./_lambda_m - 1./_lambda_p)
+        _phE -= 0.5*_chirp           # so central slice has the central photon energy
+        _de = _chirp / self.nslice   # photon energy shift from slice to slice
+        
+        for i in range(_k.nslice):
+            # add the slices; each (slowly) instantiates an SRW wavefront object
+            self.slice.append(LaserPulseSlice(i,**_k))
+            _phE += _de
+        self._sxvals = []  # horizontal slice data
+        self._syvals = []  # vertical slice data
 
     def compute_middle_slice_intensity(self):
-        wfr = self._slice[len(self._slice) // 2]._wfr
-        (ar2d, sx, sy, xavg, yavg) = rmsWavefrontIntensity(wfr)
+        wfr = self.slice[len(self.slice) // 2].wfr
+        (ar2d, sx, sy, xavg, yavg) = rswf.rmsWavefrontIntensity(wfr)
         self._sxvals.append(sx)
         self._syvals.append(sy)
-        return (wfr, ar2d, sx, sy, xavg, yavg)
+        return (wfr, sx, sy)
 
     def rmsvals(self):
         sx = []
         sy = []
-        for sl in self._slice:
-            (_, sigx,sigy, _, _) = rmsWavefrontIntensity(sl._wfr)
+        for sl in self.slice:
+            (_, sigx,sigy, _, _) = rswf.rmsWavefrontIntensity(sl.wfr)
             sx.append(sigx)
             sy.append(sigy)
 
         return(sx,sy)
 
     def intensity_vals(self):
-        return [maxWavefrontIntensity(s._wfr) for s in self._slice]
+        return [rswf.maxWavefrontIntensity(s.wfr) for s in self.slice]
 
     def pulsePos(self):
-        return [s._pulse_pos for s in self._slice]
+        return [s._pulse_pos for s in self.slice]
 
     def energyvals(self):
-        return [s.phE for s in self._slice]
+        return [s.phE for s in self.slice]
 
     def slice_wfr(self,slice_index):
-        return self(slice_index)._slice._wfr
+        return self.slice(slice_index).wfr
 
 class LaserPulseSlice:
     """
@@ -72,10 +83,12 @@ class LaserPulseSlice:
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
-    def __init__(self,slice_index,nslice,sigrW=0.00043698412731784714,propLen=15,sig_s=0.1,pulseE=0.001,poltype=1,phE=1.55,sampFact=5,mx=0,my=0,**_ignore_kwargs):
+    def __init__(self, slice_index, nslice, d_to_w, sigrW=0.000186, propLen=15, sig_s=0.1, 
+                 pulseE=0.001, poltype=1, phE=1.55, sampFact=5, mx=0, my=0, **_ignore_kwargs):
         """
         #nslice: number of slices of laser pulse
-        #slice_index: index of slice
+        #slice_index: index of slice 
+        #d_to_w: distance from the pulse center at t = 0 to the intended waist location [m] 
         #sigrW: beam size at waist [m]
         #propLen: propagation length [m] required by SRW to create numerical Gaussian
         #propLen=15,
@@ -89,7 +102,11 @@ class LaserPulseSlice:
         self.slice_index = slice_index
         self.phE = phE
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
-        rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad]
+        rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad] 
+        #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
+        #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
+        d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
+        if d_to_w > d_to_w_cutoff:  propLen = d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
         sigrL=math.sqrt(sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
 
 
@@ -97,7 +114,7 @@ class LaserPulseSlice:
         GsnBm = srwlib.SRWLGsnBm() #Gaussian Beam structure (just parameters)
         GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
         GsnBm.y = 0
-        numsig = 5. #Number of sigma values to track. Total range is 2*numsig*sig_s
+        numsig = 3. #Number of sigma values to track. Total range is 2*numsig*sig_s
         ds = 2*numsig*sig_s/(nslice - 1)
         self._pulse_pos = -numsig*sig_s+slice_index*ds
         GsnBm.z = propLen + self._pulse_pos #Longitudinal Position of Waist [m]
@@ -115,71 +132,35 @@ class LaserPulseSlice:
         GsnBm.my = my
 
         #***********Initial Wavefront
-        wfr = srwlib.SRWLWfr() #Initial Electric Field Wavefront
-        wfr.allocate(1, 1000, 1000) #Numbers of points vs Photon Energy (1), Horizontal and Vertical Positions (dummy)
-        wfr.mesh.zStart = 0.0 #Longitudinal Position [m] at which initial Electric Field has to be calculated, i.e. the position of the first optical element
-        wfr.mesh.eStart = GsnBm.avgPhotEn #Initial Photon Energy [eV]
-        wfr.mesh.eFin = GsnBm.avgPhotEn #Final Photon Energy [eV]
+        _wfr = srwlib.SRWLWfr() #Initial Electric Field Wavefront
+        _wfr.allocate(1, 1000, 1000) #Numbers of points vs Photon Energy (1), Horizontal and Vertical Positions (dummy)
+        _wfr.mesh.zStart = 0.0 #Longitudinal Position [m] at which initial Electric Field has to be calculated, i.e. the position of the first optical element
+        _wfr.mesh.eStart = GsnBm.avgPhotEn #Initial Photon Energy [eV]
+        _wfr.mesh.eFin = GsnBm.avgPhotEn #Final Photon Energy [eV]
 
-        wfr.unitElFld = 1 #Electric field units: 0- arbitrary, 1- sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or sqrt(W/mm^2), depending on representation (freq. or time)
+        _wfr.unitElFld = 1 #Electric field units: 0- arbitrary, 1- sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or sqrt(W/mm^2), depending on representation (freq. or time)
 
-        distSrc = wfr.mesh.zStart - GsnBm.z
+        distSrc = _wfr.mesh.zStart - GsnBm.z
         #Horizontal and Vertical Position Range for the Initial Wavefront calculation
         #can be used to simulate the First Aperture (of M1)
         #firstHorAp = 8.*rmsAngDiv*distSrc #[m]
         xAp = 8.*sigrL
         yAp = xAp #[m]
 
-        wfr.mesh.xStart = -0.5*xAp #Initial Horizontal Position [m]
-        wfr.mesh.xFin = 0.5*xAp #Final Horizontal Position [m]
-        wfr.mesh.yStart = -0.5*yAp #Initial Vertical Position [m]
-        wfr.mesh.yFin = 0.5*yAp #Final Vertical Position [m]
+        _wfr.mesh.xStart = -0.5*xAp #Initial Horizontal Position [m]
+        _wfr.mesh.xFin = 0.5*xAp #Final Horizontal Position [m]
+        _wfr.mesh.yStart = -0.5*yAp #Initial Vertical Position [m]
+        _wfr.mesh.yFin = 0.5*yAp #Final Vertical Position [m]
 
         sampFactNxNyForProp = sampFact #sampling factor for adjusting nx, ny (effective if > 0)
         arPrecPar = [sampFactNxNyForProp]
 
-        srwlib.srwl.CalcElecFieldGaussian(wfr, GsnBm, arPrecPar)
+        srwlib.srwl.CalcElecFieldGaussian(_wfr, GsnBm, arPrecPar)
 
-        ##Beamline to propagate to waist
-
-        optDriftW=srwlib.SRWLOptD(propLen)
-        propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
-        optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
-        #wfrW=deepcopy(wfr)
-        srwlib.srwl.PropagElecField(wfr, optBLW)
-        self._wfr = wfr
-
-
-class LaserPulseEnvelope:
-    """
-    A Gaussian representation of a laser pulse, using the paraxial approximation.
-    See https://en.wikipedia.org/wiki/Gaussian_beam/ (or your favorite laser textbook) for details.
-    """
-    def __init__(self,kwargs):
-        k=kwargs.copy()
-        self._lambda_0 = k.lambda_0   # central wavelength [m]
-        self._a_0 = k.a_0             # amplitude [dimensionless]
-        self._w_0 = k.w_0             # waist size [m]
-        self._z_center = k.z_center   # longitudinal location of laser pulse center [m]
-        self._z_waist = k.z_waist     # longitidunal location of nearest focus
-        self._tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
-
-        # useful derived quantities
-        self._k_0 = 1. / self._lambda_0
-        self._f_0 = self._k_0 * const.c
-        self._omega_0 = TWO_PI * self._f_0
-
-        # Peak electric field [V/m]
-        self._efield_0 = self._a_0 * const.m_e * self._omega_0 * const.c / (const.e)
-
-        # FWHM pulse length
-        self._tau_fwhm = k.tau_fwhm   # FWHM laser pulse length [s]
-        self._L_fwhm = self._tau_fwhm * const.c
-
-    def E_field(x,y,z):
-        self._E_field = 0.
-        return self._E_field
-    
-    def tbd_intensity(self):
-        _tbd = 7.
-        return _tbd
+        ##Beamline to propagate to waist ( only if d_to_w(t=0) < d_to_w_cutoff )
+        if d_to_w < d_to_w_cutoff:
+          optDriftW=srwlib.SRWLOptD(propLen)
+          propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+          optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
+          srwlib.srwl.PropagElecField(_wfr, optBLW)
+        self.wfr = _wfr

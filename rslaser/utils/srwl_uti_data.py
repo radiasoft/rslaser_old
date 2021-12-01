@@ -1,13 +1,14 @@
+# -*- coding: utf-8 -*-
+u"""Data processing functions
+Copyright (c) 2021 RadiaSoft LLC. All rights reserved
+"""
+
 import uti_plot_com as srw_io
 import numpy as np
 from math import *
 from numpy.fft import *
 from array import array
 from srwlib import *
-
-
-#Data processing functions
-
 
 #Read and plot generic SRW .dat files created
 def read_srw_file(filename):
@@ -49,37 +50,6 @@ def rmsfile(file):
     sysq=sum(datay*yvals*yvals)/sum(datay) 
     yavg=sum(datay*yvals)/sum(datay)
     sy=sqrt(sysq-yavg*yavg)
-    return sx, sy
-
-def rmsIntensity(IntArray,xvals,yvals):
-    """
-    Compute rms values in x and y from array 
-    #IntArray is a 2D array representation of a function
-    #xvals represents the horizontal coordinates
-    #yvals represents the vertical coordinates
-    """
-    datax=np.sum(IntArray,axis=1) 
-    datay=np.sum(IntArray,axis=0)
-    sxsq=sum(datax*xvals*xvals)/sum(datax) 
-    xavg=sum(datax*xvals)/sum(datax)
-    sx=sqrt(sxsq-xavg*xavg)
-
-    sysq=sum(datay*yvals*yvals)/sum(datay) 
-    yavg=sum(datay*yvals)/sum(datay)
-    sy=sqrt(sysq-yavg*yavg)
-    return sx, sy
-
-def rmsWavefrontIntensity(wfr):
-    """
-    #Compute rms values from a wavefront object
-    """
-    IntensityArray2D = array('f', [0]*wfr.mesh.nx*wfr.mesh.ny) #"flat" array to take 2D intensity data
-    srwl.CalcIntFromElecField(IntensityArray2D, wfr, 6, 0, 3, wfr.mesh.eStart, 0, 0) #extracts intensity
-    ##Reshaping electric field data from flat to 2D array
-    IntensityArray2D = np.array(IntensityArray2D).reshape((wfr.mesh.nx, wfr.mesh.ny), order='C')
-    xvals=np.linspace(wfr.mesh.xStart,wfr.mesh.xFin,wfr.mesh.nx)
-    yvals=np.linspace(wfr.mesh.yStart,wfr.mesh.yFin,wfr.mesh.ny)
-    (sx,sy) = rmsIntensity(IntensityArray2D,xvals,yvals)
     return sx, sy
 
 #transform SRW intensity file format to matrix style

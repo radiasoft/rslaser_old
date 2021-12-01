@@ -7,10 +7,11 @@ def main():
   dr1 = elsdr.drift('dr1', 0.2)  # drift of length 1.0 m with a unique label 'dr1'  
   dr2 = elsdr.drift('dr2', 0.02)
   crystal = elscs.crystalSlice('cryst_slice1', 0.1)  # a single-slice crystal 
-  #lattice = [(dr1,'default'), (crystal,'attenuate'), (dr2,'default')] 
-  lattice = [(dr1,'default'), (crystal,'placeholder'), (dr2,'default')]
+  #lattice = [(dr1,'default'), (crystal,'placeholder'), (dr2,'default')]
+  lattice = [(dr1,'default'), (crystal,'abcd'), (dr2,'default')]
   
-  current_position = 0.0
+  current_position = 0.0 
+  print('Initial z position of the pulse:', current_position, 'm')
   
   #  Initialize the laser pulse: 
   
@@ -33,8 +34,8 @@ def main():
   #  Propagate the pulse through the optical beamline: 
   
   for i in lattice:
-    current_elem, prop_type = i
-    #wfront = current_elem.propagate(wfront, prop_type) 
+    current_elem, prop_type = i 
+    #print (current_elem, prop_type) 
     thisPulse = current_elem.propagate(thisPulse, prop_type)
     current_position += current_elem.length
     print('Current position in the beamline:', current_position, ' m')
