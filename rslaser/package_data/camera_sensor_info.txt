@@ -1,7 +1,9 @@
-
-Basler ace - acA720-290gm
-
-Sensor Size	5 mm x 3.7 mm
-Resolution (HxV)	720 px x 540 px
-Resolution	VGA
-Pixel Size (H x V)	6.9 µm x 6.9 µm
+diagnostic_name='Basler ace'
+diagnostic_code='acA720-290gm'
+diagnostic_resolution='VGA'
+image_size_h_mm=5.0
+image_size_v_mm=3.7
+pixel_number_h=720
+pixel_number_v=540
+pixel_size_h_microns=6.9
+pixel_size_v_microns=6.9
