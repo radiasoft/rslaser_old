@@ -50,19 +50,19 @@ class crystalSlice:
                 np.exp(gamma_degen *sig_cr_sec *eta) -1.0) ) /(gamma_degen *sig_cr_sec *eta)
       return laser_pulse
     if prop_type == 'placeholder':
-      nslices = len(laser_pulse._slice) 
+      nslices = len(laser_pulse.slice) 
       for i in np.arange(nslices):  
         print ('Pulse slice ', i+1, ' of ', nslices, ' propagated through crystal slice.') 
       return laser_pulse  
     if prop_type == 'abcd': 
-      nslices = len(laser_pulse._slice)
+      nslices = len(laser_pulse.slice)
       L_cryst = self.length 
       n0 = self.n0 
       n2 = self.n2 
       #n2 = 0.001 
       
       for i in np.arange(nslices): 
-        thisSlice = laser_pulse._slice[i] 
+        thisSlice = laser_pulse.slice[i] 
         #print(type(thisSlice))
 
         if n2 == 0: 
@@ -98,9 +98,6 @@ class crystalSlice:
           optBL = srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2]) 
           #optBL = createABCDbeamline(A,B,C,D) 
           
-        srwlib.srwl.PropagElecField(thisSlice._wfr, optBL) # thisSlice s.b. a pointer, not a copy 
+        srwlib.srwl.PropagElecField(thisSlice.wfr, optBL) # thisSlice s.b. a pointer, not a copy 
         print('Propagated pulse slice ', i+1, ' of ', nslices) 
       return laser_pulse 
-
-
-
