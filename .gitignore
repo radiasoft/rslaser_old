@@ -100,3 +100,5 @@ mpxerr.tex
 # FEniCS
 jitfailure-dolfin_expression_*
 
+# data output
+./examples/notebooks/wavefront/InitialWavefrontArray.txt
