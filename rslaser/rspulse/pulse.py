@@ -17,12 +17,18 @@ import rslaser.utils.unit_conversion as units
 import srwlib
 from srwlib import srwl
 
+_REQUIRED_LASER_PULSE_INPUTS = ['phE',
+    'nslice', 'chirp', 'w0', 'a0', 'dw0x',
+    'dw0y', 'z_waist', 'dzwx', 'dzwy', 'tau_fwhm',
+    'z_center', 'x_shift', 'y_shift', 'd_to_w',
+    'slice_params']
 
 def _validate_input(input_params):
     if type(input_params) != PKDict:
         raise InvalidLaserPulseInputError('invalid LaserPulse inputs: input_parameters to LaserPulse class must be of type PKDict')
-    if 'slice_params' not in input_params:
-        raise InvalidLaserPulseInputError('invalid LaserPulse inputs: does not include slice_params')
+    for p in _REQUIRED_LASER_PULSE_INPUTS:
+        if p not in input_params:
+            raise InvalidLaserPulseInputError(f'invalid LaserPulse inputs: missing required field {p}')
 
 
 class InvalidLaserPulseInputError(Exception):

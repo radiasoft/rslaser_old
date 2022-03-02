@@ -57,7 +57,7 @@ def test_basic_instantiation1():
 
 
 def test_basic_instantiation2():
-    k = _LASER_PULSE_DEFAULTS
+    k = _LASER_PULSE_DEFAULTS.copy()
     k.chirp = 0.01*_PHE_DEFAULT
     l = LaserPulse(k)
     a = [s.phE for s in l.slice]
@@ -69,6 +69,12 @@ def test_basic_pulse_slice_instantiation():
 
 
 def test_slice_input_validators():
+    k = _LASER_PULSE_DEFAULTS.copy()
+    k.pkdel('slice_params')
+    try:
+        l = LaserPulse(k)
+    except InvalidLaserPulseInputError as e:
+        return e
     assert False
 
 
@@ -76,7 +82,7 @@ def test_pulse_input_validators_type():
     try:
         l = LaserPulse([])
     except InvalidLaserPulseInputError as e:
-        return
+        return e
     assert False
 
 def test_pulse_input_validators_fields():
@@ -101,5 +107,5 @@ def test_pulse_input_validators_fields():
     try:
         l = LaserPulse(k)
     except InvalidLaserPulseInputError as e:
-        return
+        return e
     assert False
