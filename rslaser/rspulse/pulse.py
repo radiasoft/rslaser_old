@@ -22,7 +22,7 @@ class LaserPulse:
     as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
 
     """
-    def __init__(self,kwargs):
+    def __init__(self, kwargs):
         _k = kwargs.copy()
 
         # instantiate the laser envelope
@@ -32,18 +32,18 @@ class LaserPulse:
         self.slice = []
         self.nslice = _k.nslice
 
-        _lambda0 = abs(_k.lambda0)
-        _phE = const.h * const.c / _lambda0
-        _lambda_p = _lambda0 + 0.5 * _k.d_lambda
-        _lambda_m = _lambda0 - 0.5 * _k.d_lambda
+        self._lambda0 = abs(_k.lambda0)
+        self._phE = const.h * const.c / self._lambda0
+        _lambda_p = self._lambda0 + 0.5 * _k.d_lambda
+        _lambda_m =self._lambda0 - 0.5 * _k.d_lambda
         _chirp = const.h * const.c * (1./_lambda_m - 1./_lambda_p)
-        _phE -= 0.5*_chirp           # so central slice has the central photon energy
+        self._phE -= 0.5*_chirp           # so central slice has the central photon energy
         _de = _chirp / self.nslice   # photon energy shift from slice to slice
 
         for i in range(_k.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
             self.slice.append(LaserPulseSlice(i,**_k))
-            _phE += _de
+            self._phE += _de # TODO (gurhar1133): What is happening here?
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
@@ -84,7 +84,7 @@ class LaserPulseSlice:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
     def __init__(self, slice_index, nslice, d_to_w, sigrW=0.000186, propLen=15, sig_s=0.1,
-                 pulseE=0.001, poltype=1, phE=1.55, sampFact=5, mx=0, my=0, **_ignore_kwargs):
+                 pulseE=0.001, poltype=1, phE=1.55, sampFact=5, mx=0, my=0, **kwargs):
         """
         #nslice: number of slices of laser pulse
         #slice_index: index of slice
@@ -99,6 +99,8 @@ class LaserPulseSlice:
         #sampFact: sampling factor to increase mesh density
         """
         #print([sigrW,propLen,pulseE,poltype])
+        _k = PKDict(kwargs.copy())
+        self._lambda0 = _k.lambda0
         self.slice_index = slice_index
         self.phE = phE
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
