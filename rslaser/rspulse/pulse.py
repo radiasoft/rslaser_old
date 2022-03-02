@@ -18,6 +18,13 @@ import srwlib
 from srwlib import srwl
 
 
+def _validate_input(input_params):
+    if type(input_params) != PKDict:
+        raise InvalidLaserPulseInputError('invalid LaserPulse inputs: input_parameters to LaserPulse class must be of type PKDict')
+    if 'slice_params' not in input_params:
+        raise InvalidLaserPulseInputError('invalid LaserPulse inputs: does not include slice_params')
+
+
 class InvalidLaserPulseInputError(Exception):
     pass
 
@@ -30,7 +37,7 @@ class LaserPulse:
     """
     def __init__(self, params):
 
-        self.validate_input(params)
+        _validate_input(params)
         # instantiate the laser envelope
         self.envelope = rsgh.GaussHermite(params)
 
@@ -79,11 +86,6 @@ class LaserPulse:
     def slice_wfr(self,slice_index):
         return self.slice(slice_index).wfr
 
-    def validate_input(self, input_params):
-        if type(input_params) != PKDict:
-            raise InvalidLaserPulseInputError('invalid LaserPulse inputs: input_parameters to LaserPulse class must be of type PKDict')
-        if 'slice_params' not in input_params:
-            raise InvalidLaserPulseInputError('invalid LaserPulse inputs: does not include slice_params')
 
 class LaserPulseSlice:
     """
@@ -107,7 +109,7 @@ class LaserPulseSlice:
         #sampFact: sampling factor to increase mesh density
         """
         #print([sigrW,propLen,pulseE,poltype])
-        self.validate_input(params)
+        _validate_input(params)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
         self.phE = params.phE

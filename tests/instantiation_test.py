@@ -16,7 +16,8 @@ import scipy.constants as const
 
 
 _PHE_DEFAULT = const.h * const.c / 1e-6
-
+_Z_WAIST_DEFAULT = 0
+_Z_CENTER_DEFAULT = 0
 _LASER_PULSE_SLICE_DEFAULTS = PKDict(
     sigrW=0.000186,
     propLen=15,
@@ -30,8 +31,6 @@ _LASER_PULSE_SLICE_DEFAULTS = PKDict(
 
 def test_basic_instantiation1():
     chirp = 0.0
-    z_waist = 0
-    z_center = 0.0
     k=PKDict(
         phE=_PHE_DEFAULT,
         nslice=3,
@@ -41,14 +40,14 @@ def test_basic_instantiation1():
         a0=.01,
         dw0x=0.0,
         dw0y=0.0,
-        z_waist=z_waist,
+        z_waist=_Z_WAIST_DEFAULT,
         dzwx=0.0,
         dzwy=0.0,
         tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=z_center,
+        z_center=_Z_CENTER_DEFAULT,
         x_shift = 0.,
         y_shift=0.,
-        d_to_w=z_waist - z_center,
+        d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
     )
     l = LaserPulse(k)
@@ -59,8 +58,6 @@ def test_basic_instantiation1():
 
 def test_basic_instantiation2():
     chirp = 0.01*_PHE_DEFAULT
-    z_waist = 0
-    z_center = 0.0
     k=PKDict(
         phE=_PHE_DEFAULT,
         nslice=3,
@@ -70,14 +67,14 @@ def test_basic_instantiation2():
         a0=.01,
         dw0x=0.0,
         dw0y=0.0,
-        z_waist=z_waist,
+        z_waist=_Z_WAIST_DEFAULT,
         dzwx=0.0,
         dzwy=0.0,
         tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=z_center,
+        z_center=_Z_CENTER_DEFAULT,
         x_shift = 0.,
         y_shift=0.,
-        d_to_w=z_waist - z_center,
+        d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
     )
     l = LaserPulse(k)
@@ -86,8 +83,6 @@ def test_basic_instantiation2():
 
 
 def test_basic_pulse_slice_instantiation():
-    z_waist = 0
-    z_center = 0.0
     k=PKDict(
         phE=_PHE_DEFAULT,
         nslice=3,
@@ -97,14 +92,14 @@ def test_basic_pulse_slice_instantiation():
         a0=.01,
         dw0x=0.0,
         dw0y=0.0,
-        z_waist=z_waist,
+        z_waist=_Z_WAIST_DEFAULT,
         dzwx=0.0,
         dzwy=0.0,
         tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=z_center,
+        z_center=_Z_CENTER_DEFAULT,
         x_shift = 0.,
         y_shift=0.,
-        d_to_w=z_waist - z_center,
+        d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
     )
     s = [LaserPulseSlice(i, k) for i in range(10)]
@@ -122,8 +117,6 @@ def test_pulse_input_validators_type():
     assert False
 
 def test_pulse_input_validators_fields():
-    z_waist = 0
-    z_center = 0.0
     k=PKDict(
         phE=_PHE_DEFAULT,
         nslice=3,
@@ -133,14 +126,14 @@ def test_pulse_input_validators_fields():
         a0=.01,
         dw0x=0.0,
         dw0y=0.0,
-        z_waist=z_waist,
+        z_waist=_Z_WAIST_DEFAULT,
         dzwx=0.0,
         dzwy=0.0,
         tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=z_center,
+        z_center=_Z_CENTER_DEFAULT,
         x_shift = 0.,
         y_shift=0.,
-        d_to_w=z_waist - z_center,
+        d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
     )
     try:
         l = LaserPulse(k)
