@@ -175,28 +175,3 @@ class LaserPulseSlice:
 
     def validate(self, input_params):
         pass
-
-
-if __name__ == '__main__':
-    k=PKDict(
-        d_lambda=0,
-        lambda0=1e-6,
-        nslice=3,
-        # TODO (gurhar1133): instantiation of LaserPulse fails without
-        w0=.1, # fields below this comment. Needed for calling GaussHermite(). What are reasonable values?
-        a0=.01, # current values pulled from TestCavityFull.ipynb
-        dw0x=0.0,
-        dw0y=0.0,
-        z_waist=0,
-        dzwx=0.0,
-        dzwy=0.0,
-        tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=0.0,
-        x_shift = 0.,
-        y_shift=0.,
-    )
-    k.d_to_w = k.z_waist - k.z_center
-
-    l = LaserPulse(k)
-    print('wavelength:', l._lambda0)
-    print('photon energy:', l._phE)

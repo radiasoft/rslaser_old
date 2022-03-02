@@ -72,12 +72,12 @@ def test_basic_instantiation2():
 
 
 def test_slice_input_validators():
-    pass
+    assert False
 
 
 def test_pulse_input_validators():
-    pass
+    assert False
 
 
 def test_pulse_slice_instantiation():
-    pass
+    assert False
