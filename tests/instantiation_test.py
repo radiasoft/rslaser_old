@@ -14,60 +14,73 @@ from rslaser.rspulse.pulse import LaserPulse
 import scipy.constants as const
 
 
+_LASER_PULSE_SLICE_DEFAULTS = PKDict(
+    sigrW=0.000186,
+    propLen=15,
+    sig_s=0.1,
+    pulseE=0.001,
+    poltype=1,
+    sampFact=5,
+    mx=0,
+    my=0
+)
+
 def test_basic_instantiation1():
-    # instantiate LaserPulse instance with zero chirp (i.e. d_lambda = 0),
-    # central wavelength lambda0=1e-6 meters and with 3 slices;
-    # query the wavelength (i.e. _lambda0) associated with each slice;
-    # it should be the same as for the pulse as a whole
+    lambda0 = 1e-6
+    phE = const.h * const.c / lambda0
+    chirp = 0.0
+    z_waist = 0
+    z_center = 0.0
     k=PKDict(
-        d_lambda=0,
-        lambda0=1e-6,
+        phE=phE,
         nslice=3,
-        # TODO (gurhar1133): instantiation of LaserPulse fails without
-        w0=.1, # fields below this comment. Needed for calling GaussHermite(). What are reasonable values?
-        a0=.01, # current values pulled from TestCavityFull.ipynb
+        chirp=chirp,
+        # TODO (gurhar1133): format k {kv pairs ..., hermite kv pairs: {}, slice kv pairs: {}} ?
+        w0=.1,
+        a0=.01,
         dw0x=0.0,
         dw0y=0.0,
-        z_waist=0,
+        z_waist=z_waist,
         dzwx=0.0,
         dzwy=0.0,
         tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=0.0,
+        z_center=z_center,
         x_shift = 0.,
         y_shift=0.,
-    )
-    k.d_to_w = k.z_waist - k.z_center
-
+        d_to_w=z_waist - z_center,
+    ).pkupdate(_LASER_PULSE_SLICE_DEFAULTS)
     l = LaserPulse(k)
     for s in l.slice:
-        if s._lambda0 != l._lambda0:
+        if s.phE != l.phE:
             raise AssertionError('LaserPulseSlice has different wavelength than pulse as a whole')
 
 
 def test_basic_instantiation2():
-    # do the same with d_lambda = lambda0/10; in this case,
-    # each slice should have a different wavelength,
-    # but probably won't because of a bug
+    lambda0 = 1e-6
+    phE = const.h * const.c / lambda0
+    chirp = 0.01*phE
+    z_waist = 0
+    z_center = 0.0
     k=PKDict(
-        lambda0=1e-6,
+        phE=phE,
         nslice=3,
-        # TODO (gurhar1133): instantiation of LaserPulse fails without
-        w0=.1, # fields below this comment. Needed for calling GaussHermite(). What are reasonable values?
-        a0=.01, # current values pulled from TestCavityFull.ipynb
+        chirp=chirp,
+        # TODO (gurhar1133): format k {kv pairs ..., hermite kv pairs: {}, slice kv pairs: {}} ?
+        w0=.1,
+        a0=.01,
         dw0x=0.0,
         dw0y=0.0,
-        z_waist=0,
+        z_waist=z_waist,
         dzwx=0.0,
         dzwy=0.0,
         tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=0.0,
+        z_center=z_center,
         x_shift = 0.,
         y_shift=0.,
-    )
-    k.d_to_w = k.z_waist - k.z_center
-    k.d_lambda = k.lambda0/10
+        d_to_w=z_waist - z_center,
+    ).pkupdate(_LASER_PULSE_SLICE_DEFAULTS)
     l = LaserPulse(k)
-    a = [s._lambda0 for s in l.slice]
+    a = [s.phE for s in l.slice]
     assert len(set(a)) == len(a)
 
 
@@ -76,6 +89,7 @@ def test_slice_input_validators():
 
 
 def test_pulse_input_validators():
+
     assert False
 
 

@@ -11,14 +11,11 @@ from pykern.pkcollections import PKDict
 import rslaser.rsoptics.wavefront as rswf
 import rslaser.rspulse.gauss_hermite as rsgh
 import rslaser.utils.constants as rsc
+import rslaser.utils.unit_conversion as units
 # import rslaser.utils.srwl_uti_data as rsdata
 
 import srwlib
 from srwlib import srwl
-
-
-def _calculate_lambda0_from_phE(phE):
-    return const.h * const.c / phE
 
 
 class LaserPulse:
@@ -29,25 +26,24 @@ class LaserPulse:
     """
     def __init__(self, params):
 
-        self.validate(params)
+        # self.validate(params)
         # instantiate the laser envelope
         self.envelope = rsgh.GaussHermite(params)
 
         # instantiate the array of slices
         self.slice = []
         self.nslice = params.nslice
-
-        self._lambda0 = abs(_calculate_lambda0_from_phE(params.phE))
-        self._phE = const.h * const.c / self._lambda0
-
-        self._phE -= 0.5*params.chirp           # so central slice has the central photon energy
+        self.phE = params.phE
+        self._lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))
+        self.phE -= 0.5*params.chirp           # so central slice has the central photon energy
         _de = params.chirp / self.nslice   # photon energy shift from slice to slice
-
-        slice_params = params.copy()
+        slice_params = params
+        slice_params.phE = self.phE
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
-            self.slice.append(LaserPulseSlice(i, slice_params))
-            slice_params.phE += _de # TODO (gurhar1133): What is happening here?
+            s = LaserPulseSlice(i, slice_params)
+            self.slice.append(s)
+            slice_params.phE += _de
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
@@ -106,7 +102,7 @@ class LaserPulseSlice:
         """
         #print([sigrW,propLen,pulseE,poltype])
         self.validate(slice_params)
-        self._lambda0 = _calculate_lambda0_from_phE(slice_params.phE)
+        self._lambda0 = units.calculate_lambda0_from_phE(slice_params.phE)
         self.slice_index = slice_index
         self.phE = slice_params.phE
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
@@ -114,8 +110,8 @@ class LaserPulseSlice:
         #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
         #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
         d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
-        if slice_params.d_to_w > d_to_w_cutoff:  propLen = slice_params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
-        sigrL=math.sqrt(slice_params.sigrW**2+(propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
+        if slice_params.d_to_w > d_to_w_cutoff:  slice_params.propLen = slice_params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
+        sigrL=math.sqrt(slice_params.sigrW**2+(slice_params.propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
 
 
         #***********Gaussian Beam Source
@@ -125,7 +121,7 @@ class LaserPulseSlice:
         numsig = 3. #Number of sigma values to track. Total range is 2*numsig*sig_s
         ds = 2*numsig*slice_params.sig_s/(slice_params.nslice - 1)
         self._pulse_pos = -numsig*slice_params.sig_s+slice_index*ds
-        GsnBm.z = propLen + self._pulse_pos #Longitudinal Position of Waist [m]
+        GsnBm.z = slice_params.propLen + self._pulse_pos #Longitudinal Position of Waist [m]
         GsnBm.xp = 0 #Average Angles of Gaussian Beam at Waist [rad]
         GsnBm.yp = 0
         GsnBm.avgPhotEn = self.phE #Photon Energy [eV]
@@ -167,7 +163,7 @@ class LaserPulseSlice:
 
         ##Beamline to propagate to waist ( only if d_to_w(t=0) < d_to_w_cutoff )
         if slice_params.d_to_w < d_to_w_cutoff:
-          optDriftW=srwlib.SRWLOptD(propLen)
+          optDriftW=srwlib.SRWLOptD(slice_params.propLen)
           propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
           optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
           srwlib.srwl.PropagElecField(_wfr, optBLW)

@@ -5,6 +5,7 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 import math
 
 from rslaser.utils.string_tools import removeWhitespace
+import scipy.constants as const
 
 # How to use:
 #
@@ -162,6 +163,10 @@ def addToUnitConversion(unit, value, otherUnit):
 def addToUnitTable(row):
     for unit in row:
         unitTable[unit] = row
+
+
+def calculate_lambda0_from_phE(phE):
+    return const.h * const.c / phE
 
 #percent -> fraction
 addToUnitConversion('%', .01, '')
