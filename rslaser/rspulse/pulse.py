@@ -22,13 +22,22 @@ _REQUIRED_LASER_PULSE_INPUTS = ['phE',
     'dw0y', 'z_waist', 'dzwx', 'dzwy', 'tau_fwhm',
     'z_center', 'x_shift', 'y_shift', 'd_to_w',
     'slice_params']
+_REQUIRED_LASER_PULSE_SLICE_INPUTS = ['sigrW',
+    'propLen', 'sig_s', 'pulseE', 'poltype', 'sampFact',
+    'mx', 'my']
 
 def _validate_input(input_params):
+    # TODO (gurhar1133): repeatitive. make subcall
     if type(input_params) != PKDict:
         raise InvalidLaserPulseInputError('invalid LaserPulse inputs: input_parameters to LaserPulse class must be of type PKDict')
     for p in _REQUIRED_LASER_PULSE_INPUTS:
         if p not in input_params:
             raise InvalidLaserPulseInputError(f'invalid LaserPulse inputs: missing required field {p}')
+    if type(input_params.slice_params) != PKDict:
+        raise InvalidLaserPulseInputError('invalid LaserPulse inputs: params.slice_params must be of type PKDict')
+    for s in input_params.slice_params:
+        if s not in _REQUIRED_LASER_PULSE_SLICE_INPUTS:
+            raise InvalidLaserPulseInputError(f'invalid LaserPulse inputs: missing required field in slice_params {s}')
 
 
 class InvalidLaserPulseInputError(Exception):
