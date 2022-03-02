@@ -6,16 +6,13 @@ Only necessary if you have no other tests so that
 tox will work.
 """
 from __future__ import absolute_import, division, print_function
-import pytest
+import math
 from pykern.pkdebug import pkdp
 from pykern.pkcollections import PKDict
+import pytest
 from rslaser.rspulse.pulse import LaserPulse
-import math
 import scipy.constants as const
-# TODO (gurhar1133): alphabetical sort imports
 
-def test_hello_world():
-    print('hello world')
 
 def test_basic_instantiation1():
     # instantiate LaserPulse instance with zero chirp (i.e. d_lambda = 0),
@@ -44,6 +41,7 @@ def test_basic_instantiation1():
     for s in l.slice:
         if s._lambda0 != l._lambda0:
             raise AssertionError('LaserPulseSlice has different wavelength than pulse as a whole')
+
 
 def test_basic_instantiation2():
     # do the same with d_lambda = lambda0/10; in this case,

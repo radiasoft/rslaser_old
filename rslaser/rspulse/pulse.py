@@ -35,7 +35,7 @@ class LaserPulse:
         self._lambda0 = abs(_k.lambda0)
         self._phE = const.h * const.c / self._lambda0
         _lambda_p = self._lambda0 + 0.5 * _k.d_lambda
-        _lambda_m =self._lambda0 - 0.5 * _k.d_lambda
+        _lambda_m = self._lambda0 - 0.5 * _k.d_lambda
         _chirp = const.h * const.c * (1./_lambda_m - 1./_lambda_p)
         self._phE -= 0.5*_chirp           # so central slice has the central photon energy
         _de = _chirp / self.nslice   # photon energy shift from slice to slice
