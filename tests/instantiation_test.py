@@ -37,6 +37,7 @@ def test_basic_instantiation1():
         y_shift=0.,
     )
     k.d_to_w = k.z_waist - k.z_center
+
     l = LaserPulse(k)
     for s in l.slice:
         if s._lambda0 != l._lambda0:
@@ -69,3 +70,14 @@ def test_basic_instantiation2():
     a = [s._lambda0 for s in l.slice]
     assert len(set(a)) == len(a)
 
+
+def test_slice_input_validators():
+    pass
+
+
+def test_pulse_input_validators():
+    pass
+
+
+def test_pulse_slice_instantiation():
+    pass
