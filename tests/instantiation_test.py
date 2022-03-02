@@ -9,7 +9,7 @@ from __future__ import absolute_import, division, print_function
 import pytest
 from pykern.pkdebug import pkdp
 from pykern.pkcollections import PKDict
-from rslaser.rspulse.pulse import LaserPulse
+import rslaser.rspulse.pulse as rsp
 
 def test_hello_world():
     return 'hello world'
@@ -17,13 +17,15 @@ def test_hello_world():
 def test_basic_instantiation():
     import rslaser.rspulse.pulse
     k=PKDict(
-        length=0.1,
-        wavelength=800e-9,
-        nslice=11,
-        energyChirp = 1,
-        phE = 1,
+        d_lambda=0,
+        lambda0=1e-6,
+        nslice=3,
     )
-    lp = LaserPulse(k)
+    lp = rsp.LaserPulse(k)
+    # for i, s in enumerate(lp.slice):
+    #     print(f'slice {i} energy {s._phE}')
+    # print(f'PulseEnergy was {lp.phE}')
+
     # instantiate LaserPulse instance with zero chirp (i.e. d_lambda = 0),
     # central wavelength lambda0=1e-6 meters and with 3 slices;
     # query the wavelength (i.e. _lambda0) associated with each slice;

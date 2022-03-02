@@ -19,19 +19,19 @@ from srwlib import srwl
 class LaserPulse:
     """
     The LaserPulse contains a GaussHermite object to represent the initial envelope,
-    as well as an array of LaserPulseSlice instances, which track details of the evolution in time. 
-    
+    as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
+
     """
     def __init__(self,kwargs):
         _k = kwargs.copy()
-        
+
         # instantiate the laser envelope
         self.envelope = rsgh.GaussHermite(_k)
-        
+
         # instantiate the array of slices
         self.slice = []
         self.nslice = _k.nslice
-        
+
         _lambda0 = abs(_k.lambda0)
         _phE = const.h * const.c / _lambda0
         _lambda_p = _lambda0 + 0.5 * _k.d_lambda
@@ -39,7 +39,7 @@ class LaserPulse:
         _chirp = const.h * const.c * (1./_lambda_m - 1./_lambda_p)
         _phE -= 0.5*_chirp           # so central slice has the central photon energy
         _de = _chirp / self.nslice   # photon energy shift from slice to slice
-        
+
         for i in range(_k.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
             self.slice.append(LaserPulseSlice(i,**_k))
@@ -83,12 +83,12 @@ class LaserPulseSlice:
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
-    def __init__(self, slice_index, nslice, d_to_w, sigrW=0.000186, propLen=15, sig_s=0.1, 
+    def __init__(self, slice_index, nslice, d_to_w, sigrW=0.000186, propLen=15, sig_s=0.1,
                  pulseE=0.001, poltype=1, phE=1.55, sampFact=5, mx=0, my=0, **_ignore_kwargs):
         """
         #nslice: number of slices of laser pulse
-        #slice_index: index of slice 
-        #d_to_w: distance from the pulse center at t = 0 to the intended waist location [m] 
+        #slice_index: index of slice
+        #d_to_w: distance from the pulse center at t = 0 to the intended waist location [m]
         #sigrW: beam size at waist [m]
         #propLen: propagation length [m] required by SRW to create numerical Gaussian
         #propLen=15,
@@ -102,7 +102,7 @@ class LaserPulseSlice:
         self.slice_index = slice_index
         self.phE = phE
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
-        rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad] 
+        rmsAngDiv = constConvRad/(phE*sigrW)             ##RMS angular divergence [rad]
         #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
         #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
         d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
