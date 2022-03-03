@@ -5,73 +5,70 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 import math, cmath
 import numpy as np
 from numpy.polynomial.hermite import hermval
-
 from pykern.pkcollections import PKDict
 from pykern.pkdebug import pkdc, pkdexc, pkdp
 import rslaser.utils.constants as rsc
-
+import rslaser.utils.unit_conversion as units
 import scipy.constants as const
 
 class GaussHermite:
     """Module defining a Hermite-Gaussian laser field of order (m,n).
-    
+
     For now, we assume linear polarization of E along, x.
     Also, the evaluation is done for z=0 (for simplicity)
     The time variable t is ignored.
     """
-    
-    def __init__(self, kwargs):
+
+    def __init__(self, params):
         """Four input parametersrequired; waist is assumed to be round and at the origin.
 
         Args:
             kwargs:  this is a PKDict object
-            
+
         Returns:
             instance of the class
-            
+
         Raises:
             NA
         """
-        _k=kwargs.copy()
-        self.lambda0 = abs(_k.lambda0)            # central wavelength [m]
-        
+        self.lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))            # central wavelength [m]
         # useful derived quantities
         self.k0 = rsc.TWO_PI / self.lambda0       # central wavenumber [radians/m]
         self.f0 = const.c / self.lambda0          # central frequency  [Hz]
         self.omega0 = rsc.TWO_PI * self.f0        # central angular frequency [radians/s]
 
         # Peak electric field [V/m]
-        self.a0 = abs(_k.a0)                      # amplitude [dimensionless]
+        self.a0 = abs(params.a0)                      # amplitude [dimensionless]
                                                   # peak electric field [V/m]
         self.efield0 = self.a0 * const.m_e * self.omega0 * const.c / (const.e)
 
         # waist sizes and locations
-        self.w0 = abs(_k.w0)                      # the waist size of the pulse
-        self.set_waist_x(_k.w0 + _k.dw0x)         # horizontal waist size [m]
-        self.set_waist_y(_k.w0 + _k.dw0y)         # vertical waist size [m]
+        self.w0 = abs(params.w0)                      # the waist size of the pulse
+        self.set_waist_x(params.w0 + params.dw0x)         # horizontal waist size [m]
+        self.set_waist_y(params.w0 + params.dw0y)         # vertical waist size [m]
 
-        self.z_waist = _k.z_waist                 # the longitudinal location of the waist
-        self.z_waist_x = _k.dzwx                  # location (in z) of horizontal waist
-        self.z_waist_y = _k.dzwy                  # location (in z) of vertical waist
-        
+        self.z_waist = params.z_waist                 # the longitudinal location of the waist
+        self.z_waist_x = params.dzwx                  # location (in z) of horizontal waist
+        self.z_waist_y = params.dzwy                  # location (in z) of vertical waist
+
         # Rayleigh range
         self.zR = 0.5*self.k0*(self.w0)**2        # Rayleigh range, ignoring horizontal/vertical differences
 #        print('\n ****** \n zR = ', self.zR)
 
         # pulse length
-        self.tau_fwhm = _k.tau_fwhm               # FWHM laser pulse length [s]
+        self.tau_fwhm = params.tau_fwhm               # FWHM laser pulse length [s]
         self.L_fwhm = self.tau_fwhm * const.c     # FWHM laser pulse length [m]
 
         # longitudinal location of pulse center
-        self.z_center = _k.z_center
+        self.z_center = params.z_center
 
         # bulk transverse offsets of the laser pulse
-        self.x_shift = _k.x_shift                 # horizontal shift of the spot center
-        self.y_shift = _k.y_shift                 # vertical shift of the spot center
+        self.x_shift = params.x_shift                 # horizontal shift of the spot center
+        self.y_shift = params.y_shift                 # vertical shift of the spot center
 
         # for now, we set the higher Hermite modes to zero
-        self.setCoeffSingleModeX(0, 1.)           # horizontal coefficients of Hermite expansion 
-        self.setCoeffSingleModeY(0, 1.)           # vertical coefficients of Hermite expansion 
+        self.setCoeffSingleModeX(0, 1.)           # horizontal coefficients of Hermite expansion
+        self.setCoeffSingleModeY(0, 1.)           # vertical coefficients of Hermite expansion
 
         # for now, we set the rotation angle to zero
         self.wRotAngle = 0.
@@ -85,16 +82,16 @@ class GaussHermite:
         minSize = wFac*self.lambda0
         if _waistX >= minSize:
             self.waist_x  = _waistX
-        else: 
+        else:
             message = 'waistX = ' + str(_waistX) + '; must be >= ' + str(minSize)
-            raise Exception(message) 
-        
+            raise Exception(message)
+
         # error handling; require that deviations from w0 are small
         self.dw0x = _waistX - self.w0
         if abs(self.dw0x) > 0.1 * self.w0:
             message = 'dw0x/w0 = ' + str(self.dw0x) + '; must be < 0.1 '
-            raise Exception(message)             
-            
+            raise Exception(message)
+
         self.piWxFac = math.sqrt(rsc.RT_2_OVER_PI/self.waist_x)
         self.zRx = 0.5*self.k0*self.waist_x**2     # horizintal Rayleigh range [m]
         self.qx0 = 0.0 + self.zRx*1j
@@ -107,15 +104,15 @@ class GaussHermite:
         minSize = wFac*self.lambda0
         if _waistY >= minSize:
             self.waist_y  = _waistY
-        else: 
+        else:
             message = 'waistY = ' + str(_waistY) + '; must be >= ' + str(minSize)
-            raise Exception(message) 
-        
+            raise Exception(message)
+
         # error handling; require that deviations from w0 are small
         self.dw0y = _waistY - self.w0
         if abs(self.dw0y) > 0.1 * self.w0:
             message = 'dw0y/w0 = ' + str(self.dw0y) + '; must be < 0.1 '
-            raise Exception(message)             
+            raise Exception(message)
 
         self.piWyFac = math.sqrt(rsc.RT_2_OVER_PI/self.waist_y)
         self.zRy = 0.5*self.k0*self.waist_y**2      #  vertical Rayleigh range [m]
@@ -169,7 +166,7 @@ class GaussHermite:
     #   x,y,t can all be arrays, for a particle distribution with fixed z
     #   _z, the longitudinal coordinate, must always be a scalar.
     def evaluate_ex(self,xArray,yArray,_z,tArray):
-        
+
         # account for location of pulse center
         z_local = _z - self.z_center
 
@@ -184,16 +181,16 @@ class GaussHermite:
     #   x,y,z can all be scalar, to evaluate at a single point.
     #   x,y can both be arrays (same length) to evaluate on a mesh.
     #   _z, the longitudinal coordinate, must always be a scalar.
-    # 
+    #
     # We ignore x/y differences in the waist size and location
     # Also, we ignore the higher-order Hermite modes here.
-    
+
     def evaluate_envelope_ex(self,xArray,yArray,_z):
         # account for location of pulse center
         z_local = _z - self.z_center
         # account for the waist location
         _z -= self.z_waist
-        
+
         # determine whether xArray is really a Numpy array
         try:
             num_vals_x = xArray.size
@@ -209,7 +206,7 @@ class GaussHermite:
         except AttributeError:
             # above failed, so input must be a float
             y_is_array = False
-            
+
         if (x_is_array and y_is_array):
             rSq = np.zeros(num_vals_x, complex)
             exp_1 = np.zeros(num_vals_x, complex)
@@ -223,16 +220,16 @@ class GaussHermite:
 
         # the radius squared
         rSq = np.power(xArray,2) + np.power(yArray,2)
-        
+
         # the radius of curvature of wavefronts at location z
         invR = _z / (_z**2 + self.zR**2)
-        
+
         # first exponential
         exp_1 = np.exp(-rSq / wZ**2)
-        
+
         # Gouy phase at position z
         psi_z = np.arctan(_z / self.zR)
-        
+
         # 2nd exponential
         arg_2 = 0.5*self.k0*invR*rSq
         exp_2 = np.exp(-1j*(arg_2 - psi_z))
@@ -248,7 +245,7 @@ class GaussHermite:
         # here, we apply a longitudinal Gaussian profile
         return (self.w0 / wZ) * exp_1 * np.exp(-(z_local/self.L_fwhm)**2) * self.efield0 * exp_2
 
-    
+
     # Evaluate the radial electric field of a circularly polarized laser pulse in r-z geometry.
     # Handling of arguments is flexible:
     #   rArray can be a scalar, to evaluate at a single point.
@@ -256,7 +253,7 @@ class GaussHermite:
     #   _z, the longitudinal coordinate, must always be a scalar.
     #   tArray can be a scalar (works) or a Numpy array (not tested)
     def evaluate_er(self,rArray,_z,tArray):
-        
+
         # account for location of pulse center
         z_local = _z - self.z_center
 
@@ -266,22 +263,22 @@ class GaussHermite:
         # multiply by the time-dependent term
         return result * np.exp((self.omega0*tArray - self.k0*z_local)*1j)
 
-    
+
     # Calculate the laser pulse envelope in radial r-z coordinates
     # Handling of arguments is flexible:
     #   rArray can be a scalar, to evaluate at a single point.
     #   rArray can be a Numpy array to evaluate along a line
     #   _z, the longitudinal coordinate, must always be a scalar.
-    # 
+    #
     # We ignore x/y differences in the waist size and location
     # Also, we ignore the higher-order Hermite modes here.
-    
+
     def evaluate_envelope_er(self,rArray,_z):
         # account for the waist location
         z_local = _z - self.z_center
         _z -= self.z_waist
 #        pkdc('z_local, _z = ' + str(z_local) + ', ' + str(_z))
-       
+
         # determine whether xArray is really a Numpy array
         try:
             num_vals_r = rArray.size
@@ -301,16 +298,16 @@ class GaussHermite:
 
         # the radius squared
         rSq = np.power(rArray,2)
-        
+
         # the radius of curvature of wavefronts at location z
         invR = _z / (_z**2 + self.zR**2)
-        
+
         # first exponential
         exp_1 = np.exp(-rSq / wZ**2)
-        
+
         # Gouy phase at position z
         psi_z = np.arctan(_z / self.zR)
-        
+
         # 2nd exponential
         arg_2 = 0.5*self.k0*invR*rSq - psi_z
         exp_2 = np.exp(-1j*arg_2)
@@ -332,7 +329,7 @@ class GaussHermite:
     #   z, the longitudinal coordinate, must always be a scalar.
     #
     # The complicated logic below requires further testing.
-    
+
     def eval_gh_ex(self,xArray,yArray,z):
 
         # assume array input; try to create temporary array

@@ -101,4 +101,4 @@ mpxerr.tex
 jitfailure-dolfin_expression_*
 
 # data output
-./examples/notebooks/wavefront/InitialWavefrontArray.txt
+InitialWavefrontArray.txt
