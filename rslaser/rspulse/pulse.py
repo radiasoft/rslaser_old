@@ -55,6 +55,9 @@ class LaserPulse:
     The LaserPulse contains a GaussHermite object to represent the initial envelope,
     as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
 
+    params: PKDict with fields: -> phE, nslice, chirp, w0, a0, dw0x, dw0y, z_waist, dzwx, dzwy, tau_fwhm,
+    z_center, x_shift, y_shift, d_to_w, and slice_params
+    slice_params: is also a PKDict with fields: -> sigrW, propLen, sig_s, pulseE, poltype, sampFact, mx, my
     """
     def __init__(self, params):
 
@@ -117,17 +120,8 @@ class LaserPulseSlice:
     """
     def __init__(self, slice_index, params):
         """
-        #nslice: number of slices of laser pulse
-        #slice_index: index of slice
-        #d_to_w: distance from the pulse center at t = 0 to the intended waist location [m]
-        #sigrW: beam size at waist [m]
-        #propLen: propagation length [m] required by SRW to create numerical Gaussian
-        #propLen=15,
-        #sig_s RMS pulse length [m]
-        #pulseE: energy per pulse [J]
-        #poltype: polarization type (0=linear horizontal, 1=linear vertical, 2=linear 45 deg, 3=linear 135 deg, 4=circular right, 5=circular left, 6=total)
-        #phE: photon energy [eV]
-        #sampFact: sampling factor to increase mesh density
+        slice_index: index of slice
+        params: see slice_params field in input params to LaserPulse class
         """
         #print([sigrW,propLen,pulseE,poltype])
         _validate_input_slice(params, slice_index)
