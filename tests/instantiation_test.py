@@ -6,7 +6,6 @@ Only necessary if you have no other tests so that
 tox will work.
 """
 from __future__ import absolute_import, division, print_function
-from curses import echo
 import math
 from pykern.pkdebug import pkdp
 from pykern.pkcollections import PKDict
@@ -49,19 +48,40 @@ _LASER_PULSE_DEFAULTS = PKDict(
 )
 
 
+
+def pulse_instantiation_test(pulse, field):
+    for s in pulse.slice:
+        if getattr(s, field) != getattr(pulse, field):
+            raise AssertionError(f'LaserPulseSlice has different {field} than pulse as a whole')
+
+
+def slice_instantiation_test(pulse, field):
+    a = [getattr(s, field) for s in pulse.slice]
+    assert len(set(a)) == len(a)
+
+
 def test_basic_instantiation1():
     l = LaserPulse(_LASER_PULSE_DEFAULTS)
-    for s in l.slice:
-        if s.phE != l.phE:
-            raise AssertionError('LaserPulseSlice has different wavelength than pulse as a whole')
+    pulse_instantiation_test(l, 'phE')
 
 
 def test_basic_instantiation2():
     k = _LASER_PULSE_DEFAULTS.copy()
     k.chirp = 0.01*_PHE_DEFAULT
     l = LaserPulse(k)
-    a = [s.phE for s in l.slice]
-    assert len(set(a)) == len(a)
+    slice_instantiation_test(l, 'phE')
+
+
+def test_basic_instantiation3():
+    l = LaserPulse(_LASER_PULSE_DEFAULTS)
+    pulse_instantiation_test(l, '_lambda0')
+
+
+def test_basic_instantiation4():
+    k = _LASER_PULSE_DEFAULTS.copy()
+    k.chirp = 0.01*_PHE_DEFAULT
+    l = LaserPulse(k)
+    slice_instantiation_test(l, '_lambda0')
 
 
 def test_basic_pulse_slice_instantiation():
