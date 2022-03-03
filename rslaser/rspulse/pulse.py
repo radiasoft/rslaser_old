@@ -54,13 +54,14 @@ class LaserPulse:
     """
     The LaserPulse contains a GaussHermite object to represent the initial envelope,
     as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
-
-    params: PKDict with fields: -> phE, nslice, chirp, w0, a0, dw0x, dw0y, z_waist, dzwx, dzwy, tau_fwhm,
-    z_center, x_shift, y_shift, d_to_w, and slice_params
-    slice_params: is also a PKDict with fields: -> sigrW, propLen, sig_s, pulseE, poltype, sampFact, mx, my
     """
     def __init__(self, params):
-
+        """
+            Args:
+                params: PKDict with fields; phE, nslice, chirp, w0, a0, dw0x, dw0y, z_waist, dzwx, dzwy, tau_fwhm,
+                    z_center, x_shift, y_shift, d_to_w, and slice_params
+                slice_params: is also a PKDict with fields; sigrW, propLen, sig_s, pulseE, poltype, sampFact, mx, my
+        """
         _validate_input(params)
         # instantiate the laser envelope
         self.envelope = rsgh.GaussHermite(params)
@@ -120,8 +121,9 @@ class LaserPulseSlice:
     """
     def __init__(self, slice_index, params):
         """
-        slice_index: index of slice
-        params: see slice_params field in input params to LaserPulse class
+            Args:
+                slice_index: index of slice
+                params: see slice_params field in input params to LaserPulse class __init__
         """
         #print([sigrW,propLen,pulseE,poltype])
         _validate_input_slice(params, slice_index)
