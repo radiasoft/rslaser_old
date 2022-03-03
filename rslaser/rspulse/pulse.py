@@ -40,6 +40,12 @@ def _validate_input(input_params):
     _check_type_and_fields(input_params.slice_params, _REQUIRED_LASER_PULSE_SLICE_INPUTS)
 
 
+def _validate_input_slice(input_params, index):
+    if type(index) != int:
+        raise InvalidLaserPulseInputError(f'invalid inputs: LaserPulseSlice index must be of type int')
+    _validate_input(input_params)
+
+
 class InvalidLaserPulseInputError(Exception):
     pass
 
@@ -124,7 +130,7 @@ class LaserPulseSlice:
         #sampFact: sampling factor to increase mesh density
         """
         #print([sigrW,propLen,pulseE,poltype])
-        _validate_input(params)
+        _validate_input_slice(params, slice_index)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
         self.phE = params.phE

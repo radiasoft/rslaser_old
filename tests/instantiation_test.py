@@ -103,6 +103,12 @@ def test_correct_slice_params():
     k.slice_params = PKDict(foo='bar', hello='world')
     trigger_exception_test(LaserPulse, k)
 
+
+def test_laser_pulse_slice_index():
+    a = ('10', _LASER_PULSE_DEFAULTS)
+    trigger_exception_test(LaserPulseSlice, *a)
+
+
 def trigger_exception_test(call, *args):
     try:
         l = call(*args)
