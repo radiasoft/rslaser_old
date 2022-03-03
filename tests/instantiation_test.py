@@ -71,54 +71,41 @@ def test_basic_pulse_slice_instantiation():
 def test_slice_input_validators():
     k = _LASER_PULSE_DEFAULTS.copy()
     k.pkdel('slice_params')
-    try:
-        s = [LaserPulseSlice(i, k) for i in range(10)]
-    except InvalidLaserPulseInputError as e:
-        return e
-    assert False
+    c = [(i, k) for i in range(10)]
+    for a in c:
+        trigger_exception_test(LaserPulseSlice, *a)
 
 
 def test_pulse_slice_input_validators_type():
-    try:
-        s = [LaserPulseSlice(i, 0) for i in range(10)]
-    except InvalidLaserPulseInputError as e:
-        return e
-    assert False
+    c = [(i, 0) for i in range(10)]
+    for a in c:
+        trigger_exception_test(LaserPulseSlice, *a)
 
 
 def test_pulse_input_validators_type():
-    try:
-        l = LaserPulse([])
-    except InvalidLaserPulseInputError as e:
-        return e
-    assert False
+    trigger_exception_test(LaserPulse, [])
 
 
 def test_pulse_input_validators_fields():
     k = _LASER_PULSE_DEFAULTS.copy()
     k.pkdel('slice_params')
-    try:
-        l = LaserPulse(k)
-    except InvalidLaserPulseInputError as e:
-        return e
-    assert False
+    trigger_exception_test(LaserPulse, k)
 
 
 def test_correct_slice_params_type():
     k = _LASER_PULSE_DEFAULTS.copy()
     k.slice_params = []
-    try:
-        l = LaserPulse(k)
-    except InvalidLaserPulseInputError as e:
-        return e
-    assert False
+    trigger_exception_test(LaserPulse, k)
 
 
 def test_correct_slice_params():
     k = _LASER_PULSE_DEFAULTS.copy()
     k.slice_params = PKDict(foo='bar', hello='world')
+    trigger_exception_test(LaserPulse, k)
+
+def trigger_exception_test(call, *args):
     try:
-        l = LaserPulse(k)
+        l = call(*args)
     except InvalidLaserPulseInputError as e:
         return e
     assert False

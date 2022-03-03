@@ -26,18 +26,19 @@ _REQUIRED_LASER_PULSE_SLICE_INPUTS = ['sigrW',
     'propLen', 'sig_s', 'pulseE', 'poltype', 'sampFact',
     'mx', 'my']
 
+
+def _check_type_and_fields(input_obj, req_fields):
+    if type(input_obj) != PKDict:
+        raise InvalidLaserPulseInputError('invalid inputs: parameters to LaserPulse and LaserPulseSlice class must be of type PKDict')
+    for p in req_fields:
+        if p not in input_obj:
+            raise InvalidLaserPulseInputError(f'invalid inputs: missing required field {p}')
+
+
 def _validate_input(input_params):
     # TODO (gurhar1133): repeatitive. make subcall
-    if type(input_params) != PKDict:
-        raise InvalidLaserPulseInputError('invalid LaserPulse inputs: input_parameters to LaserPulse class must be of type PKDict')
-    for p in _REQUIRED_LASER_PULSE_INPUTS:
-        if p not in input_params:
-            raise InvalidLaserPulseInputError(f'invalid LaserPulse inputs: missing required field {p}')
-    if type(input_params.slice_params) != PKDict:
-        raise InvalidLaserPulseInputError('invalid LaserPulse inputs: params.slice_params must be of type PKDict')
-    for s in input_params.slice_params:
-        if s not in _REQUIRED_LASER_PULSE_SLICE_INPUTS:
-            raise InvalidLaserPulseInputError(f'invalid LaserPulse inputs: missing required field in slice_params {s}')
+    _check_type_and_fields(input_params, _REQUIRED_LASER_PULSE_INPUTS)
+    _check_type_and_fields(input_params.slice_params, _REQUIRED_LASER_PULSE_SLICE_INPUTS)
 
 
 class InvalidLaserPulseInputError(Exception):
@@ -191,6 +192,3 @@ class LaserPulseSlice:
           optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
           srwlib.srwl.PropagElecField(_wfr, optBLW)
         self.wfr = _wfr
-
-    def validate_input(self, input_params):
-        pass
