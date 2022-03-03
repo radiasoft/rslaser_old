@@ -36,7 +36,6 @@ def _check_type_and_fields(input_obj, req_fields):
 
 
 def _validate_input(input_params):
-    # TODO (gurhar1133): repeatitive. make subcall
     _check_type_and_fields(input_params, _REQUIRED_LASER_PULSE_INPUTS)
     _check_type_and_fields(input_params.slice_params, _REQUIRED_LASER_PULSE_SLICE_INPUTS)
 
