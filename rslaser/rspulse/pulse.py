@@ -55,15 +55,16 @@ class LaserPulse:
     The LaserPulse contains a GaussHermite object to represent the initial envelope,
     as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
     """
-    def __init__(self, params):
+    def __init__(self, input_params):
         """
             Args:
                 params: PKDict with fields; phE, nslice, chirp, w0, a0, dw0x, dw0y, z_waist, dzwx, dzwy, tau_fwhm,
                     z_center, x_shift, y_shift, d_to_w, and slice_params
                 slice_params: is also a PKDict with fields; sigrW, propLen, sig_s, pulseE, poltype, sampFact, mx, my
         """
-        _validate_input(params)
+        _validate_input(input_params)
         # instantiate the laser envelope
+        params = input_params.copy()
         self.envelope = rsgh.GaussHermite(params)
 
         # instantiate the array of slices
@@ -73,8 +74,7 @@ class LaserPulse:
         self._lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))
         self.phE -= 0.5*params.chirp           # so central slice has the central photon energy
         _de = params.chirp / self.nslice   # photon energy shift from slice to slice
-        s = params
-        s.phE = self.phE
+        s = params.copy()
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
             self.slice.append(LaserPulseSlice(i, s))
@@ -119,14 +119,15 @@ class LaserPulseSlice:
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
-    def __init__(self, slice_index, params):
+    def __init__(self, slice_index, input_params):
         """
             Args:
                 slice_index: index of slice
                 params: see slice_params field in input params to LaserPulse class __init__
         """
         #print([sigrW,propLen,pulseE,poltype])
-        _validate_input_slice(params, slice_index)
+        _validate_input_slice(input_params, slice_index)
+        params = input_params.copy()
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
         self.phE = params.phE
