@@ -23,21 +23,21 @@ _REQUIRED_LASER_PULSE_INPUTS = ['phE',
     'z_center', 'x_shift', 'y_shift', 'd_to_w',
     'slice_params']
 _REQUIRED_LASER_PULSE_SLICE_INPUTS = ['sigrW',
-    'propLen', 'sig_s', 'pulseE', 'poltype', 'sampFact',
-    'mx', 'my']
+    'propLen', 'pulseE', 'poltype', 'sampFact',
+    'mx', 'my', 'numsig']
 
 
-def _check_type_and_fields(input_obj, req_fields):
+def check_type_and_fields(input_obj, req_fields, exception, class_name):
     if type(input_obj) != PKDict:
-        raise InvalidLaserPulseInputError('invalid inputs: parameters to LaserPulse and LaserPulseSlice class must be of type PKDict')
+        raise exception(f'invalid inputs: parameters to {class_name} class must be of type PKDict')
     for p in req_fields:
         if p not in input_obj:
-            raise InvalidLaserPulseInputError(f'invalid inputs: missing required field {p}')
+            raise exception(f'invalid inputs: missing required field {p}')
 
 
 def _validate_input(input_params):
-    _check_type_and_fields(input_params, _REQUIRED_LASER_PULSE_INPUTS)
-    _check_type_and_fields(input_params.slice_params, _REQUIRED_LASER_PULSE_SLICE_INPUTS)
+    check_type_and_fields(input_params, _REQUIRED_LASER_PULSE_INPUTS, InvalidLaserPulseInputError, 'LaserPulse')
+    check_type_and_fields(input_params.slice_params, _REQUIRED_LASER_PULSE_SLICE_INPUTS, InvalidLaserPulseInputError, 'LaserPulseSlice')
 
 
 def _validate_input_slice(input_params, index):
@@ -63,10 +63,9 @@ class LaserPulse:
     Returns:
         instance of class
     """
-    def __init__(self, input_params):
-        _validate_input(input_params)
+    def __init__(self, params):
+        _validate_input(params)
         # instantiate the laser envelope
-        params = input_params.copy()
         self.envelope = rsgh.GaussHermite(params)
 
         # instantiate the array of slices
@@ -128,10 +127,9 @@ class LaserPulseSlice:
     Returns:
         instance of class
     """
-    def __init__(self, slice_index, input_params):
+    def __init__(self, slice_index, params):
         #print([sigrW,propLen,pulseE,poltype])
-        _validate_input_slice(input_params, slice_index)
-        params = input_params.copy()
+        _validate_input_slice(params, slice_index)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
         self.phE = params.phE
@@ -148,14 +146,14 @@ class LaserPulseSlice:
         GsnBm = srwlib.SRWLGsnBm() #Gaussian Beam structure (just parameters)
         GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
         GsnBm.y = 0
-        numsig = 3. #Number of sigma values to track. Total range is 2*numsig*sig_s
-        ds = 2*numsig*params.slice_params.sig_s/(params.nslice - 1)
-        self._pulse_pos = -numsig*params.slice_params.sig_s+slice_index*ds
+        sig_s = params.tau_fwhm * const.c / 2.355
+        ds = 2*params.slice_params.numsig*sig_s/(params.nslice - 1)
+        self._pulse_pos = -params.slice_params.numsig*sig_s+slice_index*ds
         GsnBm.z = params.slice_params.propLen + self._pulse_pos #Longitudinal Position of Waist [m]
         GsnBm.xp = 0 #Average Angles of Gaussian Beam at Waist [rad]
         GsnBm.yp = 0
         GsnBm.avgPhotEn = self.phE #Photon Energy [eV]
-        GsnBm.pulseEn = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*params.slice_params.sig_s**2)) #Energy per Pulse [J] - to be corrected
+        GsnBm.pulseEn = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*sig_s**2)) #Energy per Pulse [J] - to be corrected
         GsnBm.repRate = 1 #Rep. Rate [Hz] - to be corrected
         GsnBm.polar = params.slice_params.poltype #1- linear horizontal?
         GsnBm.sigX = params.slice_params.sigrW #Horiz. RMS size at Waist [m]
