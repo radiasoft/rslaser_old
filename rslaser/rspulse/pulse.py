@@ -54,14 +54,16 @@ class LaserPulse:
     """
     The LaserPulse contains a GaussHermite object to represent the initial envelope,
     as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
+
+    Args:
+        params: PKDict with fields; phE, nslice, chirp, w0, a0, dw0x, dw0y, z_waist, dzwx, dzwy, tau_fwhm,
+            z_center, x_shift, y_shift, d_to_w, and slice_params
+        slice_params: is also a PKDict with fields; sigrW, propLen, sig_s, pulseE, poltype, sampFact, mx, my
+
+    Returns:
+        instance of class
     """
     def __init__(self, input_params):
-        """
-            Args:
-                params: PKDict with fields; phE, nslice, chirp, w0, a0, dw0x, dw0y, z_waist, dzwx, dzwy, tau_fwhm,
-                    z_center, x_shift, y_shift, d_to_w, and slice_params
-                slice_params: is also a PKDict with fields; sigrW, propLen, sig_s, pulseE, poltype, sampFact, mx, my
-        """
         _validate_input(input_params)
         # instantiate the laser envelope
         params = input_params.copy()
@@ -118,13 +120,15 @@ class LaserPulseSlice:
     There will be a number of wavefronts each with different wavelengths (energy).
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
+
+    Args:
+        slice_index (int): index of slice
+        params (PKDict): see slice_params field in input params to LaserPulse class __init__
+
+    Returns:
+        instance of class
     """
     def __init__(self, slice_index, input_params):
-        """
-            Args:
-                slice_index: index of slice
-                params: see slice_params field in input params to LaserPulse class __init__
-        """
         #print([sigrW,propLen,pulseE,poltype])
         _validate_input_slice(input_params, slice_index)
         params = input_params.copy()

@@ -10,13 +10,15 @@ from rslaser.rsoptics.element import *
 class CrystalSlice:
     """
     This class represents a slice of a crystal in a laser cavity.
-    Parameters:
-    #length
-    #n0: on-axis index of refraction
-    #n2: transverse variation of index of refraction
-    n(r) = n0 - 0.5 n2 r^2
-    #To be added: alpha0, alpha2 laser gain parameters
-    Initially, these parameters are fixed. Later we will update
+    Args:
+        length
+        n0: on-axis index of refraction
+        n2: transverse variation of index of refraction
+            n(r) = n0 - 0.5 n2 r^2
+
+    To be added: alpha0, alpha2 laser gain parameters
+
+    Note: Initially, these parameters are fixed. Later we will update
     these parameters as the laser passes through.
     """
     def __init__(self,n0,n2):

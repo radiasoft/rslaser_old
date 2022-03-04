@@ -6,23 +6,23 @@ import math
 import numpy as np
 from matplotlib.path import Path
 
-"""
-Generalized algorithm for plotting contour and/or scatter plots.
 
-Adapted from open source method: scatter_contour.py
-https://github.com/astroML/astroML/blob/master/astroML/plotting/scatter_contour.py
-
-Parameters
-----------
-plotFlag : style of plot (scatter, contour, line, etc.)
-plotType : axis scaling (linear, log-log, or semi-log)
-x, y     : x and y data for the contour plot
-ax       : the axes on which to plot
-divs     : desired number of divisions along each axis
-levels   : integer or array (optional, default=10)
-         number of contour levels, or array of contour levels
-"""
 def scatter_contour(plotFlag, plotType, x, y, ax, divs=10, levels=10):
+    """
+    Generalized algorithm for plotting contour and/or scatter plots.
+
+    Adapted from open source method: scatter_contour.py
+    https://github.com/astroML/astroML/blob/master/astroML/plotting/scatter_contour.py
+
+    Args:
+        plotFlag : style of plot (scatter, contour, line, etc.)
+        plotType : axis scaling (linear, log-log, or semi-log)
+        x, y     : x and y data for the contour plot
+        ax       : the axes on which to plot
+        divs     : desired number of divisions along each axis
+        levels   : integer or array (optional, default=10)
+                number of contour levels, or array of contour levels
+"""
     ref = None
     if plotFlag in ['contour', 'combo']:
         if type(x) is list: # x contains data for 2 axis ranges
@@ -133,7 +133,7 @@ def generate_contour_levels(field, nLevels=40, multiplier=1.1):
     else:
         eMin= np.around(eMin, decimals=3)
         eMax = abs(eMin)
-        
+
     # create the level values
     eLevels = []
     deltaE = (eMax-eMin) / nLevels
