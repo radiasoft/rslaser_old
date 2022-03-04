@@ -6,12 +6,16 @@ from srwlib import *
 def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0):
 
     """
-    #sigrW: beam size at waist [m]
-    #propLen: propagation length [m] required by SRW to create numerical Gaussian
-    #pulseE: energy per pulse [J]
-    #poltype: polarization type (0=linear horizontal, 1=linear vertical, 2=linear 45 deg, 3=linear 135 deg, 4=circular right, 5=circular left, 6=total)
-    #phE: photon energy [eV]
-    #sampFact: sampling factor to increase mesh density
+    Args:
+        sigrW: beam size at waist [m]
+        propLen: propagation length [m] required by SRW to create numerical Gaussian
+        pulseE: energy per pulse [J]
+        poltype: polarization type (0=linear horizontal, 1=linear vertical, 2=linear 45 deg, 3=linear 135 deg, 4=circular right, 5=circular left, 6=total)
+        phE: photon energy [eV]
+        sampFact: sampling factor to increase mesh density
+
+    Returns:
+        wfr
     """
 
     constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
@@ -75,10 +79,15 @@ def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0)
 
 def createDriftLensBL2(Length,f):
     """
-    #Create beamline for propagation from end of crystal to end of cavity and through lens (representing a mirror)
-    #First propagate by Length, then through lens with focal length f
-    #Length: drift length [m]
-    #f: focal length
+    Create beamline for propagation from end of crystal to end of cavity and through lens (representing a mirror)
+    First propagate by Length, then through lens with focal length f
+
+    Args:
+        Length: drift length [m]
+        f: focal length
+
+    Returns:
+        DriftLensBL
     """
     #f=Lc/4 + df
     optDrift=SRWLOptD(Length)
@@ -92,10 +101,15 @@ def createDriftLensBL2(Length,f):
 
 def createDriftLensBL(Lc,df):
     """
-    #Create beamline for propagation from center of cell to end and through lens (representing a mirror)
-    #First propagate Lc/2, then through lens with focal length Lc/2 + df
-    #Lc: cavity length [m]
-    #df: focusing error
+    Create beamline for propagation from center of cell to end and through lens (representing a mirror)
+    First propagate Lc/2, then through lens with focal length Lc/2 + df
+
+    Args:
+        Lc: cavity length [m]
+        df: focusing error
+
+    Returns:
+        DriftLensBL
     """
     f=Lc/4 + df
     optDrift=SRWLOptD(Lc/2)
@@ -109,8 +123,13 @@ def createDriftLensBL(Lc,df):
 
 def createDriftBL(Lc):
     """
-    #Create drift beamline container that propagates the wavefront through half the cavity
-    #Lc is the length of the cavity
+    Create drift beamline container that propagates the wavefront through half the cavity
+
+    Args:
+        Lc: is the length of the cavity
+
+    Returns:
+        DriftBL
     """
     optDrift=SRWLOptD(Lc/2)
     propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
@@ -121,9 +140,14 @@ def createDriftBL(Lc):
 def createBL1to1(L,dfof=0):
 
     """
-    ##Define beamline geometric variables.
-    #L: drift length before and after lens
-    #dfof: focal length variation factor (=0 for no variation; can be positive or negative)
+    Define beamline geometric variables.
+
+    Args:
+        L: drift length before and after lens
+        dfof: focal length variation factor (=0 for no variation; can be positive or negative)
+
+    Returns:
+        optBL1to1
     """
 
 
@@ -173,14 +197,21 @@ def createBL1to1(L,dfof=0):
 
 def createReflectionOffFocusingMirrorBL(L,f,strDataFolderName,strMirSurfHeightErrInFileName):
     """
-    #Create an SRW beamline container that will propagate a length L
-    #then reflect off a flat mirror followed by a lens. Finally, propagate by L again.
-    #L: length of propagation [m]
-    #f: focal length of mirror [m]
-    #strDataFolderName: Folder name where mirror data file is
-    #strMirSurfHeightErrInFileName: File name for mirror slope error file
-    #Assuming waist to waist propagation, we want f~L/2 (Note that this isn't a perfect identity
-    #map in phase space due to the Rayleigh length of the mode)
+    Create an SRW beamline container that will propagate a length L
+    then reflect off a flat mirror followed by a lens. Finally, propagate by L again.
+
+    Args:
+        L: length of propagation [m]
+        f: focal length of mirror [m]
+        strDataFolderName: Folder name where mirror data file is
+        strMirSurfHeightErrInFileName: File name for mirror slope error file
+
+    Returns:
+        optBL
+
+    Note:
+        Assuming waist to waist propagation, we want f~L/2 (Note that this isn't a perfect identity
+        map in phase space due to the Rayleigh length of the mode)
     """
     #Drift
     optDrift1=SRWLOptD(L)
@@ -215,9 +246,14 @@ def createReflectionOffFocusingMirrorBL(L,f,strDataFolderName,strMirSurfHeightEr
 
 def createABCDbeamline(A,B,C,D):
     """
-    #Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
-    #Construct corresponding SRW beamline container object
-    #A,B,C,D are 2x2 matrix components.
+    Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
+    Construct corresponding SRW beamline container object
+
+    Args:
+        A,B,C,D are 2x2 matrix components.
+
+    Returns:
+        optBL
     """
 
     f1= B/(1-A)
@@ -237,12 +273,18 @@ def createABCDbeamline(A,B,C,D):
 
 def createCrystal(n0,n2,L_cryst):
     """
-    #Create a set of optical elements representing a crystal.
-    #Treat as an optical duct
-    #ABCD matrix found here: https://www.rp-photonics.com/abcd_matrix.html
-    #n(r) = n0 - 0.5 n2 r^2
-    #n0: Index of refraction along the optical axis
-    #n2: radial variation of index of refraction
+    Create a set of optical elements representing a crystal.
+    Treat as an optical duct
+    ABCD matrix found here: https://www.rp-photonics.com/abcd_matrix.html
+        n(r) = n0 - 0.5 n2 r^2
+
+    Args:
+        n0: Index of refraction along the optical axis
+        n2: radial variation of index of refraction
+        L_cryst
+
+    Returns:
+        optBL
     """
 
     if n2==0:
@@ -273,9 +315,14 @@ def rmsWavefrontIntensity(wfr):
 def rmsIntensity(IntArray,xvals,yvals):
     """
     Compute rms values in x and y from array
-    #IntArray is a 2D array representation of a function
-    #xvals represents the horizontal coordinates
-    #yvals represents the vertical coordinates
+
+    Args:
+        IntArray: 2D array representation of a function
+        xvals: represents the horizontal coordinates
+        yvals: represents the vertical coordinates
+
+    Returns:
+        sx, sy, xavg, yavg
     """
     datax=np.sum(IntArray,axis=1)
     datay=np.sum(IntArray,axis=0)

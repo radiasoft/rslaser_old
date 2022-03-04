@@ -17,10 +17,8 @@ class GaussHermite:
     For now, we assume linear polarization of E along, x.
     Also, the evaluation is done for z=0 (for simplicity)
     The time variable t is ignored.
-    """
 
-    def __init__(self, input_params):
-        """Four input parametersrequired; waist is assumed to be round and at the origin.
+    Four input parametersrequired; waist is assumed to be round and at the origin.
 
         Args:
             kwargs:  this is a PKDict object
@@ -30,7 +28,9 @@ class GaussHermite:
 
         Raises:
             NA
-        """
+    """
+
+    def __init__(self, input_params):
         params = input_params.copy()
         self.lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))            # central wavelength [m]
         # useful derived quantities

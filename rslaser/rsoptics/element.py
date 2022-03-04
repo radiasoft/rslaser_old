@@ -15,9 +15,11 @@ class Crystal(Element):
 
         def _createABCDbeamline(A,B,C,D):
             """
-            #Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
-            #Construct corresponding SRW beamline container object
-            #A,B,C,D are 2x2 matrix components.
+            Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
+            Construct corresponding SRW beamline container object
+
+            Args:
+                A,B,C,D are 2x2 matrix components.
             """
 
             f1= B/(1-A)
@@ -69,8 +71,10 @@ class Drift(Element):
 
 class Lens(Element):
     """
-    #Create lens element
-    #f: focal length
+    Create lens element
+
+    Args:
+        f: focal length
     """
     def __init__(self,f):
         self.length = 0
