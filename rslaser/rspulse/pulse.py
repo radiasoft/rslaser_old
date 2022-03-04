@@ -56,9 +56,33 @@ class LaserPulse:
     as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
 
     Args:
-        params: PKDict with fields; phE, nslice, chirp, w0, a0, dw0x, dw0y, z_waist, dzwx, dzwy, tau_fwhm,
-            z_center, x_shift, y_shift, d_to_w, and slice_params
-        slice_params: is also a PKDict with fields; sigrW, propLen, sig_s, pulseE, poltype, sampFact, mx, my
+        params (PKDict):
+            required fields:
+                phE
+                nslice
+                chirp
+                w0
+                a0
+                dw0x
+                dw0y
+                z_waist
+                dzwx
+                dzwy
+                tau_fwhm
+                z_center
+                x_shift
+                y_shift
+                d_to_w
+                slice_params (PKDict):
+                    required fields:
+                        sigrW
+                        propLen
+                        sig_s
+                        pulseE
+                        poltype
+                        sampFact
+                        mx
+                        my
 
     Returns:
         instance of class

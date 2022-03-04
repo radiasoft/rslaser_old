@@ -27,6 +27,18 @@ def _validate_input(input_params):
 class LaserCavity:
     """
     create laser cavity
+
+    Ars:
+        params (PKDict):
+            required fields:
+                drift_right_length
+                drift_left_length
+                lens_left_focal_length
+                lens_right_focal_length
+                n0
+                n2
+                L_half_cryst
+                pulse_params (PKDict): see LaserPulse docs
     """
     def __init__(self, params):
         _validate_input(params)

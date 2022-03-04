@@ -33,7 +33,6 @@ _LASER_PULSE_DEFAULTS = PKDict(
         phE=_PHE_DEFAULT,
         nslice=3,
         chirp=0,
-        # TODO (gurhar1133): format k {kv pairs ..., hermite kv pairs: {}, slice kv pairs: {}} ?
         w0=.1,
         a0=.01,
         dw0x=0.0,
