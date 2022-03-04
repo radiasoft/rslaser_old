@@ -112,7 +112,7 @@ class LaserPulse:
         (ar2d, sx, sy, xavg, yavg) = rswf.rmsWavefrontIntensity(wfr)
         self._sxvals.append(sx)
         self._syvals.append(sy)
-        return (wfr, sx, sy)
+        return (wfr, ar2d, sx, sy, xavg, yavg)
 
     def rmsvals(self):
         sx = []
