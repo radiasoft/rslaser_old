@@ -6,7 +6,6 @@ Only necessary if you have no other tests so that
 tox will work.
 """
 from __future__ import absolute_import, division, print_function
-from curses import echo
 import math
 from pykern.pkdebug import pkdp
 from pykern.pkcollections import PKDict
@@ -49,19 +48,40 @@ _LASER_PULSE_DEFAULTS = PKDict(
 )
 
 
+
+def pulse_instantiation_test(pulse, field):
+    for s in pulse.slice:
+        if getattr(s, field) != getattr(pulse, field):
+            raise AssertionError(f'LaserPulseSlice has different {field} than pulse as a whole')
+
+
+def slice_instantiation_test(pulse, field):
+    a = [getattr(s, field) for s in pulse.slice]
+    assert len(set(a)) == len(a)
+
+
 def test_basic_instantiation1():
     l = LaserPulse(_LASER_PULSE_DEFAULTS)
-    for s in l.slice:
-        if s.phE != l.phE:
-            raise AssertionError('LaserPulseSlice has different wavelength than pulse as a whole')
+    pulse_instantiation_test(l, 'phE')
 
 
 def test_basic_instantiation2():
-    k = _LASER_PULSE_DEFAULTS
+    k = _LASER_PULSE_DEFAULTS.copy()
     k.chirp = 0.01*_PHE_DEFAULT
     l = LaserPulse(k)
-    a = [s.phE for s in l.slice]
-    assert len(set(a)) == len(a)
+    slice_instantiation_test(l, 'phE')
+
+
+def test_basic_instantiation3():
+    l = LaserPulse(_LASER_PULSE_DEFAULTS)
+    pulse_instantiation_test(l, '_lambda0')
+
+
+def test_basic_instantiation4():
+    k = _LASER_PULSE_DEFAULTS.copy()
+    k.chirp = 0.01*_PHE_DEFAULT
+    l = LaserPulse(k)
+    slice_instantiation_test(l, '_lambda0')
 
 
 def test_basic_pulse_slice_instantiation():
@@ -69,37 +89,49 @@ def test_basic_pulse_slice_instantiation():
 
 
 def test_slice_input_validators():
-    assert False
+    k = _LASER_PULSE_DEFAULTS.copy()
+    k.pkdel('slice_params')
+    c = [(i, k) for i in range(10)]
+    for a in c:
+        trigger_exception_test(LaserPulseSlice, *a)
+
+
+def test_pulse_slice_input_validators_type():
+    c = [(i, 0) for i in range(10)]
+    for a in c:
+        trigger_exception_test(LaserPulseSlice, *a)
 
 
 def test_pulse_input_validators_type():
-    try:
-        l = LaserPulse([])
-    except InvalidLaserPulseInputError as e:
-        return
-    assert False
+    trigger_exception_test(LaserPulse, [])
+
 
 def test_pulse_input_validators_fields():
-    k=PKDict(
-        phE=_PHE_DEFAULT,
-        nslice=3,
-        chirp=0,
-        # TODO (gurhar1133): format k {kv pairs ..., hermite kv pairs: {}, slice kv pairs: {}} ?
-        w0=.1,
-        a0=.01,
-        dw0x=0.0,
-        dw0y=0.0,
-        z_waist=_Z_WAIST_DEFAULT,
-        dzwx=0.0,
-        dzwy=0.0,
-        tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=_Z_CENTER_DEFAULT,
-        x_shift = 0.,
-        y_shift=0.,
-        d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
-    )
+    k = _LASER_PULSE_DEFAULTS.copy()
+    k.pkdel('slice_params')
+    trigger_exception_test(LaserPulse, k)
+
+
+def test_correct_slice_params_type():
+    k = _LASER_PULSE_DEFAULTS.copy()
+    k.slice_params = []
+    trigger_exception_test(LaserPulse, k)
+
+
+def test_correct_slice_params():
+    k = _LASER_PULSE_DEFAULTS.copy()
+    k.slice_params = PKDict(foo='bar', hello='world')
+    trigger_exception_test(LaserPulse, k)
+
+
+def test_laser_pulse_slice_index():
+    a = ('10', _LASER_PULSE_DEFAULTS)
+    trigger_exception_test(LaserPulseSlice, *a)
+
+
+def trigger_exception_test(call, *args):
     try:
-        l = LaserPulse(k)
+        l = call(*args)
     except InvalidLaserPulseInputError as e:
-        return
+        return e
     assert False

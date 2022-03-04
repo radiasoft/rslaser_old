@@ -19,7 +19,7 @@ class GaussHermite:
     The time variable t is ignored.
     """
 
-    def __init__(self, params):
+    def __init__(self, input_params):
         """Four input parametersrequired; waist is assumed to be round and at the origin.
 
         Args:
@@ -31,6 +31,7 @@ class GaussHermite:
         Raises:
             NA
         """
+        params = input_params.copy()
         self.lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))            # central wavelength [m]
         # useful derived quantities
         self.k0 = rsc.TWO_PI / self.lambda0       # central wavenumber [radians/m]

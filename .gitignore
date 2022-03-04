@@ -102,3 +102,4 @@ jitfailure-dolfin_expression_*
 
 # data output
 InitialWavefrontArray.txt
+img0*.png

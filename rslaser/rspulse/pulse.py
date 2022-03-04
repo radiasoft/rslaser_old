@@ -17,12 +17,33 @@ import rslaser.utils.unit_conversion as units
 import srwlib
 from srwlib import srwl
 
+_REQUIRED_LASER_PULSE_INPUTS = ['phE',
+    'nslice', 'chirp', 'w0', 'a0', 'dw0x',
+    'dw0y', 'z_waist', 'dzwx', 'dzwy', 'tau_fwhm',
+    'z_center', 'x_shift', 'y_shift', 'd_to_w',
+    'slice_params']
+_REQUIRED_LASER_PULSE_SLICE_INPUTS = ['sigrW',
+    'propLen', 'sig_s', 'pulseE', 'poltype', 'sampFact',
+    'mx', 'my']
+
+
+def _check_type_and_fields(input_obj, req_fields):
+    if type(input_obj) != PKDict:
+        raise InvalidLaserPulseInputError('invalid inputs: parameters to LaserPulse and LaserPulseSlice class must be of type PKDict')
+    for p in req_fields:
+        if p not in input_obj:
+            raise InvalidLaserPulseInputError(f'invalid inputs: missing required field {p}')
+
 
 def _validate_input(input_params):
-    if type(input_params) != PKDict:
-        raise InvalidLaserPulseInputError('invalid LaserPulse inputs: input_parameters to LaserPulse class must be of type PKDict')
-    if 'slice_params' not in input_params:
-        raise InvalidLaserPulseInputError('invalid LaserPulse inputs: does not include slice_params')
+    _check_type_and_fields(input_params, _REQUIRED_LASER_PULSE_INPUTS)
+    _check_type_and_fields(input_params.slice_params, _REQUIRED_LASER_PULSE_SLICE_INPUTS)
+
+
+def _validate_input_slice(input_params, index):
+    if type(index) != int:
+        raise InvalidLaserPulseInputError(f'invalid inputs: LaserPulseSlice index must be of type int')
+    _validate_input(input_params)
 
 
 class InvalidLaserPulseInputError(Exception):
@@ -33,12 +54,17 @@ class LaserPulse:
     """
     The LaserPulse contains a GaussHermite object to represent the initial envelope,
     as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
-
     """
-    def __init__(self, params):
-
-        _validate_input(params)
+    def __init__(self, input_params):
+        """
+            Args:
+                params: PKDict with fields; phE, nslice, chirp, w0, a0, dw0x, dw0y, z_waist, dzwx, dzwy, tau_fwhm,
+                    z_center, x_shift, y_shift, d_to_w, and slice_params
+                slice_params: is also a PKDict with fields; sigrW, propLen, sig_s, pulseE, poltype, sampFact, mx, my
+        """
+        _validate_input(input_params)
         # instantiate the laser envelope
+        params = input_params.copy()
         self.envelope = rsgh.GaussHermite(params)
 
         # instantiate the array of slices
@@ -48,8 +74,7 @@ class LaserPulse:
         self._lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))
         self.phE -= 0.5*params.chirp           # so central slice has the central photon energy
         _de = params.chirp / self.nslice   # photon energy shift from slice to slice
-        s = params
-        s.phE = self.phE
+        s = params.copy()
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
             self.slice.append(LaserPulseSlice(i, s))
@@ -94,22 +119,15 @@ class LaserPulseSlice:
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
     """
-    def __init__(self, slice_index, params):
+    def __init__(self, slice_index, input_params):
         """
-        #nslice: number of slices of laser pulse
-        #slice_index: index of slice
-        #d_to_w: distance from the pulse center at t = 0 to the intended waist location [m]
-        #sigrW: beam size at waist [m]
-        #propLen: propagation length [m] required by SRW to create numerical Gaussian
-        #propLen=15,
-        #sig_s RMS pulse length [m]
-        #pulseE: energy per pulse [J]
-        #poltype: polarization type (0=linear horizontal, 1=linear vertical, 2=linear 45 deg, 3=linear 135 deg, 4=circular right, 5=circular left, 6=total)
-        #phE: photon energy [eV]
-        #sampFact: sampling factor to increase mesh density
+            Args:
+                slice_index: index of slice
+                params: see slice_params field in input params to LaserPulse class __init__
         """
         #print([sigrW,propLen,pulseE,poltype])
-        _validate_input(params)
+        _validate_input_slice(input_params, slice_index)
+        params = input_params.copy()
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
         self.phE = params.phE
@@ -176,6 +194,3 @@ class LaserPulseSlice:
           optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
           srwlib.srwl.PropagElecField(_wfr, optBLW)
         self.wfr = _wfr
-
-    def validate_input(self, input_params):
-        pass
