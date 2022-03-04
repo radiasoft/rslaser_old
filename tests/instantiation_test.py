@@ -7,11 +7,13 @@ tox will work.
 """
 from __future__ import absolute_import, division, print_function
 import math
-from pykern.pkdebug import pkdp
+from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
 import pytest
 from rslaser.rspulse.pulse import LaserPulse, LaserPulseSlice, InvalidLaserPulseInputError
+from rslaser.rscavity.laser_cavity import LaserCavity
 import scipy.constants as const
+
 
 
 _PHE_DEFAULT = const.h * const.c / 1e-6
@@ -20,10 +22,10 @@ _Z_CENTER_DEFAULT = 0
 _LASER_PULSE_SLICE_DEFAULTS = PKDict(
     sigrW=0.000186,
     propLen=15,
-    sig_s=0.1,
     pulseE=0.001,
     poltype=1,
     sampFact=5,
+    numsig=3.,
     mx=0,
     my=0
 )
@@ -31,7 +33,6 @@ _LASER_PULSE_DEFAULTS = PKDict(
         phE=_PHE_DEFAULT,
         nslice=3,
         chirp=0,
-        # TODO (gurhar1133): format k {kv pairs ..., hermite kv pairs: {}, slice kv pairs: {}} ?
         w0=.1,
         a0=.01,
         dw0x=0.0,
@@ -46,7 +47,15 @@ _LASER_PULSE_DEFAULTS = PKDict(
         d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
 )
-
+_LASER_CAVITY_DEFAULTS = PKDict(
+    drift_right_length=0.5,
+    drift_left_length=0.5,
+    lens_left_focal_length=0.2,
+    lens_right_focal_length=0.2,
+    n0 = 1.75,
+    n2 = 0.001,
+    L_half_cryst=0.2,
+)
 
 
 def pulse_instantiation_test(pulse, field):
@@ -129,9 +138,24 @@ def test_laser_pulse_slice_index():
     trigger_exception_test(LaserPulseSlice, *a)
 
 
+def test_laser_cavity():
+    c = LaserCavity(
+        PKDict(
+            **_LASER_CAVITY_DEFAULTS,
+            pulse_params=_LASER_PULSE_DEFAULTS,
+        )
+    )
+
+def test_laser_cavity_fail():
+    k = _LASER_CAVITY_DEFAULTS.copy()
+    k.pkdel('n0')
+    trigger_exception_test(LaserCavity, k)
+
+
 def trigger_exception_test(call, *args):
     try:
         l = call(*args)
-    except InvalidLaserPulseInputError as e:
+    except Exception as e:
+        pkdlog('EXCEPTION:{}, with message "{}" triggered by call: {} and args {}', type(e), e, call, args)
         return e
     assert False
