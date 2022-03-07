@@ -40,7 +40,19 @@ class LaserCavity:
                 L_half_cryst
                 pulse_params (PKDict): see LaserPulse docs
     """
-    def __init__(self, params):
+    __LASER_CAVITY_DEFAULTS = PKDict(
+        drift_right_length=0.5,
+        drift_left_length=0.5,
+        lens_left_focal_length=0.2,
+        lens_right_focal_length=0.2,
+        n0 = 1.75,
+        n2 = 0.001,
+        L_half_cryst=0.2,
+        pulse_params=PKDict()
+    )
+
+    def __init__(self, params=None):
+        params = self.get_params(params)
         _validate_input(params)
         self.laser_pulse = LaserPulse(params.pulse_params)
         self.crystal_right = Crystal(params.n0,params.n2,params.L_half_cryst)
@@ -49,6 +61,15 @@ class LaserCavity:
         self.drift_left = Drift(params.drift_left_length)
         self.lens_right = Lens(params.lens_right_focal_length)
         self.lens_left  = Lens(params.lens_left_focal_length)
+
+    def get_params(self, params):
+        if params == None:
+            params = self.__LASER_CAVITY_DEFAULTS.copy()
+        else:
+            for k in self.__LASER_CAVITY_DEFAULTS:
+                if k not in params:
+                    params[k] = self.__LASER_CAVITY_DEFAULTS[k]
+        return params
 
     def propagate(self, num_cycles, callback=None):
         l = self.laser_pulse

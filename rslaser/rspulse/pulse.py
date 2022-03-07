@@ -87,37 +87,23 @@ class LaserPulse:
     Returns:
         instance of class
     """
-
-    __PHE_DEFAULT = const.h * const.c / 1e-6
-    __Z_WAIST_DEFAULT = 0
-    __Z_CENTER_DEFAULT = 0
-    __LASER_PULSE_SLICE_DEFAULTS = PKDict(
-        sigrW=0.000186,
-        propLen=15,
-        pulseE=0.001,
-        poltype=1,
-        sampFact=5,
-        numsig=3.,
-        mx=0,
-        my=0
-    )
     __LASER_PULSE_DEFAULTS = PKDict(
-            phE=__PHE_DEFAULT,
+            phE=1.55,
             nslice=3,
             chirp=0,
             w0=.1,
             a0=.01,
             dw0x=0.0,
             dw0y=0.0,
-            z_waist=__Z_WAIST_DEFAULT,
+            z_waist=0,
             dzwx=0.0,
             dzwy=0.0,
             tau_fwhm=0.1 / const.c / math.sqrt(2.),
-            z_center=__Z_CENTER_DEFAULT,
+            z_center=0,
             x_shift = 0.,
             y_shift=0.,
-            d_to_w=__Z_WAIST_DEFAULT - __Z_CENTER_DEFAULT,
-            slice_params=__LASER_PULSE_SLICE_DEFAULTS,
+            d_to_w=0,
+            slice_params=PKDict(),
     )
 
     def __init__(self, params=None):
@@ -125,7 +111,6 @@ class LaserPulse:
         _validate_input(params)
         # instantiate the laser envelope
         self.envelope = rsgh.GaussHermite(params)
-
         # instantiate the array of slices
         self.slice = []
         self.nslice = params.nslice
@@ -148,10 +133,6 @@ class LaserPulse:
             for k in self.__LASER_PULSE_DEFAULTS:
                 if k not in params:
                     params[k] = self.__LASER_PULSE_DEFAULTS[k]
-                if k == 'slice_params':
-                    for s in self.__LASER_PULSE_SLICE_DEFAULTS:
-                        if s not in params.slice_params:
-                            params.slice_params[s] = self.__LASER_PULSE_SLICE_DEFAULTS[s]
         return params
 
     def compute_middle_slice_intensity(self):
@@ -198,8 +179,37 @@ class LaserPulseSlice:
     Returns:
         instance of class
     """
-    def __init__(self, slice_index, params):
+    __LASER_PULSE_SLICE_DEFAULTS = PKDict(
+        sigrW=0.000186,
+        propLen=15,
+        pulseE=0.001,
+        poltype=1,
+        sampFact=5,
+        numsig=3.,
+        mx=0,
+        my=0
+    )
+    __LASER_PULSE_DEFAULTS = PKDict(
+            phE=1.55,
+            nslice=3,
+            chirp=0,
+            w0=.1,
+            a0=.01,
+            dw0x=0.0,
+            dw0y=0.0,
+            z_waist=0,
+            dzwx=0.0,
+            dzwy=0.0,
+            tau_fwhm=0.1 / const.c / math.sqrt(2.),
+            z_center=0,
+            x_shift = 0.,
+            y_shift=0.,
+            d_to_w=0,
+            slice_params=__LASER_PULSE_SLICE_DEFAULTS,
+    )
+    def __init__(self, slice_index, params=None):
         #print([sigrW,propLen,pulseE,poltype])
+        params = self.get_params(params)
         _validate_input_slice(params, slice_index)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
@@ -268,3 +278,16 @@ class LaserPulseSlice:
           optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
           srwlib.srwl.PropagElecField(_wfr, optBLW)
         self.wfr = _wfr
+
+    def get_params(self, params):
+        if params == None:
+            params = self.__LASER_PULSE_DEFAULTS.copy()
+        else:
+            for k in self.__LASER_PULSE_DEFAULTS:
+                if k not in params:
+                    params[k] = self.__LASER_PULSE_DEFAULTS[k]
+                if k == 'slice_params':
+                    for s in self.__LASER_PULSE_SLICE_DEFAULTS:
+                        if s not in params.slice_params:
+                            params.slice_params[s] = self.__LASER_PULSE_SLICE_DEFAULTS[s]
+        return params

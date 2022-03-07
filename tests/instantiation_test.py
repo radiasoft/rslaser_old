@@ -12,7 +12,6 @@ from pykern.pkcollections import PKDict
 import pytest
 from rslaser.rspulse.pulse import LaserPulse, LaserPulseSlice, InvalidLaserPulseInputError
 from rslaser.rscavity.laser_cavity import LaserCavity
-from rslaser.utils import defaults
 import scipy.constants as const
 
 
@@ -34,39 +33,29 @@ def slice_instantiation_test(pulse, field):
 
 
 def test_basic_instantiation1():
-    l = LaserPulse(defaults.LASER_PULSE_DEFAULTS)
+    l = LaserPulse()
     pulse_instantiation_test(l, 'phE')
 
 
 def test_basic_instantiation2():
-    k = defaults.LASER_PULSE_DEFAULTS.copy()
-    k.chirp = 0.01*defaults.PHE_DEFAULT
+    k = PKDict(chirp=0.01*(const.h * const.c / const.e / 1e-6))
     l = LaserPulse(k)
     slice_instantiation_test(l, 'phE')
 
 
 def test_basic_instantiation3():
-    l = LaserPulse(defaults.LASER_PULSE_DEFAULTS)
+    l = LaserPulse()
     pulse_instantiation_test(l, '_lambda0')
 
 
 def test_basic_instantiation4():
-    k = defaults.LASER_PULSE_DEFAULTS.copy()
-    k.chirp = 0.01*defaults.PHE_DEFAULT
+    k = k = PKDict(chirp=0.01*(const.h * const.c / const.e / 1e-6))
     l = LaserPulse(k)
     slice_instantiation_test(l, '_lambda0')
 
 
 def test_basic_pulse_slice_instantiation():
-    s = [LaserPulseSlice(i, defaults.LASER_PULSE_DEFAULTS) for i in range(10)]
-
-
-def test_slice_input_validators():
-    k = defaults.LASER_PULSE_DEFAULTS.copy()
-    k.pkdel('slice_params')
-    c = [(i, k) for i in range(10)]
-    for a in c:
-        trigger_exception_test(LaserPulseSlice, *a)
+    s = [LaserPulseSlice(i) for i in range(10)]
 
 
 def test_pulse_slice_input_validators_type():
@@ -75,7 +64,7 @@ def test_pulse_slice_input_validators_type():
         trigger_exception_test(LaserPulseSlice, *a)
 
 
-def test_wrong_input(): # TODO (gurhar1133): write more like this
+def test_wrong_input():
     p = PKDict(PHHe=0.1)
     trigger_exception_test(LaserPulse, p)
 
@@ -99,41 +88,60 @@ def test_pulse_input_validators_type():
     trigger_exception_test(LaserPulse, [])
 
 
-def test_pulse_input_validators_fields():
-    k = defaults.LASER_PULSE_DEFAULTS.copy()
-    k.pkdel('slice_params')
-    LaserPulse(k)
-
-
 def test_correct_slice_params_type():
-    k = defaults.LASER_PULSE_DEFAULTS.copy()
-    k.slice_params = []
+    k = PKDict(slice_params=[])
     trigger_exception_test(LaserPulse, k)
 
 
 def test_correct_slice_params():
-    k = defaults.LASER_PULSE_DEFAULTS.copy()
-    k.slice_params = PKDict(foo='bar', hello='world')
+    k = PKDict(
+        slice_params=PKDict(
+            foo='bar', hello='world'
+        )
+    )
     trigger_exception_test(LaserPulse, k)
 
 
 def test_laser_pulse_slice_index():
-    a = ('10', defaults.LASER_PULSE_DEFAULTS)
-    trigger_exception_test(LaserPulseSlice, *a)
+    a = '10'
+    trigger_exception_test(LaserPulseSlice, a)
 
 
 def test_laser_cavity():
-    c = LaserCavity(
-        PKDict(
-            **defaults.LASER_CAVITY_DEFAULTS,
-            pulse_params=defaults.LASER_PULSE_DEFAULTS,
-        )
-    )
+    c = LaserCavity()
+
 
 def test_laser_cavity_fail():
-    k = defaults.LASER_CAVITY_DEFAULTS.copy()
-    k.pkdel('n0')
+    k = PKDict(n3='fail')
     trigger_exception_test(LaserCavity, k)
+
+
+def test_cavity_partial_pulse_params():
+    k = PKDict(pulse_params=PKDict(chirp=0.01*(const.h * const.c / 1e-6)))
+    c = LaserCavity(k)
+
+
+def test_cavity_partial_pulse_params2():
+    k = PKDict(
+        pulse_params=PKDict(
+            chirp=0.01*(const.h * const.c / 1e-6),
+            slice_params=PKDict(
+                propLen=2,
+            )
+        )
+    )
+    c = LaserCavity(k)
+
+
+def test_cavity_partial_pulse_params3():
+    k = PKDict(
+        pulse_params=PKDict(
+            slice_params=PKDict(
+                propLen=5,
+            )
+        )
+    )
+    c = LaserCavity(k)
 
 
 def trigger_exception_test(call, *args):
