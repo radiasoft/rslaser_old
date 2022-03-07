@@ -16,10 +16,15 @@ from rslaser.utils import defaults
 import scipy.constants as const
 
 
+# TODO (gurhar1133): rewrite tests to reflect __DEFAULTS set on class now
 def pulse_instantiation_test(pulse, field):
     for s in pulse.slice:
         if getattr(s, field) != getattr(pulse, field):
             raise AssertionError(f'LaserPulseSlice has different {field} than pulse as a whole')
+
+
+def test_no_params_instantiation():
+    l = LaserPulse()
 
 
 def slice_instantiation_test(pulse, field):
