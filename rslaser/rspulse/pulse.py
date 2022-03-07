@@ -30,9 +30,9 @@ _REQUIRED_LASER_PULSE_SLICE_INPUTS = ['sigrW',
 def check_type_and_fields(input_obj, req_fields, exception, class_name):
     if type(input_obj) != PKDict:
         raise exception(f'invalid inputs: parameters to {class_name} class must be of type PKDict')
-    for p in req_fields:
-        if p not in input_obj:
-            raise exception(f'invalid inputs: missing required field {p}')
+    for p in input_obj:
+        if p not in req_fields:
+            raise exception(f'invalid inputs: {p} is not a parameter to {class_name}')
 
 
 def _validate_input(input_params):
@@ -148,6 +148,10 @@ class LaserPulse:
             for k in self.__LASER_PULSE_DEFAULTS:
                 if k not in params:
                     params[k] = self.__LASER_PULSE_DEFAULTS[k]
+                if k == 'slice_params':
+                    for s in self.__LASER_PULSE_SLICE_DEFAULTS:
+                        if s not in params.slice_params:
+                            params.slice_params[s] = self.__LASER_PULSE_SLICE_DEFAULTS[s]
         return params
 
     def compute_middle_slice_intensity(self):

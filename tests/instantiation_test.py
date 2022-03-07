@@ -17,6 +17,7 @@ import scipy.constants as const
 
 
 # TODO (gurhar1133): rewrite tests to reflect __DEFAULTS set on class now
+# also, get rid of tests that dont make sense now
 def pulse_instantiation_test(pulse, field):
     for s in pulse.slice:
         if getattr(s, field) != getattr(pulse, field):
@@ -74,6 +75,26 @@ def test_pulse_slice_input_validators_type():
         trigger_exception_test(LaserPulseSlice, *a)
 
 
+def test_wrong_input(): # TODO (gurhar1133): write more like this
+    p = PKDict(PHHe=0.1)
+    trigger_exception_test(LaserPulse, p)
+
+
+def test_wrong_input2():
+    p = PKDict(slice_params=PKDict(blonk=9))
+    trigger_exception_test(LaserPulse, p)
+
+
+def test_wrong_input_filling():
+    p = PKDict(slice_params=PKDict(pulseE=9))
+    l = LaserPulse(p)
+
+
+def test_wrong_input_filling2():
+    p = PKDict(slice_params=PKDict())
+    l = LaserPulse(p)
+
+
 def test_pulse_input_validators_type():
     trigger_exception_test(LaserPulse, [])
 
@@ -81,7 +102,7 @@ def test_pulse_input_validators_type():
 def test_pulse_input_validators_fields():
     k = defaults.LASER_PULSE_DEFAULTS.copy()
     k.pkdel('slice_params')
-    trigger_exception_test(LaserPulse, k)
+    LaserPulse(k)
 
 
 def test_correct_slice_params_type():
