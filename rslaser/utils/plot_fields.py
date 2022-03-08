@@ -9,7 +9,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from pykern.pkdebug import pkdc
 import numpy as np
 
-import rslaser.rspulse.gauss_hermite as rsgh
+import rslaser.pulse.gauss_hermite as rsgh
 import rslaser.utils.plot_tools as rspt
 
 def plot_1d_x(_xArr, _pulse, _ax, _y=0., _z=0., _t=0., _time_explicit=False):
@@ -104,7 +104,7 @@ def plot_1d_r(_rArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False):
     else:
         _ax.set_title('Er (envelope) [V/m], at z={0:4.2f} [m]'.format(_z))
 
-        
+
 def plot_1d_z(_zArr, _pulse, _ax, _x=0., _y=0., _t=0., _time_explicit=False):
     """Plot a 1D (longitudinal, along z) lineout of a laser pulse field.
 
@@ -137,8 +137,8 @@ def plot_1d_z(_zArr, _pulse, _ax, _x=0., _y=0., _t=0., _time_explicit=False):
         _ax.set_title('Ex [V/m], at (x,y)=({0:4.2f},{0:4.2f}) [m] and t={0:4.2f} [s]'.format(_x, _y, _t))
     else:
         _ax.set_title('Ex (envelope) [V/m], at (x,y)=({0:4.2f},{0:4.2f}) [m]'.format(_x, _y))
-    
-    
+
+
 def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _nlevels=40):
 
     numZ = np.size(_zArr)
@@ -171,9 +171,9 @@ def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _n
         n_cbar_labels = 10  # choose an even number
         max_level = n_cbar_labels * del_level
         _levels = np.linspace(0., max_level, _nlevels)
-        
+
     contours = _ax.contourf(_zArr, _yArr, zyEData, _levels, extent='none')
-    
+
     # generate the colorbar
     divider = make_axes_locatable(_ax)
     _cax = divider.append_axes("right", size="5%", pad=0.1)
@@ -187,7 +187,7 @@ def plot_2d_zy(_zArr, _yArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _n
             tick_values.append(i * del_level)
     cbar.set_ticks(tick_values)
 
-    
+
 def plot_2d_xy(_xArr, _yArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False, _nlevels=40):
     """Generate a 2D contour plot of Ex in the transverse plane.
 
@@ -234,7 +234,7 @@ def plot_2d_xy(_xArr, _yArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False, _n
 
     _levels = np.linspace(min_level, max_level, _nlevels)
     contours = _ax.contourf(_xArr, _yArr, xyEData, _levels, extent='none')
-    
+
     # generate the colorbar
     divider = make_axes_locatable(_ax)
     _cax = divider.append_axes("right", size="5%", pad=0.1)
@@ -244,7 +244,7 @@ def plot_2d_xy(_xArr, _yArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False, _n
         tick_values.append(min_level + i*del_level)
     cbar.set_ticks(tick_values)
 
-        
+
 def plot_2d_zr(_zArr, _rArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _nlevels=40):
 
     numZ = np.size(_zArr)
@@ -277,9 +277,9 @@ def plot_2d_zr(_zArr, _rArr, _pulse, _ax, _x=0., _t=0., _time_explicit=False, _n
         n_cbar_labels = 10  # choose an even number
         max_level = n_cbar_labels * del_level
         _levels = np.linspace(0., max_level, _nlevels)
-        
+
     contours = _ax.contourf(_zArr, _rArr, zrEData, _levels, extent='none')
-    
+
     # generate the colorbar
     divider = make_axes_locatable(_ax)
     _cax = divider.append_axes("right", size="5%", pad=0.1)

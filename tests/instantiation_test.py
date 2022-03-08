@@ -7,8 +7,8 @@ import math
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
 import pytest
-from rslaser.rspulse import pulse
-from rslaser.rscavity import laser_cavity
+from rslaser.pulse.pulse import LaserPulse, LaserPulseSlice, InvalidLaserPulseInputError
+from rslaser.cavity.laser_cavity import LaserCavity
 import scipy.constants as const
 
 
