@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-u"""Test that module imports.
-
-You should delete the test once you have real tests.
-Only necessary if you have no other tests so that
-tox will work.
+u"""Tests for instantiation of LaserCavity, LaserPulse
+and LaserPulseSlice
 """
 from __future__ import absolute_import, division, print_function
 import math
@@ -13,10 +10,9 @@ import pytest
 from rslaser.rspulse.pulse import LaserPulse, LaserPulseSlice, InvalidLaserPulseInputError
 from rslaser.rscavity.laser_cavity import LaserCavity
 import scipy.constants as const
+from collections.abc import Iterable
 
 
-# TODO (gurhar1133): rewrite tests to reflect __DEFAULTS set on class now
-# also, get rid of tests that dont make sense now
 def pulse_instantiation_test(pulse, field):
     for s in pulse.slice:
         if getattr(s, field) != getattr(pulse, field):
@@ -59,9 +55,9 @@ def test_basic_pulse_slice_instantiation():
 
 
 def test_pulse_slice_input_validators_type():
-    c = [(i, 0) for i in range(10)]
+    c = [[i, 0] for i in range(10)]
     for a in c:
-        trigger_exception_test(LaserPulseSlice, *a)
+        trigger_exception_test(LaserPulseSlice, a)
 
 
 def test_wrong_input():
@@ -74,12 +70,12 @@ def test_wrong_input2():
     trigger_exception_test(LaserPulse, p)
 
 
-def test_wrong_input_filling():
+def test_wrong_filling():
     p = PKDict(slice_params=PKDict(pulseE=9))
     l = LaserPulse(p)
 
 
-def test_wrong_input_filling2():
+def test_wrong_filling2():
     p = PKDict(slice_params=PKDict())
     l = LaserPulse(p)
 
@@ -147,9 +143,17 @@ def test_cavity_partial_pulse_params4():
     k = PKDict()
     c = LaserCavity(k)
 
-def trigger_exception_test(call, *args):
+
+def test_cavity_wrong_in_type():
+    trigger_exception_test(LaserCavity, 'wrong')
+
+
+def trigger_exception_test(call, args):
     try:
-        l = call(*args)
+        if len(args) > 0 and type(args) != PKDict and type(args) != str:
+            l = call(*args)
+        else:
+            l = call(args)
     except Exception as e:
         pkdlog('EXCEPTION:{}, with message "{}" triggered by call: {} and args {}', type(e), e, call, args)
         return e

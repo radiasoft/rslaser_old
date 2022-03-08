@@ -20,15 +20,15 @@ class InvalidLaserCavityInputError(Exception):
     pass
 
 
-def _validate_input(input_params):
-    check_type_and_fields(input_params, _REQUIRED_CAVITY_PARAMS, InvalidLaserCavityInputError, 'LaserCavity')
+def _validate_params(input_params):
+    check_fields(input_params, _REQUIRED_CAVITY_PARAMS, InvalidLaserCavityInputError, 'LaserCavity')
 
 
 class LaserCavity:
     """
     create laser cavity
 
-    Ars:
+    Args:
         params (PKDict):
             required fields:
                 drift_right_length
@@ -53,7 +53,6 @@ class LaserCavity:
 
     def __init__(self, params=None):
         params = self.get_params(params)
-        _validate_input(params)
         self.laser_pulse = LaserPulse(params.pulse_params)
         self.crystal_right = Crystal(params.n0,params.n2,params.L_half_cryst)
         self.crystal_left = Crystal(params.n0,params.n2,params.L_half_cryst)
@@ -64,11 +63,12 @@ class LaserCavity:
 
     def get_params(self, params):
         if params == None:
-            params = self.__LASER_CAVITY_DEFAULTS.copy()
-        else:
-            for k in self.__LASER_CAVITY_DEFAULTS:
-                if k not in params:
-                    params[k] = self.__LASER_CAVITY_DEFAULTS[k]
+            return self.__LASER_CAVITY_DEFAULTS.copy()
+        validate_type(params, PKDict, LaserCavity, 'params', InvalidLaserCavityInputError)
+        for k in self.__LASER_CAVITY_DEFAULTS:
+            if k not in params:
+                params[k] = self.__LASER_CAVITY_DEFAULTS[k]
+        _validate_params(params)
         return params
 
     def propagate(self, num_cycles, callback=None):
