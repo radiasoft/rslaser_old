@@ -143,6 +143,9 @@ def test_cavity_partial_pulse_params3():
     )
     c = LaserCavity(k)
 
+def test_cavity_partial_pulse_params4():
+    k = PKDict()
+    c = LaserCavity(k)
 
 def trigger_exception_test(call, *args):
     try:
