@@ -1,99 +1,72 @@
 from __future__ import division, print_function, absolute_import
 
-def main(): 
-    #  Instantiate the objects corresponding to the optical line elements and 
-    #  specify the propagation sequence: 
-  
-    dr1 = elsdr.drift('dr1', 0.2)  # drift of length 1.0 m with a unique label 'dr1'  
+def main():
+    #  Instantiate the objects corresponding to the optical line elements and
+    #  specify the propagation sequence:
+
+    dr1 = elsdr.drift('dr1', 0.2)  # drift of length 1.0 m with a unique label 'dr1'
     dr2 = elsdr.drift('dr2', 0.02)
-    crystal = elscs.crystalSlice('cryst_slice1', 0.1)  # a single-slice crystal 
+    crystal = elscs.crystalSlice('cryst_slice1', 0.1)  # a single-slice crystal
     #lattice = [(dr1,'default'), (crystal,'placeholder'), (dr2,'default')]
     lattice = [(dr1,'default'), (crystal,'abcd'), (dr2,'default')]
-  
-    current_position = 0.0 
+
+    current_position = 0.0
     print('Initial z position of the pulse:', current_position, 'm')
-  
+
   #  Initialize the laser pulse:
-    _PHE_DEFAULT = const.h * const.c / 1e-6
-    _Z_WAIST_DEFAULT = 0
-    _Z_CENTER_DEFAULT = 0
-    _LASER_PULSE_SLICE_DEFAULTS = PKDict(
-        sigrW=0.000186,
-        propLen=15,
-        sig_s=0.1,
-        pulseE=0.001,
-        poltype=1,
-        sampFact=5,
-        mx=0,
-        my=0
+
+    pupa = PKDict(
+        slice_params=PKDict(
+
+        )
     )
-    _LASER_PULSE_DEFAULTS = PKDict(
-        phE=_PHE_DEFAULT,
-        nslice=3,
-        chirp=0,
-        w0=.1,
-        a0=.01,
-        dw0x=0.0,
-        dw0y=0.0,
-        z_waist=_Z_WAIST_DEFAULT,
-        dzwx=0.0,
-        dzwy=0.0,
-        tau_fwhm=0.1 / const.c / math.sqrt(2.),
-        z_center=_Z_CENTER_DEFAULT,
-        x_shift = 0.,
-        y_shift=0.,
-        d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
-        slice_params=_LASER_PULSE_SLICE_DEFAULTS,
-    )
-    #  Pulse parameters: 
-    pupa = _LASER_PULSE_DEFAULTS.copy()
-    pupa.propLen = 15.0  # [m] 
-    pupa.sigrW = 0.000186  # 0.000436984 #  radial rms size at the waist [m] 
-    pupa.d_to_w = 0.10  #  [m] distance from the initial pulse location to the loc-n of the beam waist, > 0 if converging 
-    pupa.pulseE = 0.001  # pulse energy [J] 
-    pupa.poltype = 1  #  0 = linear horizontal, 1 = linear vertical, ... 
-    pupa.phE = 1.55  # Wavefront energy [eV]. 1.55 eV is 800 nm wavelength (seed laser); 532 nm for the pump laser 
-    pupa.energyChirp = 0.0
-    pupa.nslice = 2  #  the number of slices the pulse is divided into 
-  
-    #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)  # creates Gaussian wavefront in SRW 
-    #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE)  # defualt values for omitted arguments 
+    pupa.slice_params.propLen = 15.0  # [m]
+    pupa.slice_params.sigrW = 0.000186  # 0.000436984 #  radial rms size at the waist [m]
+    pupa.d_to_w = 0.10  #  [m] distance from the initial pulse location to the loc-n of the beam waist, > 0 if converging
+    pupa.slice_params.pulseE = 0.001  # pulse energy [J]
+    pupa.slice_params.poltype = 1  #  0 = linear horizontal, 1 = linear vertical, ...
+    pupa.phE = 1.55  # Wavefront energy [eV]. 1.55 eV is 800 nm wavelength (seed laser); 532 nm for the pump laser
+    pupa.chirp = 0.0
+    pupa.nslice = 2  #  the number of slices the pulse is divided into
+
+    #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)  # creates Gaussian wavefront in SRW
+    #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE)  # defualt values for omitted arguments
     thisPulse = plsdv.LaserPulse(pupa)
-  
-    #  Propagate the pulse through the optical beamline: 
-  
+
+    #  Propagate the pulse through the optical beamline:
+
     for i in lattice:
-        current_elem, prop_type = i 
-    #print (current_elem, prop_type) 
+        current_elem, prop_type = i
+    #print (current_elem, prop_type)
         thisPulse = current_elem.propagate(thisPulse, prop_type)
         current_position += current_elem.length
         print('Current position in the beamline:', current_position, ' m')
-  
-    #  Diagnostics, visualization, saving the output, etc.: 
+
+    #  Diagnostics, visualization, saving the output, etc.:
 
 if __name__=="__main__":
-    #from __future__ import division, print_function, absolute_import 
+    #from __future__ import division, print_function, absolute_import
     import numpy as np
     import matplotlib.pyplot as plt
-  
+
     import srwlib
     from pykern import pkcli
     from array import array
     from pykern.pkcollections import PKDict
-  
+
     import rslaser.rscavity as rscav
     import rslaser.rscrystal as rscr
     import rslaser.rsoptics as rso
-    import rslaser.rspulse as rsp 
+    import rslaser.rspulse as rsp
     import rslaser.rspulse.pulse as plsdv
     import rslaser.elements.drift as elsdr
     import rslaser.elements.crystalSlice as elscs
 
     import scipy
     import scipy.constants as const
-  
+
     import sys
     import time
     import math
-  
+
     main()
