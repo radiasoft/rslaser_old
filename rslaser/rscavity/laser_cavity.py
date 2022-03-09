@@ -11,17 +11,8 @@ from array import array
 from pykern.pkcollections import PKDict
 
 
-_REQUIRED_CAVITY_PARAMS = ['drift_right_length', 'drift_left_length',
-    'lens_left_focal_length', 'lens_right_focal_length', 'n0', 'n2',
-    'L_half_cryst', 'pulse_params']
-
-
 class InvalidLaserCavityInputError(Exception):
     pass
-
-
-def _validate_params(input_params):
-    check_fields(input_params, _REQUIRED_CAVITY_PARAMS, InvalidLaserCavityInputError, 'LaserCavity')
 
 
 class LaserCavity:
@@ -68,8 +59,14 @@ class LaserCavity:
         for k in self.__LASER_CAVITY_DEFAULTS:
             if k not in params:
                 params[k] = self.__LASER_CAVITY_DEFAULTS[k]
-        _validate_params(params)
+        self.__validate_params(params)
         return params
+
+    def __validate_params(self, input_params):
+        _REQUIRED_CAVITY_PARAMS = ['drift_right_length', 'drift_left_length',
+        'lens_left_focal_length', 'lens_right_focal_length', 'n0', 'n2',
+        'L_half_cryst', 'pulse_params']
+        check_fields(input_params, _REQUIRED_CAVITY_PARAMS, InvalidLaserCavityInputError, 'LaserCavity')
 
     def propagate(self, num_cycles, callback=None):
         l = self.laser_pulse
