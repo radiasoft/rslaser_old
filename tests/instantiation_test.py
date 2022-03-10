@@ -7,10 +7,9 @@ import math
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
 import pytest
-from rslaser.rspulse.pulse import LaserPulse, LaserPulseSlice, InvalidLaserPulseInputError
+from rslaser.rspulse.pulse import LaserPulse, LaserPulseSlice
 from rslaser.rscavity.laser_cavity import LaserCavity
 import scipy.constants as const
-from collections.abc import Iterable
 
 
 def pulse_instantiation_test(pulse, field):
