@@ -20,8 +20,8 @@ import numpy as np
 from pykern.pkcollections import PKDict
 from pykern import pkdebug
 
-import rslaser.rscavity.laser_cavity as rslc
-import rslaser.rsoptics.element as rse
+import rslaser.cavity.laser_cavity as rslc
+import rslaser.optics.element as rse
 import rslaser.utils.constants as rsc
 
 import scipy.constants as const

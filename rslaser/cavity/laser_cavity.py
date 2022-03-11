@@ -1,5 +1,6 @@
-from rslaser.rsoptics import element
-from rslaser.rspulse import pulse
+from rslaser.optics import element
+from rslaser.pulse import pulse
+from array import array
 from pykern.pkcollections import PKDict
 
 

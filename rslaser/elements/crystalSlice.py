@@ -4,7 +4,7 @@ import srwlib
 from array import array
 from pykern.pkcollections import PKDict
 
-import rslaser.rsoptics as rso
+import rslaser.optics as rso
 #from rslaser.rsoptics.element import *
 
 c_light = 299792458.0  # m/s, in vacuum

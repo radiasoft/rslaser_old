@@ -6,8 +6,9 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 import math
 import numpy as np
 from pykern.pkcollections import PKDict
-import rslaser.rsoptics.wavefront as rswf
-import rslaser.rspulse.gauss_hermite as rsgh
+import rslaser.optics.wavefront as rswf
+import rslaser.pulse.gauss_hermite as rsgh
+import rslaser.utils.constants as rsc
 import rslaser.utils.unit_conversion as units
 import scipy.constants as const
 import srwlib
