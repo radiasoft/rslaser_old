@@ -42,17 +42,20 @@ def agg_plot(filename):
 print(" ")
 print("Define laser pulse, crystal and cavity parameters...")
 
-# specify the parameters in a PKDict dictionary object
-_PHE_DEFAULT = const.h * const.c / 1e-6   # photon energy corresponding to lambda = 1 micron
+# specify all default values of system parameters in a Pykern dictionary object
+
+# photon energy corresponding to lambda = 1 micron
+_PHE_DEFAULT = const.h * const.c / 1e-6
 _Z_WAIST_DEFAULT = 0
 _Z_CENTER_DEFAULT = 0
+
 _LASER_PULSE_SLICE_DEFAULTS = PKDict(
     sigrW=0.000186,
     propLen=15,
-    sig_s=0.1,
     pulseE=0.001,
     poltype=1,
     sampFact=5,
+    numsig=3.,
     mx=0,
     my=0
 )
@@ -67,60 +70,84 @@ _LASER_PULSE_DEFAULTS = PKDict(
         z_waist=_Z_WAIST_DEFAULT,
         dzwx=0.0,
         dzwy=0.0,
+        tau_fwhm=0.1 / const.c / math.sqrt(2.),
         z_center=_Z_CENTER_DEFAULT,
         x_shift = 0.,
         y_shift=0.,
         d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
 )
+_LASER_CAVITY_DEFAULTS = PKDict(
+    drift_right_length=0.5,
+    drift_left_length=0.5,
+    lens_left_focal_length=0.2,
+    lens_right_focal_length=0.2,
+    n0 = 1.75,
+    n2 = 0.001,
+    L_half_cryst=0.2,
+)
 
-# central laser pulse values
-a0 = 0.01             # 0.85e-9 * lambda [microns] * Sqrt(Intensity [W/cm^2])
-lambda0 = 8.e-7       # wavelength [m]
+# the laser pulse parameters are loaded into a Pykern dictionary object
+# the slice parameters are included hierarchically
+in_pulse = PKDict(
+    **_LASER_PULSE_DEFAULTS
+    )
 
-# numerical values
-num_slices = 5        # desired number of slices (i.e. SRW wavefronts) to represent the pulse
+# Specify non-default values for laser pulse parameters at center of crystal
+in_pulse.nslice = 5
 
-# local Pykern dictionary object to hold all physical parameters
-k=_LASER_PULSE_DEFAULTS.copy()
-k.L_cav = 1 #Length of cavity [m]
-k.df = 0.3 #Focal length difference from confocal case [m]
-k.phE = const.h * const.c / lambda0
-k.nslice = num_slices
+# the laser cavity parameters are loaded into a Pykern dictionary object
+# the laser pulse parameters are included hierarchically
+in_cavity = PKDict(
+    **_LASER_CAVITY_DEFAULTS,
+    pulse_params=in_pulse,
+    )
+
+# Specify non-default values for laser cavity
+# Also, specify/print other values for consideration by the user
+
+# cavity length [m]
+L_cav = 1.
 
 # Define right and left mirror focal lengths
-k.dfR = k.df
-k.dfL = k.df
-k.f=k.L_cav/4+k.df #focal length
+# Focal length difference from confocal case [m]
+df = 0.3
+dfR = df
+dfL = df
 
-k.lens_left_focal_length = k.f
-k.lens_right_focal_length = k.f
+# focal length
+f = L_cav/4. + df
 
-#Define Crystal parameters
-k.L_cryst = 0.1   # Length of crystal [m]
-k.n0=1.75         # index of refraction on axis
-k.n2=0.0          # radial variation of index of refraction: n(r) = n0 - 0.5 n2 r^2
-k.drift_right_length=k.L_cav/2-k.L_cryst/2
-k.drift_left_length=k.drift_right_length
+in_cavity.lens_left_focal_length = f
+in_cavity.lens_right_focal_length = f
 
-k.L_eff = k.L_cav+(1/k.n0 - 1)*k.L_cryst #Define effective length as path length reduced by index of refraction n0
-print("L_eff = %f m" % k.L_eff)
-k.beta0 = np.sqrt(k.L_eff*k.f-k.L_eff**2/4)
-print("beta0 = %f m" % k.beta0)
-k.sigx0 = np.sqrt(lambda0*k.beta0/4/np.pi)
-print("sigx0 = %f m" % k.sigx0)
-k.sigrW = k.sigx0
-k.w0 = k.sigx0 * math.sqrt(2.)
+# Length of crystal [m]
+L_cryst = 0.1
+# index of refraction on axis
+in_cavity.n0=1.75
+# radial variation of index of refraction: n(r) = n0 - 0.5 n2 r^2
+in_cavity.n2=0.0
+in_cavity.drift_right_length = L_cav/2. - L_cryst/2.
+in_cavity.drift_left_length = in_cavity.drift_right_length
 
-k.sig_s = 0.1  # rms length of Gaussian laser pulse [m]
-tau_fwhm = k.sig_s / const.c / math.sqrt(2.)
-k.tau_fwhm = tau_fwhm
+# Define effective length as path length reduced by index of refraction n0
+L_eff = L_cav + (1./in_cavity.n0 - 1.) * L_cryst
+print("L_eff = %f m" % L_eff)
 
-k.L_half_cryst=k.L_cryst/2
+beta0 = np.sqrt(L_eff*f - L_eff**2/4.)
+print("beta0 = %f m" % beta0)
+
+lambda0 = const.h * const.c / in_pulse.phE
+sigx0 = np.sqrt(lambda0*beta0/4./np.pi)
+print("sigx0 = %f m" % sigx0)
+
+sigrW = sigx0
+w0 = sigx0 * math.sqrt(2.)
+in_cavity.L_half_cryst = L_cryst/2.
 
 print(" ")
 print("Initialize the laser cavity object...")
-LC = rslc.LaserCavity(k)
+LC = rslc.LaserCavity(in_cavity)
 
 svals = LC.laser_pulse.pulsePos()
 (lpsxvals,lpsyvals) = LC.laser_pulse.rmsvals()

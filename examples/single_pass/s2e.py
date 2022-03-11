@@ -20,10 +20,10 @@ def main():
     _LASER_PULSE_SLICE_DEFAULTS = PKDict(
         sigrW=0.000186,
         propLen=15,
-        sig_s=0.1,
         pulseE=0.001,
         poltype=1,
         sampFact=5,
+        numsig=3.,
         mx=0,
         my=0
     )

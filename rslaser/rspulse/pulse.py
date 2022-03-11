@@ -202,7 +202,7 @@ class LaserPulseSlice(LaserBase):
         GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
         GsnBm.y = 0
         sig_s = params.tau_fwhm * const.c / 2.355
-        ds = 2*params.slice_params.numsig*sig_s/(params.nslice - 1)
+        ds = 2*params.slice_params.numsig*sig_s/params.nslice
         self._pulse_pos = -params.slice_params.numsig*sig_s+slice_index*ds
         GsnBm.z = params.slice_params.propLen + self._pulse_pos #Longitudinal Position of Waist [m]
         GsnBm.xp = 0 #Average Angles of Gaussian Beam at Waist [rad]
