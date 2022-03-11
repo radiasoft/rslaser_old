@@ -46,12 +46,6 @@ class LaserCavity(pulse.LaserBase):
         self.lens_right = element.Lens(params.lens_right_focal_length)
         self.lens_left  = element.Lens(params.lens_left_focal_length)
 
-    def _get_params(self, params):
-        return super()._get_params(params)
-
-    def _validate_params(self, input_params):
-        return super()._validate_params(input_params)
-
     def propagate(self, num_cycles, callback=None):
         l = self.laser_pulse
         l._sxvals = []

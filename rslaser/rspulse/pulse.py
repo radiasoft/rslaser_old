@@ -44,17 +44,6 @@ _LASER_PULSE_DEFAULTS = PKDict(
 )
 
 
-def check_fields(input_params, obj):
-    for p in input_params:
-        if p not in obj._DEFAULTS:
-            raise obj._INPUT_ERROR(f'invalid inputs: {p} is not a parameter to {obj.__class__}')
-
-
-def validate_type(input, _type, _class, param, exception):
-    if type(input) != _type:
-        raise exception(f'invalid input type: {_class} takes {param} as type:{_type} for input.')
-
-
 class LaserBase:
     '''
         Base class for LaserPulse LaserPulseSlice
@@ -63,14 +52,20 @@ class LaserBase:
     def _get_params(self, params):
         if params == None:
             return self._DEFAULTS.copy()
-        validate_type(params, PKDict, self.__class__, 'params', self._INPUT_ERROR)
+        self._validate_type(params, PKDict, 'params')
         for k in self._DEFAULTS:
             if k not in params:
                 params[k] = self._DEFAULTS[k]
         return params
 
     def _validate_params(self, input_params):
-        check_fields(input_params, self)
+        for p in input_params:
+            if p not in self._DEFAULTS:
+                raise self._INPUT_ERROR(f'invalid inputs: {p} is not a parameter to {self.__class__}')
+
+    def _validate_type(self, input, target_type, params_name):
+        if type(input) != target_type:
+            raise self._INPUT_ERROR(f'invalid input type: {self.__class__} takes {params_name} as type:{target_type} for input.')
 
 
 class InvalidLaserPulseInputError(Exception):
@@ -137,12 +132,6 @@ class LaserPulse(LaserBase):
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
-    def _get_params(self, params):
-        return super()._get_params(params)
-
-    def _validate_params(self, input_params):
-        return super()._validate_params(input_params)
-
     def compute_middle_slice_intensity(self):
         wfr = self.slice[len(self.slice) // 2].wfr
         (ar2d, sx, sy, xavg, yavg) = rswf.rmsWavefrontIntensity(wfr)
@@ -192,10 +181,9 @@ class LaserPulseSlice(LaserBase):
 
     def __init__(self, slice_index, params=None):
         #print([sigrW,propLen,pulseE,poltype])
-        validate_type(slice_index, int, self.__class__, 'slice_index', self._INPUT_ERROR)
+        self._validate_type(slice_index, int, 'slice_index')
         params = self._get_params(params)
         self._validate_params(params)
-        print(len(params.slice_params))
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
         self.phE = params.phE
@@ -269,7 +257,7 @@ class LaserPulseSlice(LaserBase):
         return self.__fixup_slice_params(super()._get_params(params))
 
     def __fixup_slice_params(self, params):
-        validate_type(params.slice_params, PKDict, self.__class__, 'params.slice_params', self._INPUT_ERROR)
+        self._validate_type(params.slice_params, PKDict, 'params.slice_params')
         for s in self._DEFAULTS.slice_params:
             if s not in params.slice_params:
                 params.slice_params[s] = self._DEFAULTS.slice_params[s]
