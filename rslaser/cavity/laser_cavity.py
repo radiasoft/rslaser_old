@@ -1,13 +1,11 @@
-from rslaser.optics.element import *
-from rslaser.optics.wavefront import *
-import rslaser.pulse
-from rslaser.pulse.pulse import *
-
+from rslaser.optics import element
+from rslaser.pulse import pulse
 from array import array
 from pykern.pkcollections import PKDict
 
 
 class InvalidLaserCavityInputError(Exception):
+    pass
 
 
 class LaserCavity(pulse.LaserBase):
