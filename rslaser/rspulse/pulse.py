@@ -5,51 +5,74 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 
 import math
 import numpy as np
-import scipy.constants as const
-
 from pykern.pkcollections import PKDict
 import rslaser.rsoptics.wavefront as rswf
 import rslaser.rspulse.gauss_hermite as rsgh
-import rslaser.utils.constants as rsc
 import rslaser.utils.unit_conversion as units
-
+import scipy.constants as const
 import srwlib
 from srwlib import srwl
 
-_REQUIRED_LASER_PULSE_INPUTS = ['phE',
-    'nslice', 'chirp', 'w0', 'a0', 'dw0x',
-    'dw0y', 'z_waist', 'dzwx', 'dzwy', 'tau_fwhm',
-    'z_center', 'x_shift', 'y_shift', 'd_to_w',
-    'slice_params']
-_REQUIRED_LASER_PULSE_SLICE_INPUTS = ['sigrW',
-    'propLen', 'pulseE', 'poltype', 'sampFact',
-    'mx', 'my', 'numsig']
+
+_LASER_PULSE_SLICE_DEFAULTS = PKDict(
+        sigrW=0.000186,
+        propLen=15,
+        pulseE=0.001,
+        poltype=1,
+        sampFact=1,
+        numsig=3.,
+        mx=0,
+        my=0
+    )
+_LASER_PULSE_DEFAULTS = PKDict(
+        phE=1.55,
+        nslice=3,
+        chirp=0,
+        w0=.1,
+        a0=.01,
+        dw0x=0.0,
+        dw0y=0.0,
+        z_waist=0,
+        dzwx=0.0,
+        dzwy=0.0,
+        tau_fwhm=0.1 / const.c / math.sqrt(2.),
+        z_center=0,
+        x_shift = 0.,
+        y_shift=0.,
+        d_to_w=0,
+        slice_params=_LASER_PULSE_SLICE_DEFAULTS,
+)
 
 
-def check_type_and_fields(input_obj, req_fields, exception, class_name):
-    if type(input_obj) != PKDict:
-        raise exception(f'invalid inputs: parameters to {class_name} class must be of type PKDict')
-    for p in req_fields:
-        if p not in input_obj:
-            raise exception(f'invalid inputs: missing required field {p}')
+class LaserBase:
+    '''
+        Base class for LaserPulse LaserPulseSlice
+        Used for input validation
+    '''
+    def _get_params(self, params):
+        if params == None:
+            return self._DEFAULTS.copy()
+        self._validate_type(params, PKDict, 'params')
+        for k in self._DEFAULTS:
+            if k not in params:
+                params[k] = self._DEFAULTS[k]
+        return params
 
+    def _validate_params(self, input_params):
+        for p in input_params:
+            if p not in self._DEFAULTS:
+                raise self._INPUT_ERROR(f'invalid inputs: {p} is not a parameter to {self.__class__}')
 
-def _validate_input(input_params):
-    check_type_and_fields(input_params, _REQUIRED_LASER_PULSE_INPUTS, InvalidLaserPulseInputError, 'LaserPulse')
-    check_type_and_fields(input_params.slice_params, _REQUIRED_LASER_PULSE_SLICE_INPUTS, InvalidLaserPulseInputError, 'LaserPulseSlice')
-
-
-def _validate_input_slice(input_params, index):
-    if type(index) != int:
-        raise InvalidLaserPulseInputError(f'invalid inputs: LaserPulseSlice index must be of type int')
-    _validate_input(input_params)
+    def _validate_type(self, input, target_type, params_name):
+        if type(input) != target_type:
+            raise self._INPUT_ERROR(f'invalid input type: {self.__class__} takes {params_name} as type:{target_type} for input.')
 
 
 class InvalidLaserPulseInputError(Exception):
     pass
 
 
-class LaserPulse:
+class LaserPulse(LaserBase):
     """
     The LaserPulse contains a GaussHermite object to represent the initial envelope,
     as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
@@ -86,11 +109,14 @@ class LaserPulse:
     Returns:
         instance of class
     """
-    def __init__(self, params):
-        _validate_input(params)
+    _INPUT_ERROR = InvalidLaserPulseInputError
+    _DEFAULTS = _LASER_PULSE_DEFAULTS
+
+    def __init__(self, params=None):
+        params = self._get_params(params)
+        self._validate_params(params)
         # instantiate the laser envelope
         self.envelope = rsgh.GaussHermite(params)
-
         # instantiate the array of slices
         self.slice = []
         self.nslice = params.nslice
@@ -136,7 +162,7 @@ class LaserPulse:
         return self.slice(slice_index).wfr
 
 
-class LaserPulseSlice:
+class LaserPulseSlice(LaserBase):
     """
     This class represents a longitudinal slice in a laser pulse.
     There will be a number of wavefronts each with different wavelengths (energy).
@@ -150,9 +176,14 @@ class LaserPulseSlice:
     Returns:
         instance of class
     """
-    def __init__(self, slice_index, params):
+    _INPUT_ERROR = InvalidLaserPulseInputError
+    _DEFAULTS = _LASER_PULSE_DEFAULTS
+
+    def __init__(self, slice_index, params=None):
         #print([sigrW,propLen,pulseE,poltype])
-        _validate_input_slice(params, slice_index)
+        self._validate_type(slice_index, int, 'slice_index')
+        params = self._get_params(params)
+        self._validate_params(params)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
         self.phE = params.phE
@@ -161,7 +192,8 @@ class LaserPulseSlice:
         #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
         #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
         d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
-        if params.d_to_w > d_to_w_cutoff:  params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
+        if params.d_to_w > d_to_w_cutoff:
+            params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
         sigrL=math.sqrt(params.slice_params.sigrW**2+(params.slice_params.propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
 
 
@@ -219,3 +251,20 @@ class LaserPulseSlice:
           optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
           srwlib.srwl.PropagElecField(_wfr, optBLW)
         self.wfr = _wfr
+
+
+    def _get_params(self, params):
+        return self.__fixup_slice_params(super()._get_params(params))
+
+    def __fixup_slice_params(self, params):
+        self._validate_type(params.slice_params, PKDict, 'params.slice_params')
+        for s in self._DEFAULTS.slice_params:
+            if s not in params.slice_params:
+                params.slice_params[s] = self._DEFAULTS.slice_params[s]
+        return params
+
+    def _validate_params(self, input_params):
+        super()._validate_params(input_params)
+        for p in input_params.slice_params:
+            if p not in self._DEFAULTS.slice_params.keys():
+                raise self._INPUT_ERROR(f'invalid inputs: {p} is not a parameter to {self.__class__}')

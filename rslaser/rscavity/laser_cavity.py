@@ -1,34 +1,17 @@
-import math
-import numpy as np
-
-import rslaser.rsoptics
-from rslaser.rsoptics.element import *
-from rslaser.rsoptics.wavefront import *
-import rslaser.rspulse
-from rslaser.rspulse.pulse import *
-
-from array import array
+from rslaser.rsoptics import element
+from rslaser.rspulse import pulse
 from pykern.pkcollections import PKDict
-
-
-_REQUIRED_CAVITY_PARAMS = ['drift_right_length', 'drift_left_length',
-    'lens_left_focal_length', 'lens_right_focal_length', 'n0', 'n2',
-    'L_half_cryst', 'pulse_params']
 
 
 class InvalidLaserCavityInputError(Exception):
     pass
 
 
-def _validate_input(input_params):
-    check_type_and_fields(input_params, _REQUIRED_CAVITY_PARAMS, InvalidLaserCavityInputError, 'LaserCavity')
-
-
-class LaserCavity:
+class LaserCavity(pulse.LaserBase):
     """
     create laser cavity
 
-    Ars:
+    Args:
         params (PKDict):
             required fields:
                 drift_right_length
@@ -40,15 +23,28 @@ class LaserCavity:
                 L_half_cryst
                 pulse_params (PKDict): see LaserPulse docs
     """
-    def __init__(self, params):
-        _validate_input(params)
-        self.laser_pulse = LaserPulse(params.pulse_params)
-        self.crystal_right = Crystal(params.n0,params.n2,params.L_half_cryst)
-        self.crystal_left = Crystal(params.n0,params.n2,params.L_half_cryst)
-        self.drift_right = Drift(params.drift_right_length)
-        self.drift_left = Drift(params.drift_left_length)
-        self.lens_right = Lens(params.lens_right_focal_length)
-        self.lens_left  = Lens(params.lens_left_focal_length)
+    _DEFAULTS = PKDict(
+        drift_right_length=0.5,
+        drift_left_length=0.5,
+        lens_left_focal_length=0.2,
+        lens_right_focal_length=0.2,
+        n0 = 1.75,
+        n2 = 0.001,
+        L_half_cryst=0.2,
+        pulse_params=PKDict()
+    )
+    _INPUT_ERROR = InvalidLaserCavityInputError
+
+    def __init__(self, params=None):
+        params = self._get_params(params)
+        self._validate_params(params)
+        self.laser_pulse = pulse.LaserPulse(params.pulse_params)
+        self.crystal_right = element.Crystal(params.n0,params.n2,params.L_half_cryst)
+        self.crystal_left = element.Crystal(params.n0,params.n2,params.L_half_cryst)
+        self.drift_right = element.Drift(params.drift_right_length)
+        self.drift_left = element.Drift(params.drift_left_length)
+        self.lens_right = element.Lens(params.lens_right_focal_length)
+        self.lens_left  = element.Lens(params.lens_left_focal_length)
 
     def propagate(self, num_cycles, callback=None):
         l = self.laser_pulse
