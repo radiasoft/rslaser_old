@@ -27,4 +27,5 @@ pksetup.setup(
         'Programming Language :: Python',
         'Topic :: Utilities',
     ],
+    include_package_data=True,
 )
