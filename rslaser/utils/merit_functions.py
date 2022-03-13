@@ -4,59 +4,118 @@ Copyright (c) 2022 RadiaSoft LLC. All rights reserved
 """
 import numpy as np
 
-# (x,y) are 2D numpy arrays, specifying the Cartesian domain of the function
-# (xc, yc) is the center of the laser pulse
-# (phi_min, phi_max) are the min/max values of the wavefront phase
-# r_max is approximately the maximum radius of the image
-# r_mid ~ 0.2*r_max is user-specified, with a value that might need tweaking
-# r0 is the radial curvature of phi(r), for r < r_mid
 def spline_wfs(x, y, xc, yc, r_mid, r_max, phi_min, phi_max, r0):
+    """Crude spline-based function for fitting wavefront sensor (WFS) data.
+
+    Args:
+        x, y (2d array): horizontal and vertical positions for the wavefront phase data
+        xc, yc (float): approximate center of the laser pulse
+        r_mid (float): fcn is quadratic for r<r_mid, linear for r>r_mid
+        r_max (float): approximate maximum value of the radius
+        phi_min (float): minimum value of the wavefront phase
+        phi_max (float): maximum value of the wavefront phase
+        r0 (float): defines quadratic behavior for r<r_mid
+
+    Returns:
+        function values (2d array):  phase values of complex E-field in an electromagnetic wavefront
+    """
+    # calculate radius r, as well as r**2
     rsq = (x-xc)**2 + (y-yc)**2
     r = np.sqrt(rsq)
+    
+    # two parameters that are uniquely determined by the input args
     phi_mid = phi_max * (1. - (r_mid/r0)**2)
     c0 = (phi_mid - phi_min) / (1. - r_mid/r_max)
-    
-    f_1 = phi_max * (1. - rsq/r0**2)
-    f_2 = phi_min + c0 * (1. - r/r_max)
+ 
+    # evaluate the function
+    f_1 = phi_max * (1. - rsq/r0**2)     # fcn value for r<r_mid
+    f_2 = phi_min + c0 * (1. - r/r_max)  # fcn value for r>r_mid
     return np.where(r<=r_mid, f_1, f_2)
 
-# r0 and phi_max are the fitting parameters
 def spline_wfs_fit(params, x, y, data, xc, yc, r_mid, r_max, phi_min):
+    """Merit function for least-squares fit of crude spline-like function to wavefront sensor (WFS) data.
+
+    Args:
+        params[0] (float): defines the quadratic behavior for r<r_mid (fitting parameter)
+        params[1] (float): defines the maximum value of the wavefront phase (fitting parameter)
+        x, y (2d array): horizontal and vertical positions for the wavefront phase data
+        data (2d array): phase values of complex E-field (raw data from experimental diagnostic)
+        xc, yc (float): approximate center of the laser pulse
+        r_mid (float): least squares fitting is applied to norm(fit-data) for r<r_mid
+        r_max (float): approximate maximum value of the radius
+        phi_min (float): minimum value of the wavefront phase
+
+    Returns:
+        norm of the difference between the fitted array and raw data, only for r<r_mid
+    """
     r0 = params[0]
     phi_max = params[1]
+    
+    # create the fitted array, using input args
     g = spline_wfs(x, y, xc, yc, r_mid, r_max, phi_min, phi_max, r0)
+    
+    # calculate the radius and use this to weight the difference towards small r values
     r = np.sqrt((x-xc)**2 + (y-yc)**2)
     weighted_diff = np.where(r<=r_mid, (g - data.reshape(g.shape))/r, 0.)
+    
+    # return the norm of the difference between the fitted array and the raw data
     return np.linalg.norm(weighted_diff)
 
-# (x,y) are 2D numpy arrays, specifying the Cartesian domain of the function
-# (xc, yc) is the center of the laser pulse
-# n0_max is the maximum # of photon counts on a pixel, near the pulse center
-# r_rms, the RMS radius of the 2D cylindrically symmetric gaussian
 def gaussian_ccd(x, y, xc, yc, n0_max, r_rms):
+    """Radially symmetric Gaussian function for fitting wavefront intensity data from a CCD diagnostic.
+
+    Args:
+        x, y (2d array): horizontal and vertical positions for the wavefront phase data
+        xc, yc (float): approximate center of the laser pulse
+        n0_max (float): maximum photon count from the CCD diagnostic
+        r_rms (float): RMS radius of the Gaussian distribution
+
+    Returns:
+        function values (2d array):  intensity of an electromagnetic wavefront
+    """
     return n0_max * np.exp(-(((x-xc)/r_rms)**2 + ((y-yc)/r_rms)**2))
 
-# r_rms and n0_max are the fitting parameters
 def gaussian_ccd_fit(params, x, y, xc, yc, data, r_mid):
+    """Merit function for least-squares fit of radially symmetric Gaussian to wavefront intensity.
+
+    Args:
+        params[0] (float): defines the RMS radius of the Gaussian distribution (fitting parameter)
+        params[1] (float): defines the maximum photon count from the CCD diagnostic (fitting parameter)
+        x, y (2d array): horizontal and vertical positions for the wavefront phase data
+        xc, yc (float): approximate center of the laser pulse
+        data (2d array): photon counts from CCD camera (raw data from experimental diagnostic)
+        r_mid (float): least squares fitting is applied to norm(fit-data) for r<r_mid
+
+    Returns:
+        norm of the difference between the fitted array and raw data, only for r<r_mid
+    """
     r_rms = params[0]
     n0_max = params[1]
+
+    # create the fitted array, using input args
     g = gaussian_ccd(x, y, xc, yc, n0_max, r_rms)
-    rsq = (x-xc)**2 + (y-yc)**2
-    r = np.sqrt(rsq)
+    
+    # calculate the radius and use this to weight the difference towards small r values
+    r = np.sqrt((x-xc)**2 + (y-yc)**2)
     weighted_diff = np.where(r<r_mid, (g - data.reshape(g.shape))/r, 0.)
+
+    # return the norm of the difference between the fitted array and the raw data
     return np.linalg.norm(weighted_diff)
 
 # compute an azimuthally averaged radial profile
 # Code adapted from https://github.com/vicbonj/radialprofile/blob/master/radialProfile.py
 
 def azimuthalAverage(image, centerx, centery, type='mean'):
-    '''
-    Compute spherically symetric profiles around a center
-    Returns
-    -------
-    profiles, errors, distance to the center in pixels
-    '''
+    """Compute an azimuthally symmetric profile around the specified center of 2d Cartesian data.
 
+    Args:
+        image (2d array): the 2d Cartesian data, for which a radial profile is desired
+        centerx, centery (float): approximate center of the data
+        type (string): 'mean', 'median' or 'mode' to vary the applied algorithm
+
+    Returns:
+        profiles, errors, distance to the center in pixels
+    """
     y, x = np.indices(image.shape)
     r = np.hypot(x - centerx, y - centery)
 
