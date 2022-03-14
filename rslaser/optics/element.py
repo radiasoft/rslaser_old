@@ -4,11 +4,14 @@ from array import array
 from pykern.pkcollections import PKDict
 import srwlib
 
+
 class Element:
     def propagate(self,laser_pulse, prop_type='default'):
         if prop_type == 'default':
             for w in laser_pulse.slice:
                 srwlib.srwl.PropagElecField(w.wfr,self._srwc)
+        return laser_pulse
+
 
 class Crystal(Element):
 
@@ -57,12 +60,14 @@ class Crystal(Element):
 
 
 class Drift(Element):
+
     def __init__(self,length):
         self.length = length
         self._srwc = srwlib.SRWLOptC(
             [srwlib.SRWLOptD(length)],
             [[0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]],
         )
+
 
 class Lens(Element):
     """
@@ -71,6 +76,7 @@ class Lens(Element):
     Args:
         f: focal length
     """
+
     def __init__(self,f):
         self.length = 0
         self._srwc = srwlib.SRWLOptC(

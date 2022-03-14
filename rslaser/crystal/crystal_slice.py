@@ -9,7 +9,7 @@ import rslaser.optics as rso
 
 c_light = 299792458.0  # m/s, in vacuum
 
-class crystalSlice:
+class CrystalSlice:
   """
   This class represents a slice of a crystal in a laser cavity.
 
