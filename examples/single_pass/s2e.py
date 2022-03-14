@@ -1,4 +1,5 @@
 from __future__ import division, print_function, absolute_import
+from pykern.pkcollections import PKDict
 
 def main():
     #  Instantiate the objects corresponding to the optical line elements and
@@ -19,7 +20,7 @@ def main():
     _Z_CENTER_DEFAULT = 0
     _LASER_PULSE_SLICE_DEFAULTS = PKDict(
         sigrW=0.000186,
-        propLen=15,
+        # propLen=15,
         pulseE=0.001,
         poltype=1,
         sampFact=5,
@@ -47,13 +48,10 @@ def main():
     )
     #  Pulse parameters:
     pupa = _LASER_PULSE_DEFAULTS.copy()
-    pupa.propLen = 15.0  # [m]
-    pupa.sigrW = 0.000186  # 0.000436984 #  radial rms size at the waist [m]
     pupa.d_to_w = 0.10  #  [m] distance from the initial pulse location to the loc-n of the beam waist, > 0 if converging
-    pupa.pulseE = 0.001  # pulse energy [J]
-    pupa.poltype = 1  #  0 = linear horizontal, 1 = linear vertical, ...
+    pupa.slice_params.poltype = 1  #  0 = linear horizontal, 1 = linear vertical, ...
     pupa.phE = 1.55  # Wavefront energy [eV]. 1.55 eV is 800 nm wavelength (seed laser); 532 nm for the pump laser
-    pupa.energyChirp = 0.0
+    pupa.chirp = 0.0
     pupa.nslice = 2  #  the number of slices the pulse is divided into
 
     #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)  # creates Gaussian wavefront in SRW
