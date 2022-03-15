@@ -11,14 +11,14 @@ import srwlib
 c_light = 299792458.0  # m/s, in vacuum
 
 
-class ElementException:
+class ElementException(Exception):
     pass
 
 
 class Element:
-    def propagate(self,laser_pulse, prop_type='default'):
+    def propagate(self, laser_pulse, prop_type='default'):
         if prop_type != 'default':
-            raise ElementException(f'Non default prop_type {prop_type} passed to propagation')
+            raise ElementException(f'Non default prop_type "{prop_type}" passed to propagation')
         for w in laser_pulse.slice:
             srwlib.srwl.PropagElecField(w.wfr,self._srwc)
         return laser_pulse

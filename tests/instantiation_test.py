@@ -4,6 +4,7 @@ and LaserPulseSlice
 """
 from __future__ import absolute_import, division, print_function
 import math
+import numpy as np
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
 import pytest
@@ -145,23 +146,6 @@ def test_cavity_partial_pulse_params4():
 
 def test_cavity_wrong_in_type():
     trigger_exception_test(laser_cavity.LaserCavity, 'wrong')
-
-
-def test_envelope():
-    e = pulse.LaserPulseEnvelope()
-
-
-def test_envelope2():
-    trigger_exception_test(pulse.LaserPulseEnvelope, 1)
-
-
-def test_envelope3():
-    trigger_exception_test(
-        pulse.LaserPulseEnvelope,
-        PKDict(
-            test='test'
-        )
-    )
 
 
 def trigger_exception_test(call, args):
