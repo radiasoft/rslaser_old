@@ -147,6 +147,23 @@ def test_cavity_wrong_in_type():
     trigger_exception_test(laser_cavity.LaserCavity, 'wrong')
 
 
+def test_envelope():
+    e = pulse.LaserPulseEnvelope()
+
+
+def test_envelope2():
+    trigger_exception_test(pulse.LaserPulseEnvelope, 1)
+
+
+def test_envelope3():
+    trigger_exception_test(
+        pulse.LaserPulseEnvelope,
+        PKDict(
+            test='test'
+        )
+    )
+
+
 def trigger_exception_test(call, args):
     try:
         if len(args) > 0 and type(args) != PKDict and type(args) != str:
