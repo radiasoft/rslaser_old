@@ -7,7 +7,7 @@ def main():
 
     dr1 = elsdr.Drift(0.2)  # drift of length 1.0 m with a unique label 'dr1'
     dr2 = elsdr.Drift(0.02)
-    crystal = elscs.CrystalSlice('cryst_slice1', 0.1)  # a single-slice crystal
+    crystal = elsdr.CrystalSlice('cryst_slice1', 0.1)  # a single-slice crystal
     #lattice = [(dr1,'default'), (crystal,'placeholder'), (dr2,'default')]
     lattice = [(dr1,'default'), (crystal,'abcd'), (dr2,'default')]
 
@@ -85,7 +85,6 @@ if __name__=="__main__":
     import rslaser.pulse as rsp
     import rslaser.pulse.pulse as plsdv
     import rslaser.optics.element as elsdr
-    import rslaser.crystal.crystal_slice as elscs
 
     import scipy
     import scipy.constants as const
