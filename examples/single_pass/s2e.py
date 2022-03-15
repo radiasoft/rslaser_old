@@ -5,9 +5,9 @@ def main():
     #  Instantiate the objects corresponding to the optical line elements and
     #  specify the propagation sequence:
 
-    dr1 = elsdr.drift('dr1', 0.2)  # drift of length 1.0 m with a unique label 'dr1'
-    dr2 = elsdr.drift('dr2', 0.02)
-    crystal = elscs.crystalSlice('cryst_slice1', 0.1)  # a single-slice crystal
+    dr1 = elsdr.Drift(0.2)  # drift of length 1.0 m with a unique label 'dr1'
+    dr2 = elsdr.Drift(0.02)
+    crystal = elsdr.CrystalSlice('cryst_slice1', 0.1)  # a single-slice crystal
     #lattice = [(dr1,'default'), (crystal,'placeholder'), (dr2,'default')]
     lattice = [(dr1,'default'), (crystal,'abcd'), (dr2,'default')]
 
@@ -84,8 +84,7 @@ if __name__=="__main__":
     import rslaser.optics as rso
     import rslaser.pulse as rsp
     import rslaser.pulse.pulse as plsdv
-    import rslaser.elements.drift as elsdr
-    import rslaser.elements.crystalSlice as elscs
+    import rslaser.optics.element as elsdr
 
     import scipy
     import scipy.constants as const
