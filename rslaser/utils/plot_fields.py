@@ -19,7 +19,7 @@ def plot_1d_x(_xArr, _pulse, _ax, _y=0., _z=0., _t=0., _time_explicit=False):
 
     Args:
         _xArr (1D numpy array): x positions where the field is to be evaluated
-        _pulse (object): instance of the GaussHermite() class.
+        _pulse (object): instance of the LaserPulseEnvelope() class.
         _ax (object): matplotlib 'axis', used to generate the plot
         _y (float): [m] vertical location of the lineout
         _z (float): [m] longitudinal location of the lineout
@@ -50,7 +50,7 @@ def plot_1d_y(_yArr, _pulse, _ax, _x=0., _z=0., _t=0., _time_explicit=False):
 
     Args:
         _yArr (1D numpy array): y positions where the field is to be evaluated
-        _pulse (object): instance of the GaussHermite() class.
+        _pulse (object): instance of the LaserPulseEnvelope() class.
         _ax (object): matplotlib 'axis', used to generate the plot
         _x (float): [m] horizontal location of the lineout
         _z (float): [m] longitudinal location of the lineout
@@ -81,7 +81,7 @@ def plot_1d_r(_rArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False):
 
     Args:
         _rArr (1D numpy array): r positions where the field is to be evaluated
-        _pulse (object): instance of the GaussHermite() class.
+        _pulse (object): instance of the LaserPulseEnvelope() class.
         _ax (object): matplotlib 'axis', used to generate the plot
         _z (float): [m] longitudinal location of the lineout
         _t (float): [m] time of the lineout
@@ -112,7 +112,7 @@ def plot_1d_z(_zArr, _pulse, _ax, _x=0., _y=0., _t=0., _time_explicit=False):
 
     Args:
         _zArr (1D numpy array): z positions where the field is to be evaluated
-        _pulse (object): instance of the GaussHermite() class.
+        _pulse (object): instance of the LaserPulseEnvelope() class.
         _ax (matplotlib axis): used to generate plot
         _x (float): [m] horizontal location of the lineout
         _y (float): [m] vertical location of the lineout
@@ -196,7 +196,7 @@ def plot_2d_xy(_xArr, _yArr, _pulse, _ax, _z=0., _t=0., _time_explicit=False, _n
     Args:
         _xArr (1D numpy array): x positions where the field is to be evaluated
         _yArr (1D numpy array): x positions where the field is to be evaluated
-        _pulse (object): instance of the GaussHermite() class.
+        _pulse (object): instance of the LaserPulseEnvelope() class.
         _ax (object): matplotlib 'axis', used to generate the plot
         _z (float): [m] longitudinal location of the lineout
         _t (float): [m] time of the lineout
