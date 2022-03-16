@@ -4,6 +4,7 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 """
 import math, cmath
 import numpy as np
+from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
 from numpy.polynomial.hermite import hermval
 import rslaser.optics.wavefront as rswf
@@ -315,7 +316,6 @@ class LaserPulseEnvelope(LaserBase):
     _DEFAULTS = _ENVELOPE_DEFAULTS
 
     def __init__(self, params=None):
-        # print('params to envelope: ', params)
         params = self._get_params(params)
         self._validate_params(params)
         self.lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))            # central wavelength [m]
