@@ -19,6 +19,8 @@ class Element:
     def propagate(self, laser_pulse, prop_type='default'):
         if prop_type != 'default':
             raise ElementException(f'Non default prop_type "{prop_type}" passed to propagation')
+        if not hasattr(self, '_srwc'):
+            raise ElementException(f'_srwc field is expected to be set on {self}')
         for w in laser_pulse.slice:
             srwlib.srwl.PropagElecField(w.wfr,self._srwc)
         return laser_pulse
@@ -104,21 +106,23 @@ class CrystalSlice(Element):
 
     def propagate(self, laser_pulse, prop_type):
         if prop_type == 'attenuate':
-            n_x = wfront.mesh.nx  #  nr of grid points in x
-            n_y = wfront.mesh.ny  #  nr of grid points in y
-            sig_cr_sec = np.ones((n_x, n_y), dtype=np.float32)
-            pop_inv = self.pop_inv
-            n0_phot = 0.0 *sig_cr_sec # incident photon density (3D), at a given transv. loc-n
-            eta = n0_phot *c_light *tau_pulse
-            gamma_degen = 1.0
-            en_gain = np.log( 1. +np.exp(sig_cr_sec *pop_inv *element.length) *(
-                        np.exp(gamma_degen *sig_cr_sec *eta) -1.0) ) /(gamma_degen *sig_cr_sec *eta)
-            return laser_pulse
+            raise NotImplementedError(f'{self}.propagate() with prop_type="attenuate" is not currently supported')
+            # n_x = wfront.mesh.nx  #  nr of grid points in x
+            # n_y = wfront.mesh.ny  #  nr of grid points in y
+            # sig_cr_sec = np.ones((n_x, n_y), dtype=np.float32)
+            # pop_inv = self.pop_inv
+            # n0_phot = 0.0 *sig_cr_sec # incident photon density (3D), at a given transv. loc-n
+            # eta = n0_phot *c_light *tau_pulse
+            # gamma_degen = 1.0
+            # en_gain = np.log( 1. +np.exp(sig_cr_sec *pop_inv *element.length) *(
+            #             np.exp(gamma_degen *sig_cr_sec *eta) -1.0) ) /(gamma_degen *sig_cr_sec *eta)
+            # return laser_pulse
         if prop_type == 'placeholder':
-            nslices = len(laser_pulse.slice)
-            for i in np.arange(nslices):
-                print ('Pulse slice ', i+1, ' of ', nslices, ' propagated through crystal slice.')
-            return laser_pulse
+            raise NotImplementedError(f'{self}.propagate() with prop_type="placeholder" is not currently supported')
+            # nslices = len(laser_pulse.slice)
+            # for i in np.arange(nslices):
+            #     print ('Pulse slice ', i+1, ' of ', nslices, ' propagated through crystal slice.')
+            # return laser_pulse
         if prop_type == 'abcd':
             nslices = len(laser_pulse.slice)
             L_cryst = self.length

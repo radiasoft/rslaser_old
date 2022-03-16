@@ -7,9 +7,6 @@ from rslaser.optics import element
 from rslaser.pulse import pulse
 import test_utils
 
-# TODO: (gurhar1133): may want to reorganize the test files
-# ie. move some stuff out of instantiation_test and create a
-# pulse_test.py file
 
 def crystal_slice_prop_test(prop_type):
     c = element.CrystalSlice('test', 0.01)
@@ -23,15 +20,15 @@ def test_crystal_slice_instantiation():
 
 
 def test_crystal_slice_propagate_default():
-    crystal_slice_prop_test('default')
+    test_utils.trigger_exception_test(crystal_slice_prop_test, 'default')
 
 
 def test_crystal_slice_propagate_attenuate():
-    crystal_slice_prop_test('attenuate')
+    test_utils.trigger_exception_test(crystal_slice_prop_test, 'attenuate')
 
 
 def test_crystal_slice_propagate_placeholder():
-    crystal_slice_prop_test('placeholder')
+    test_utils.trigger_exception_test(crystal_slice_prop_test, 'placeholder')
 
 
 def test_crystal_slice_propagate_abcd():
