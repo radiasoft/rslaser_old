@@ -5,7 +5,7 @@ from pykern.pkcollections import PKDict
 import pytest
 from rslaser.optics import element
 from rslaser.pulse import pulse
-from instantiation_test import trigger_exception_test
+import test_utils
 
 # TODO: (gurhar1133): may want to reorganize the test files
 # ie. move some stuff out of instantiation_test and create a
@@ -40,7 +40,7 @@ def test_crystal_slice_propagate_abcd():
 
 def test_crystal_slice_propagate_exception():
     c = element.CrystalSlice('test', 0.01)
-    trigger_exception_test(c.propagate, 'should fail')
+    test_utils.trigger_exception_test(c.propagate, 'should fail')
 
 
 def test_drift_instantiate():
@@ -76,7 +76,7 @@ def test_lens_propagate_fail():
         )
 
 def trigger_prop_fail(prop_func, pulse):
-    trigger_exception_test(
+    test_utils.trigger_exception_test(
         prop_func,
         [pulse, 'should fail']
     )

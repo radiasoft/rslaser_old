@@ -11,6 +11,7 @@ import pytest
 from rslaser.pulse import pulse
 from rslaser.cavity import laser_cavity
 import scipy.constants as const
+import test_utils
 
 
 def pulse_instantiation_test(pulse, field):
@@ -57,17 +58,17 @@ def test_basic_pulse_slice_instantiation():
 def test_pulse_slice_input_validators_type():
     c = [[i, 0] for i in range(10)]
     for a in c:
-        trigger_exception_test(pulse.LaserPulseSlice, a)
+        test_utils.trigger_exception_test(pulse.LaserPulseSlice, a)
 
 
 def test_wrong_input():
     p = PKDict(PHHe=0.1)
-    trigger_exception_test(pulse.LaserPulse, p)
+    test_utils.trigger_exception_test(pulse.LaserPulse, p)
 
 
 def test_wrong_input2():
     p = PKDict(slice_params=PKDict(blonk=9))
-    trigger_exception_test(pulse.LaserPulse, p)
+    test_utils.trigger_exception_test(pulse.LaserPulse, p)
 
 
 def test_wrong_filling():
@@ -81,12 +82,12 @@ def test_wrong_filling2():
 
 
 def test_pulse_input_validators_type():
-    trigger_exception_test(pulse.LaserPulse, [])
+    test_utils.trigger_exception_test(pulse.LaserPulse, [])
 
 
 def test_correct_slice_params_type():
     k = PKDict(slice_params=[])
-    trigger_exception_test(pulse.LaserPulse, k)
+    test_utils.trigger_exception_test(pulse.LaserPulse, k)
 
 
 def test_correct_slice_params():
@@ -95,12 +96,12 @@ def test_correct_slice_params():
             foo='bar', hello='world'
         )
     )
-    trigger_exception_test(pulse.LaserPulse, k)
+    test_utils.trigger_exception_test(pulse.LaserPulse, k)
 
 
 def test_laser_pulse_slice_index():
     a = '10'
-    trigger_exception_test(pulse.LaserPulseSlice, a)
+    test_utils.trigger_exception_test(pulse.LaserPulseSlice, a)
 
 
 def test_laser_cavity():
@@ -109,7 +110,7 @@ def test_laser_cavity():
 
 def test_laser_cavity_fail():
     k = PKDict(n3='fail')
-    trigger_exception_test(laser_cavity.LaserCavity, k)
+    test_utils.trigger_exception_test(laser_cavity.LaserCavity, k)
 
 
 def test_cavity_partial_pulse_params():
@@ -145,16 +146,4 @@ def test_cavity_partial_pulse_params4():
 
 
 def test_cavity_wrong_in_type():
-    trigger_exception_test(laser_cavity.LaserCavity, 'wrong')
-
-
-def trigger_exception_test(call, args):
-    try:
-        if len(args) > 0 and type(args) != PKDict and type(args) != str:
-            l = call(*args)
-        else:
-            l = call(args)
-    except Exception as e:
-        pkdlog('EXCEPTION:{}, with message "{}" triggered by call: {} and args {}', type(e), e, call, args)
-        return e
-    assert False
+    test_utils.trigger_exception_test(laser_cavity.LaserCavity, 'wrong')

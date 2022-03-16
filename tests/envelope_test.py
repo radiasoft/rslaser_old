@@ -11,19 +11,18 @@ import pytest
 from rslaser.pulse import pulse
 from rslaser.cavity import laser_cavity
 import scipy.constants as const
-from instantiation_test import trigger_exception_test
-
+import test_utils
 
 def test_envelope():
     e = pulse.LaserPulseEnvelope()
 
 
 def test_envelope2():
-    trigger_exception_test(pulse.LaserPulseEnvelope, 1)
+    test_utils.trigger_exception_test(pulse.LaserPulseEnvelope, 1)
 
 
 def test_envelope3():
-    trigger_exception_test(
+    test_utils.trigger_exception_test(
         pulse.LaserPulseEnvelope,
         PKDict(
             test='test'
@@ -46,7 +45,7 @@ def test_envelope5():
 
 def test_envelope6():
     e = pulse.LaserPulseEnvelope()
-    trigger_exception_test(e.evaluate_envelope_ex, 'should fail')
+    test_utils.trigger_exception_test(e.evaluate_envelope_ex, 'should fail')
 
 
 
