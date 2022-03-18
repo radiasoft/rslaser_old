@@ -50,7 +50,7 @@ class Crystal(Element):
     """
     _DEFAULTS = _CRYSTAL_DEFAULTS.copy()
     _INPUT_ERROR = ElementException
-    def __init__(self, params):
+    def __init__(self, params=None):
         params = self._get_params(params)
         self._validate_params(params)
         self.length = params.length
@@ -107,7 +107,7 @@ class Crystal(Element):
                 )
             )
 
-    def propagate(self, laser_pulse, prop_type):
+    def propagate(self, laser_pulse, prop_type='default'):
         # TODO (gurhar1133): should this take laser_pulse and prop_type?
         # also, should pass the same pulse through each slice and return
         # the final pulse result?
@@ -135,7 +135,7 @@ class CrystalSlice(Element):
 
     _DEFAULTS = _CRYSTAL_SLICE_DEFAULTS.copy()
     _INPUT_ERROR = ElementException
-    def __init__(self, params):
+    def __init__(self, params=None):
         params = self._get_params(params)
         self._validate_params(params)
         self.length = params.length
