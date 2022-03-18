@@ -1,4 +1,4 @@
-from rslaser.base.base import ValidatorBase
+from rslaser.validation.validator import ValidatorBase
 from rslaser.optics import element
 from rslaser.pulse import pulse
 from array import array
@@ -69,7 +69,7 @@ class LaserCavity(ValidatorBase):
             callback(current_position, vals)
 
         for n in range(num_cycles):
-            for element in (
+            for e in (
                 self.crystal_right,
                 self.drift_right,
                 self.lens_right,
@@ -81,8 +81,12 @@ class LaserCavity(ValidatorBase):
                 self.drift_left,
                 self.crystal_left,
             ):
-                element.propagate(l)
-                current_position += element.length
+                # print("type(el")
+                if type(e) == element.Crystal:
+                    e.propagate(l, 'abcd')
+                else:
+                    e.propagate(l)
+                current_position += e.length
                 vals = l.compute_middle_slice_intensity()
                 positions.append(current_position)
                 if callback:

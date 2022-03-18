@@ -5,7 +5,7 @@ from telnetlib import EL
 import numpy as np
 from array import array
 from pykern.pkcollections import PKDict
-from rslaser.base.base import ValidatorBase
+from rslaser.validation.validator import ValidatorBase
 import srwlib
 
 

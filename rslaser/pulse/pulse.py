@@ -9,7 +9,7 @@ from pykern.pkcollections import PKDict
 from numpy.polynomial.hermite import hermval
 import rslaser.optics.wavefront as rswf
 import rslaser.utils.constants as rsc
-from rslaser.base.base import ValidatorBase
+from rslaser.validation.validator import ValidatorBase
 import rslaser.utils.unit_conversion as units
 import scipy.constants as const
 import srwlib
