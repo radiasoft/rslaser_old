@@ -5,17 +5,30 @@ from telnetlib import EL
 import numpy as np
 from array import array
 from pykern.pkcollections import PKDict
+from rslaser.base.base import ValidatorBase
 import srwlib
 
 
 c_light = 299792458.0  # m/s, in vacuum
 
+_CRYSTAL_SLICE_DEFAULTS = PKDict(
+    n0=1.75,
+    n2=0.001,
+    length=0.2,
+)
+
+_CRYSTAL_DEFAULTS = PKDict(
+        n0= _CRYSTAL_SLICE_DEFAULTS.n0,
+        n2= _CRYSTAL_SLICE_DEFAULTS.n2,
+        length=_CRYSTAL_SLICE_DEFAULTS.length*3,
+        nslice=3,
+    )
 
 class ElementException(Exception):
     pass
 
 
-class Element: # TODO (gurhar1133): Should this inherit from LaserBase to get input validation etc. and we change the name of LaserBase?
+class Element(ValidatorBase):
     def propagate(self, laser_pulse, prop_type='default'):
         if prop_type != 'default':
             raise ElementException(f'Non default prop_type "{prop_type}" passed to propagation')
@@ -32,13 +45,16 @@ class Crystal(Element):
         params (PKDict) with fields:
             n0
             n2
-            L_cryst
+            length
             nslice
-            slice_params (PKDict, see input params to CrystalSlice)
     """
+    _DEFAULTS = _CRYSTAL_DEFAULTS.copy()
+    _INPUT_ERROR = ElementException
     def __init__(self, params):
-
-        self.length = params.L_cryst
+        params = self._get_params(params)
+        self._validate_params(params)
+        self.length = params.length
+        self.nslice = params.nslice
         self.slice = []
 
         def _createABCDbeamline(A,B,C,D):
@@ -71,30 +87,33 @@ class Crystal(Element):
             return srwlib.SRWLOptC([optDrift],[propagParDrift])
 
         if params.n2==0:
-            self._srwc=_createDriftBL(params.L_cryst)
-            #print("L_cryst/n0=",L_cryst/n0)
+            self._srwc=_createDriftBL(params.length)
         else:
             gamma = np.sqrt(params.n2/params.n0)
-            A = np.cos(gamma*params.L_cryst)
-            B = (1/(gamma))*np.sin(gamma*params.L_cryst)
-            C = -gamma*np.sin(gamma*params.L_cryst)
-            D = np.cos(gamma*params.L_cryst)
+            A = np.cos(gamma*params.length)
+            B = (1/(gamma))*np.sin(gamma*params.length)
+            C = -gamma*np.sin(gamma*params.length)
+            D = np.cos(gamma*params.length)
             self._srwc=_createABCDbeamline(A,B,C,D)
 
-        for i in range(self.nslice):
-            # TODO (gurhar1133): is this the correct relationship/heirarchy between params and params for slice?
-            self.slice.append(CrystalSlice(params.slice_params))
-            continue
-
+        for _ in range(self.nslice):
+            self.slice.append(
+                CrystalSlice(
+                    PKDict(
+                        n0=params.n0,
+                        n2=params.n2,
+                        length=params.length / params.nslice
+                    )
+                )
+            )
 
     def propagate(self, laser_pulse, prop_type):
         # TODO (gurhar1133): should this take laser_pulse and prop_type?
         # also, should pass the same pulse through each slice and return
         # the final pulse result?
-        l = laser_pulse
         for s in self.slice:
-            l = s.propagate(laser_pulse, prop_type)
-        return l
+            laser_pulse = s.propagate(laser_pulse, prop_type)
+        return laser_pulse
 
 
 class CrystalSlice(Element):
@@ -103,12 +122,10 @@ class CrystalSlice(Element):
 
     Args:
         params (PKDict) with fields:
-            label: a unique tag labeling a physical beamline element
             length
             n0: on-axis index of refraction
             n2: transverse variation of index of refraction
             n(r) = n0 - 0.5 n2 r^2
-            pop_inv:  population inversion in the pumped crystal
 
     To be added: alpha0, alpha2 laser gain parameters
 
@@ -116,11 +133,15 @@ class CrystalSlice(Element):
     these parameters as the laser passes through.
     """
 
+    _DEFAULTS = _CRYSTAL_SLICE_DEFAULTS.copy()
+    _INPUT_ERROR = ElementException
     def __init__(self, params):
-        self.length = params._length
-        self.n0 = params._n0
-        self.n2 = params._n2
-        self.pop_inv = params._pop_inv
+        params = self._get_params(params)
+        self._validate_params(params)
+        self.length = params.length
+        self.n0 = params.n0
+        self.n2 = params.n2
+        # self.pop_inv = params._pop_inv
 
         #  Assuming wfr0 exsts, created e.g. via
         #  wfr0=createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)

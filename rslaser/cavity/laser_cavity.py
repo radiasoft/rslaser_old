@@ -1,3 +1,4 @@
+from rslaser.base.base import ValidatorBase
 from rslaser.optics import element
 from rslaser.pulse import pulse
 from array import array
@@ -8,7 +9,7 @@ class InvalidLaserCavityInputError(Exception):
     pass
 
 
-class LaserCavity(pulse.LaserBase):
+class LaserCavity(ValidatorBase):
     """
     create laser cavity
 
@@ -22,6 +23,7 @@ class LaserCavity(pulse.LaserBase):
                 n0
                 n2
                 L_half_cryst
+                crystal_slices: to be passed as nslice to to Crystal
                 pulse_params (PKDict): see LaserPulse docs
     """
     _DEFAULTS = PKDict(
@@ -32,6 +34,7 @@ class LaserCavity(pulse.LaserBase):
         n0 = 1.75,
         n2 = 0.001,
         L_half_cryst=0.2,
+        crystal_slices=3,
         pulse_params=PKDict()
     )
     _INPUT_ERROR = InvalidLaserCavityInputError
@@ -39,9 +42,15 @@ class LaserCavity(pulse.LaserBase):
     def __init__(self, params=None):
         params = self._get_params(params)
         self._validate_params(params)
+        crystal_params = PKDict(
+            n0=params.n0,
+            n2=params.n2,
+            length=params.L_half_cryst,
+            nslice=params.crystal_slices,
+        )
         self.laser_pulse = pulse.LaserPulse(params.pulse_params)
-        self.crystal_right = element.Crystal(params.n0,params.n2,params.L_half_cryst)
-        self.crystal_left = element.Crystal(params.n0,params.n2,params.L_half_cryst)
+        self.crystal_right = element.Crystal(crystal_params)
+        self.crystal_left = element.Crystal(crystal_params)
         self.drift_right = element.Drift(params.drift_right_length)
         self.drift_left = element.Drift(params.drift_left_length)
         self.lens_right = element.Lens(params.lens_right_focal_length)
