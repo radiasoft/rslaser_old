@@ -5,8 +5,8 @@ from telnetlib import EL
 import numpy as np
 from array import array
 from pykern.pkcollections import PKDict
-from rslaser.validation.validator import ValidatorBase
 import srwlib
+from rslaser.validation.validator import ValidatorBase
 
 
 c_light = 299792458.0  # m/s, in vacuum

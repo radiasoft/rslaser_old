@@ -1,9 +1,8 @@
-from rslaser.validation.validator import ValidatorBase
 from rslaser.optics import element
 from rslaser.pulse import pulse
 from array import array
 from pykern.pkcollections import PKDict
-
+from rslaser.validation.validator import ValidatorBase
 
 class InvalidLaserCavityInputError(Exception):
     pass
@@ -81,7 +80,6 @@ class LaserCavity(ValidatorBase):
                 self.drift_left,
                 self.crystal_left,
             ):
-                # print("type(el")
                 if type(e) == element.Crystal:
                     e.propagate(l, 'abcd')
                 else:
