@@ -1,15 +1,8 @@
-from asyncore import read
-from importlib.resources import read_text
-import math
-from telnetlib import EL
 import numpy as np
-from array import array
 from pykern.pkcollections import PKDict
 import srwlib
 from rslaser.validation.validator import ValidatorBase
 
-
-c_light = 299792458.0  # m/s, in vacuum
 
 _CRYSTAL_SLICE_DEFAULTS = PKDict(
     n0=1.75,
