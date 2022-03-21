@@ -1,5 +1,6 @@
 u"""Tests for Crystal and CrystalSlice
 """
+from ast import Assert
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
 import pytest
@@ -8,15 +9,49 @@ from rslaser.pulse import pulse
 import test_utils
 
 
+def test_crystal_instantiation():
+    c = element.Crystal(
+        PKDict(
+            n0=.3,
+        )
+    )
+
+
+def test_crystal_instantiation2():
+    c = element.Crystal()
+
+
+def test_crystal_instantiation3():
+    test_utils.trigger_exception_test(element.Crystal, 'fail')
+
+
+def test_crystal_instantiation4():
+    test_utils.trigger_exception_test(element.Crystal, PKDict(slice_params=PKDict()))
+
+
+def test_crystal_instantiation5():
+    c = element.Crystal()
+    for s in c.slice:
+        if s.length != c.length/c.nslice:
+            raise AssertionError('CrystalSlice had length not equal to Crystal wrapper length/nslice')
+
+
+def test_crystal_propagation():
+    p = pulse.LaserPulse()
+    c = element.Crystal()
+    p = c.propagate(p, 'abcd')
+    assert type(p) == pulse.LaserPulse
+
+
 def crystal_slice_prop_test(prop_type):
-    c = element.CrystalSlice('test', 0.01)
+    c = element.CrystalSlice()
     p = pulse.LaserPulse()
     p = c.propagate(p, prop_type)
     assert type(p) == pulse.LaserPulse
 
 
 def test_crystal_slice_instantiation():
-    c = element.CrystalSlice('test', 0.01)
+    c = element.CrystalSlice()
 
 
 def test_crystal_slice_propagate_default():
@@ -36,7 +71,7 @@ def test_crystal_slice_propagate_abcd():
 
 
 def test_crystal_slice_propagate_exception():
-    c = element.CrystalSlice('test', 0.01)
+    c = element.CrystalSlice()
     test_utils.trigger_exception_test(c.propagate, 'should fail')
 
 

@@ -1,21 +1,27 @@
-from asyncore import read
-from importlib.resources import read_text
-import math
-from telnetlib import EL
 import numpy as np
-from array import array
 from pykern.pkcollections import PKDict
 import srwlib
+from rslaser.utils.validator import ValidatorBase
 
 
-c_light = 299792458.0  # m/s, in vacuum
+_CRYSTAL_SLICE_DEFAULTS = PKDict(
+    n0=1.75,
+    n2=0.001,
+    length=0.2,
+)
 
+_CRYSTAL_DEFAULTS = PKDict(
+        n0= _CRYSTAL_SLICE_DEFAULTS.n0,
+        n2= _CRYSTAL_SLICE_DEFAULTS.n2,
+        length=_CRYSTAL_SLICE_DEFAULTS.length*3,
+        nslice=3,
+    )
 
 class ElementException(Exception):
     pass
 
 
-class Element:
+class Element(ValidatorBase):
     def propagate(self, laser_pulse, prop_type='default'):
         if prop_type != 'default':
             raise ElementException(f'Non default prop_type "{prop_type}" passed to propagation')
@@ -27,9 +33,22 @@ class Element:
 
 
 class Crystal(Element):
-
-    def __init__(self,n0,n2,L_cryst):
-        self.length = L_cryst
+    """
+    Args:
+        params (PKDict) with fields:
+            n0
+            n2
+            length
+            nslice
+    """
+    _DEFAULTS = _CRYSTAL_DEFAULTS.copy()
+    _INPUT_ERROR = ElementException
+    def __init__(self, params=None):
+        params = self._get_params(params)
+        self._validate_params(params)
+        self.length = params.length
+        self.nslice = params.nslice
+        self.slice = []
 
         def _createABCDbeamline(A,B,C,D):
             """
@@ -60,16 +79,34 @@ class Crystal(Element):
             #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
             return srwlib.SRWLOptC([optDrift],[propagParDrift])
 
-        if n2==0:
-            self._srwc=_createDriftBL(L_cryst)
-            #print("L_cryst/n0=",L_cryst/n0)
+        if params.n2==0:
+            self._srwc=_createDriftBL(params.length)
         else:
-            gamma = np.sqrt(n2/n0)
-            A = np.cos(gamma*L_cryst)
-            B = (1/(gamma))*np.sin(gamma*L_cryst)
-            C = -gamma*np.sin(gamma*L_cryst)
-            D = np.cos(gamma*L_cryst)
+            gamma = np.sqrt(params.n2/params.n0)
+            A = np.cos(gamma*params.length)
+            B = (1/(gamma))*np.sin(gamma*params.length)
+            C = -gamma*np.sin(gamma*params.length)
+            D = np.cos(gamma*params.length)
             self._srwc=_createABCDbeamline(A,B,C,D)
+
+        for _ in range(self.nslice):
+            self.slice.append(
+                CrystalSlice(
+                    PKDict(
+                        n0=params.n0,
+                        n2=params.n2,
+                        length=params.length / params.nslice
+                    )
+                )
+            )
+
+    def propagate(self, laser_pulse, prop_type='default'):
+        # TODO (gurhar1133): should this take laser_pulse and prop_type?
+        # also, should pass the same pulse through each slice and return
+        # the final pulse result?
+        for s in self.slice:
+            laser_pulse = s.propagate(laser_pulse, prop_type)
+        return laser_pulse
 
 
 class CrystalSlice(Element):
@@ -77,12 +114,11 @@ class CrystalSlice(Element):
     This class represents a slice of a crystal in a laser cavity.
 
     Args:
-        label: a unique tag labeling a physical beamline element
-        length
-        n0: on-axis index of refraction
-        n2: transverse variation of index of refraction
-        n(r) = n0 - 0.5 n2 r^2
-        pop_inv:  population inversion in the pumped crystal
+        params (PKDict) with fields:
+            length
+            n0: on-axis index of refraction
+            n2: transverse variation of index of refraction
+            n(r) = n0 - 0.5 n2 r^2
 
     To be added: alpha0, alpha2 laser gain parameters
 
@@ -90,12 +126,15 @@ class CrystalSlice(Element):
     these parameters as the laser passes through.
     """
 
-    def __init__(self, _label, _length, _n0=1.75, _n2=0.0, _pop_inv=1.0):
-        self.label = _label
-        self.length = _length
-        self.n0 = _n0
-        self.n2 = _n2
-        self.pop_inv = _pop_inv
+    _DEFAULTS = _CRYSTAL_SLICE_DEFAULTS.copy()
+    _INPUT_ERROR = ElementException
+    def __init__(self, params=None):
+        params = self._get_params(params)
+        self._validate_params(params)
+        self.length = params.length
+        self.n0 = params.n0
+        self.n2 = params.n2
+        # self.pop_inv = params._pop_inv
 
         #  Assuming wfr0 exsts, created e.g. via
         #  wfr0=createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)
