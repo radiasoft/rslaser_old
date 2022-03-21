@@ -49,46 +49,6 @@ class Crystal(Element):
         self.length = params.length
         self.nslice = params.nslice
         self.slice = []
-
-        def _createABCDbeamline(A,B,C,D):
-            """
-            Use decomposition of ABCD matrix into kick-drift-kick Pei-Huang 2017 (https://arxiv.org/abs/1709.06222)
-            Construct corresponding SRW beamline container object
-
-            Args:
-                A,B,C,D are 2x2 matrix components.
-            """
-
-            f1= B/(1-A)
-            L = B
-            f2 = B/(1-D)
-
-            optLens1 = srwlib.SRWLOptL(f1, f1)
-            optDrift= srwlib.SRWLOptD(L)
-            optLens2 = srwlib.SRWLOptL(f2, f2)
-
-            propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-            propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-            propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
-
-            return srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
-
-        def _createDriftBL(Lc):
-            optDrift=srwlib.SRWLOptD(Lc)
-            propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
-            #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
-            return srwlib.SRWLOptC([optDrift],[propagParDrift])
-
-        if params.n2==0:
-            self._srwc=_createDriftBL(params.length)
-        else:
-            gamma = np.sqrt(params.n2/params.n0)
-            A = np.cos(gamma*params.length)
-            B = (1/(gamma))*np.sin(gamma*params.length)
-            C = -gamma*np.sin(gamma*params.length)
-            D = np.cos(gamma*params.length)
-            self._srwc=_createABCDbeamline(A,B,C,D)
-
         for _ in range(self.nslice):
             self.slice.append(
                 CrystalSlice(
