@@ -1,7 +1,7 @@
 import numpy as np
 from pykern.pkcollections import PKDict
 import srwlib
-from rslaser.validation.validator import ValidatorBase
+from rslaser.utils.validator import ValidatorBase
 
 
 _CRYSTAL_SLICE_DEFAULTS = PKDict(

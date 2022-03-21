@@ -13,7 +13,7 @@ import rslaser.utils.unit_conversion as units
 import scipy.constants as const
 import srwlib
 from srwlib import srwl
-from rslaser.validation.validator import ValidatorBase
+from rslaser.utils.validator import ValidatorBase
 
 
 _LASER_PULSE_SLICE_DEFAULTS = PKDict(

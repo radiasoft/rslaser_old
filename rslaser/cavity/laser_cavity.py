@@ -2,7 +2,7 @@ from rslaser.optics import element
 from rslaser.pulse import pulse
 from array import array
 from pykern.pkcollections import PKDict
-from rslaser.validation.validator import ValidatorBase
+from rslaser.utils.validator import ValidatorBase
 
 class InvalidLaserCavityInputError(Exception):
     pass
