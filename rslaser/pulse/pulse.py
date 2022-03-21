@@ -64,31 +64,31 @@ class LaserPulse(ValidatorBase):
     Args:
         params (PKDict):
             required fields:
-                phE
-                nslice
-                chirp
-                w0
-                a0
-                dw0x
-                dw0y
-                z_waist
-                dzwx
-                dzwy
-                tau_fwhm
-                z_center
-                x_shift
-                y_shift
-                d_to_w
+                phE (float): Photon energy [eV]
+                nslice (int): number of slices
+                chirp (float): energy variation from first to last slice in laser pulse [eV]
+                w0 (float): beamsize of laser pulse at waist [m]
+                a0 (float): laser amplitude, a=0.85e-9 lambda[micron] sqrt(I[W/cm^2])
+                dw0x (float): horizontal variation in waist size [m]
+                dw0y (float): vertical variation in waist size [m]
+                z_waist (float): longitudinal location of the waist [m]
+                dzwx (float): location (in z) of horizontal waist [m]
+                dzwy (float): location (in z) of vertical waist [m]
+                tau_fwhm (float): FWHM laser pulse length [s]
+                z_center (float): # longitudinal location of pulse center [m]
+                x_shift (float): horizontal shift of the spot center [m]
+                y_shift (float): vertical shift of the spot center [m]
+                d_to_w (float): distance to waist [m]
                 slice_params (PKDict):
                     required fields:
-                        sigrW
-                        propLen
-                        sig_s
-                        pulseE
-                        poltype
-                        sampFact
-                        mx
-                        my
+                        sigrW (float): RMS waist size [m]
+                        propLen (float): propagation length used so that the SRW Gaussian wavefront is not created at z=0 [m]
+                        sig_s (float): RMS bunch length, derived from tau_FWHM [m]
+                        pulseE (float): maximum pulse energy for SRW Gaussian wavefronts [J]
+                        poltype (int): polarization 1- lin. hor., 2- lin. vert., 3- lin. 45 deg., 4- lin.135 deg., 5- circ. right, 6- circ. left
+                        sampFact (float) : sampling factor for Gaussian wavefront grid (for propagation, effective if > 0)
+                        mx (int): transverse Gauss-Hermite mode order in horizontal direction
+                        my (int): transverse Gauss-Hermite mode order in vertical direction
 
     Returns:
         instance of class

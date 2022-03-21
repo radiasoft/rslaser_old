@@ -36,10 +36,10 @@ class Crystal(Element):
     """
     Args:
         params (PKDict) with fields:
-            n0
-            n2
-            length
-            nslice
+            n0 (float): on axis index of refraction
+            n2 (float): quadratic variation of index of refraction, with n(r) = n0 - 1/2 n2 r^2  [m^-2]
+            length (float): total length of crystal [m]
+            nslice (int): number of crystal slices
     """
     _DEFAULTS = _CRYSTAL_DEFAULTS.copy()
     _INPUT_ERROR = ElementException
