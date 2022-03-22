@@ -7,15 +7,15 @@ def createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE=10e3,sampFact=15,mx=0,my=0)
 
     """
     Args:
-        sigrW: beam size at waist [m]
-        propLen: propagation length [m] required by SRW to create numerical Gaussian
-        pulseE: energy per pulse [J]
-        poltype: polarization type (0=linear horizontal, 1=linear vertical, 2=linear 45 deg, 3=linear 135 deg, 4=circular right, 5=circular left, 6=total)
-        phE: photon energy [eV]
-        sampFact: sampling factor to increase mesh density
+        sigrW (float): beam size at waist [m]
+        propLen (float): propagation length [m] required by SRW to create numerical Gaussian
+        pulseE (float): energy per pulse [J]
+        poltype (int): polarization type (0=linear horizontal, 1=linear vertical, 2=linear 45 deg, 3=linear 135 deg, 4=circular right, 5=circular left, 6=total)
+        phE (float): photon energy [eV]
+        sampFact (float): sampling factor to increase mesh density
 
     Returns:
-        wfr
+        wfr: wavefront object with Gaussian distribution
     """
 
     constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
@@ -83,11 +83,11 @@ def createDriftLensBL2(Length,f):
     First propagate by Length, then through lens with focal length f
 
     Args:
-        Length: drift length [m]
-        f: focal length
+        Length (float): drift length [m]
+        f (float): focal length [m]
 
     Returns:
-        DriftLensBL
+        DriftLensBL: SRW optical container element representing beamline
     """
     #f=Lc/4 + df
     optDrift=SRWLOptD(Length)
@@ -105,11 +105,11 @@ def createDriftLensBL(Lc,df):
     First propagate Lc/2, then through lens with focal length Lc/2 + df
 
     Args:
-        Lc: cavity length [m]
-        df: focusing error
+        Lc (float): cavity length [m]
+        df (float): focusing error [m]
 
     Returns:
-        DriftLensBL
+        DriftLensBL: SRW optical container representing beamline
     """
     f=Lc/4 + df
     optDrift=SRWLOptD(Lc/2)
@@ -126,10 +126,10 @@ def createDriftBL(Lc):
     Create drift beamline container that propagates the wavefront through half the cavity
 
     Args:
-        Lc: is the length of the cavity
+        Lc (float): is the length of the cavity [m]
 
     Returns:
-        DriftBL
+        DriftBL: SRW optical container representing beamline
     """
     optDrift=SRWLOptD(Lc/2)
     propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
@@ -143,8 +143,8 @@ def createBL1to1(L,dfof=0):
     Define beamline geometric variables.
 
     Args:
-        L: drift length before and after lens
-        dfof: focal length variation factor (=0 for no variation; can be positive or negative)
+        L (float): drift length before and after lens
+        dfof (float): focal length variation factor (=0 for no variation; can be positive or negative)
 
     Returns:
         optBL1to1
@@ -201,13 +201,13 @@ def createReflectionOffFocusingMirrorBL(L,f,strDataFolderName,strMirSurfHeightEr
     then reflect off a flat mirror followed by a lens. Finally, propagate by L again.
 
     Args:
-        L: length of propagation [m]
-        f: focal length of mirror [m]
-        strDataFolderName: Folder name where mirror data file is
-        strMirSurfHeightErrInFileName: File name for mirror slope error file
+        L (float): length of propagation [m]
+        f (float): focal length of mirror [m]
+        strDataFolderName (string): Folder name where mirror data file is
+        strMirSurfHeightErrInFileName (string): File name for mirror slope error file
 
     Returns:
-        optBL
+        optBL: SRW optical container representing beamline
 
     Note:
         Assuming waist to waist propagation, we want f~L/2 (Note that this isn't a perfect identity
@@ -250,10 +250,13 @@ def createABCDbeamline(A,B,C,D):
     Construct corresponding SRW beamline container object
 
     Args:
-        A,B,C,D are 2x2 matrix components.
+        A (float): M[0,0]
+        B (float): M[0,1]
+        C (float): M[1,0]
+        D (float): M[1,1]
 
     Returns:
-        optBL
+        optBL: SRW optical container representing beamline
     """
 
     f1= B/(1-A)
@@ -279,12 +282,12 @@ def createCrystal(n0,n2,L_cryst):
         n(r) = n0 - 0.5 n2 r^2
 
     Args:
-        n0: Index of refraction along the optical axis
-        n2: radial variation of index of refraction
-        L_cryst
+        n0 (float): Index of refraction along the optical axis
+        n2 (float): radial variation of index of refraction [m^-2]
+        L_cryst (float): length of crystal [m]
 
     Returns:
-        optBL
+        optBL: SRW optical container representing beamline
     """
 
     if n2==0:
@@ -302,7 +305,13 @@ def createCrystal(n0,n2,L_cryst):
 
 def rmsWavefrontIntensity(wfr):
     """
-    #Compute rms values from a wavefront object
+    Compute rms values from a wavefront object
+    
+    Args:
+        wfr (wavefront object): SRW wavefront object
+        
+    Returns:
+        IntensityArray2D (array of size wfr.mesh.nx,wfr.mesh.ny): total intensity computed from wavefront
     """
     IntensityArray2D = array('f', [0]*wfr.mesh.nx*wfr.mesh.ny) #"flat" array to take 2D intensity data
     srwlib.srwl.CalcIntFromElecField(IntensityArray2D, wfr, 6, 0, 3, wfr.mesh.eStart, 0, 0) #extracts intensity
@@ -322,7 +331,10 @@ def rmsIntensity(IntArray,xvals,yvals):
         yvals: represents the vertical coordinates
 
     Returns:
-        sx, sy, xavg, yavg
+        sx (float): rms x value [m]
+        sy (float): rms y value [m]
+        xavg (float): average x of intensity distribution [m]
+        yavg (float): average y of intensity distribution [m]
     """
     datax=np.sum(IntArray,axis=1)
     datay=np.sum(IntArray,axis=0)
@@ -338,7 +350,14 @@ def rmsIntensity(IntArray,xvals,yvals):
 def maxWavefrontIntensity(wfr):
     """
     Compute maximum value of wavefront intensity
+    
+    Args:
+        wfr (wavefront object): SRW wavefront object
+        
+    Returns:
+        maximum intensity (float)
     """
+    
     IntensityArray2D = array('f', [0]*wfr.mesh.nx*wfr.mesh.ny) #"flat" array to take 2D intensity data
     srwlib.srwl.CalcIntFromElecField(IntensityArray2D, wfr, 6, 0, 3, wfr.mesh.eStart, 0, 0) #extracts intensity
     return(np.max(IntensityArray2D))

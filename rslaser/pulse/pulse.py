@@ -272,24 +272,22 @@ class LaserPulseEnvelope(ValidatorBase):
         Args:
             params (PKDict):
                 required fields:
-                    phE
-                    w0
-                    a0
-                    dw0x
-                    dw0y
-                    z_waist
-                    dzwx
-                    dzwy
-                    tau_fwhm
-                    z_center
-                    x_shift
-                    y_shift
+                    phE (float): Photon energy [eV]
+                    w0 (float): beamsize of laser pulse at waist [m]
+                    a0 (float): laser amplitude, a=0.85e-9 lambda[micron] sqrt(I[W/cm^2])
+                    dw0x (float): horizontal variation in waist size [m]
+                    dw0y (float): vertical variation in waist size [m]
+                    z_waist (float): longitudinal location of the waist [m]
+                    dzwx (float): location (in z) of horizontal waist [m]
+                    dzwy (float): location (in z) of vertical waist [m]
+                    tau_fwhm (float): FWHM laser pulse length [s]
+                    z_center (float): # longitudinal location of pulse center [m]
+                    x_shift (float): horizontal shift of the spot center [m]
+                    y_shift (float): vertical shift of the spot center [m]
 
     Returns:
         instance of class
 
-    Note:
-        waist is assumed to be round and at the origin.
     """
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _ENVELOPE_DEFAULTS
