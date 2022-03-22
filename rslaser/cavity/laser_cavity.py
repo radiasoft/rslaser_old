@@ -15,14 +15,14 @@ class LaserCavity(ValidatorBase):
     Args:
         params (PKDict):
             required fields:
-                drift_right_length
-                drift_left_length
-                lens_left_focal_length
-                lens_right_focal_length
-                n0
-                n2
-                L_half_cryst
-                crystal_slices: to be passed as nslice to to Crystal
+                drift_right_length (float): length between crystal and right mirror [m]
+                drift_left_length (float): length between crystal and left mirror [m]
+                lens_left_focal_length (float): focal length of mirror on left (represented as lens) [m]
+                lens_right_focal_length (float): focal length of mirror on right (represented as lens) [m]
+                n0 (float): crystal index of refraction on axis
+                n2 (float): crystal index of refraction quadratic dependence n(r) = n0 - 1/2 n2 r^2 [m^-2]
+                L_half_cryst (float): half length of crystal [m]
+                crystal_slices: to be passed as nslice to Crystal
                 pulse_params (PKDict): see LaserPulse docs
     """
     _DEFAULTS = PKDict(

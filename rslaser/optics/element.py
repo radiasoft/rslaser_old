@@ -36,7 +36,7 @@ class Crystal(Element):
     """
     Args:
         params (PKDict) with fields:
-            n0 (float): on axis index of refraction
+            n0 (float): on axis index of refraction in crystal slice
             n2 (float): quadratic variation of index of refraction, with n(r) = n0 - 1/2 n2 r^2  [m^-2]
             length (float): total length of crystal [m]
             nslice (int): number of crystal slices
@@ -76,8 +76,8 @@ class CrystalSlice(Element):
     Args:
         params (PKDict) with fields:
             length
-            n0: on-axis index of refraction
-            n2: transverse variation of index of refraction
+            n0 (float): on-axis index of refraction
+            n2 (float): transverse variation of index of refraction
             n(r) = n0 - 0.5 n2 r^2
 
     To be added: alpha0, alpha2 laser gain parameters
@@ -188,7 +188,10 @@ class Lens(Element):
     Create lens element
 
     Args:
-        f: focal length
+        f (float): focal length [m]
+        
+    Returns:
+        SRW beamline element representing lens
     """
 
     def __init__(self,f):
