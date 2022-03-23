@@ -8,7 +8,7 @@ from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
 from numpy.polynomial.hermite import hermval
 import rslaser.optics.wavefront as rswf
-import rslaser.utils.constants as rsc
+import rsmath.const as rsc
 import rslaser.utils.unit_conversion as units
 import scipy.constants as const
 import srwlib
