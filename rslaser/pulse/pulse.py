@@ -22,7 +22,6 @@ _LASER_PULSE_SLICE_DEFAULTS = PKDict(
         pulseE=0.001,
         poltype=1,
         sampFact=1,
-        numsig=3.,
         mx=0,
         my=0
     )
@@ -45,6 +44,7 @@ _LASER_PULSE_DEFAULTS = PKDict(
         nslice=3,
         chirp=0,
         d_to_w=0,
+        sigma_cutoff=3.,
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
 )
 
@@ -106,6 +106,7 @@ class LaserPulse(ValidatorBase):
         self.slice = []
         self.nslice = params.nslice
         self.phE = params.phE
+        self.sig_s = params.tau_fwhm * const.c / 2.355
         self._lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))
         self.phE -= 0.5*params.chirp           # so central slice has the central photon energy
         _de = params.chirp / self.nslice   # photon energy shift from slice to slice
@@ -194,8 +195,8 @@ class LaserPulseSlice(ValidatorBase):
         GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
         GsnBm.y = 0
         sig_s = params.tau_fwhm * const.c / 2.355
-        ds = 2*params.slice_params.numsig*sig_s/params.nslice
-        self._pulse_pos = -params.slice_params.numsig*sig_s+slice_index*ds
+        ds = 2*params.sigma_cutoff*sig_s/params.nslice
+        self._pulse_pos = -params.sigma_cutoff*sig_s+slice_index*ds
         GsnBm.z = params.slice_params.propLen + self._pulse_pos #Longitudinal Position of Waist [m]
         GsnBm.xp = 0 #Average Angles of Gaussian Beam at Waist [rad]
         GsnBm.yp = 0
