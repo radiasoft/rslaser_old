@@ -22,7 +22,7 @@ from pykern import pkdebug
 
 import rslaser.cavity.laser_cavity as rslc
 import rslaser.optics.element as rse
-import rslaser.utils.constants as rsc
+import rsmath.const as rsc
 
 import scipy.constants as const
 import time
