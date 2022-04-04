@@ -63,7 +63,6 @@ class LaserPulse(ValidatorBase):
 
     Args:
         params (PKDict):
-            required fields:
                 phE (float): Photon energy [eV]
                 nslice (int): number of slices
                 chirp (float): energy variation from first to last slice in laser pulse [eV]
@@ -80,10 +79,8 @@ class LaserPulse(ValidatorBase):
                 y_shift (float): vertical shift of the spot center [m]
                 d_to_w (float): distance to waist [m]
                 slice_params (PKDict):
-                    required fields:
                         sigrW (float): RMS waist size [m]
                         propLen (float): propagation length used so that the SRW Gaussian wavefront is not created at z=0 [m]
-                        sig_s (float): RMS bunch length, derived from tau_FWHM [m]
                         pulseE (float): maximum pulse energy for SRW Gaussian wavefronts [J]
                         poltype (int): polarization 1- lin. hor., 2- lin. vert., 3- lin. 45 deg., 4- lin.135 deg., 5- circ. right, 6- circ. left
                         sampFact (float) : sampling factor for Gaussian wavefront grid (for propagation, effective if > 0)
@@ -91,7 +88,15 @@ class LaserPulse(ValidatorBase):
                         my (int): transverse Gauss-Hermite mode order in vertical direction
 
     Returns:
-        instance of class
+        instance of class with attributes:
+            envelope: Gaussian envelope structure
+            slice: list of LaserPulseSlices each with an SRW wavefront object
+            nslice: number of slices
+            phE: Photon energy [eV]
+            sig_s: RMS bunch length [m]
+            _lambda0: central wavelength [m]
+            _sxvals: RMS horizontal beam size of each slice [m]
+            _syvals: RMS vertical beam size of each slice [m]
     """
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
@@ -107,6 +112,7 @@ class LaserPulse(ValidatorBase):
         self.nslice = params.nslice
         self.phE = params.phE
         self.sig_s = params.tau_fwhm * const.c / 2.355
+        self.sigma_cutoff = params.sigma_cutoff
         self._lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))
         self.phE -= 0.5*params.chirp           # so central slice has the central photon energy
         _de = params.chirp / self.nslice   # photon energy shift from slice to slice
