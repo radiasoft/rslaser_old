@@ -6,7 +6,7 @@ from pykern.pkcollections import PKDict
 
 def trigger_exception_test(call, args):
     try:
-        if len(args) > 0 and type(args) != PKDict and type(args) != str:
+        if type(args) == tuple or type(args) == list and len(args) > 0:
             l = call(*args)
         else:
             l = call(args)

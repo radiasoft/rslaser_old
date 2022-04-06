@@ -7,10 +7,19 @@ import numpy as np
 from srwlib import *
 import copy
 
+
+class InvalidWaveFrontSensorInputError(Exception):
+    pass
+
+
 class WavefrontSensor(ValidatorBase):
     """
-    The wavefront sensor takes a laser pulse and propagates all the slices to a given position and adds the resulting wavefronts.
+    Args:
+        label (string): identifier for sensor element
+        distance_from_pulse_center (float)
     """
+    _INPUT_ERROR = InvalidWaveFrontSensorInputError
+
     def __init__(self, label, distance_from_pulse_center):
         self._validate_type(label, str, 'label')
         self._validate_type(distance_from_pulse_center, float, 'distance_from_pulse_center')
@@ -18,27 +27,26 @@ class WavefrontSensor(ValidatorBase):
         self.distance_from_pulse_center = distance_from_pulse_center
 
     def propagate(self, laser_pulse):
-        self._validate_type(laser_pulse, pulse.LaserPulse, 'laser_pulse')
+        """
+            Propagates all the slices to a given position and adds the resulting wavefronts.
+            Args:
+                laser_pulse: a LaserPulse object
+        """
+        if type(laser_pulse) != pulse.LaserPulse:
+            raise self._INPUT_ERROR(f'invalid input_type. {self.__class__}.propagate takes laser_pulse of type: {pulse.LaserPulse}')
         nslice = laser_pulse.nslice
-
         wflist = []
-
-        # sig_s = laser_pulse.sig_s
-        # sigma_cutoff = laser_pulse.sigma_cutoff
-
         for slice_index in np.arange(nslice):
             thisSlice = laser_pulse.slice[slice_index]
             #Now compute position of slice
             ds = 2*laser_pulse.sigma_cutoff*laser_pulse.sig_s/(nslice)
             slice_pos = -laser_pulse.sigma_cutoff*laser_pulse.sig_s+slice_index*ds
-
             sd = slice_pos + self.distance_from_pulse_center #distance to propagate
             #now create an SRW optical container with a drift of length pd
             optDrift=srwlib.SRWLOptD(sd)
             propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
             optBLW = srwlib.SRWLOptC([optDrift],[propagParDrift])
             srwlib.srwl.PropagElecField(thisSlice.wfr, optBLW)
-
             wflist.append(thisSlice.wfr)
 
         #Now add wavefronts together
