@@ -48,19 +48,20 @@ def test_propagate():
     res_attrs = PKDict()
     for attr in WFR_ATTRS_LIST:
         res_attrs.update({attr: getattr(res, attr)})
-    pkunit.file_eq('res.txt', actual=str(res_attrs))
-    assert res.avgPhotEn == 1.55
+    # TODO (gurhar1133): for some reason diff is empty, fix test
+    # so that it is not (and that there is no diff)
+    pkunit.file_eq('res.json', actual=res_attrs)
 
 
 def check_epsilon_diff(val1, val2, epsilon, attr):
-
+    # TODO (gurhar1133): make sure this is correct
     def _check(x, y, epsilon):
         assert (x - y)/x < epsilon, f'epsilon check failed with vals: {x}, {y} on attr: {attr}'
 
     if val1 != 0:
         _check(val1, val2, epsilon)
     else:
-        assert abs(val2) < epsilon, f'epsilon check failed with vals: {x}, {y} on attr: {attr}'
+        assert abs(val2) < epsilon, f'epsilon check failed with vals: {val1}, {val2} on attr: {attr}'
 
 
 def test_propagate_ret_type():
