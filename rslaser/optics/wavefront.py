@@ -48,7 +48,6 @@ class WavefrontSensor(ValidatorBase):
             optBLW = srwlib.SRWLOptC([optDrift],[propagParDrift])
             srwlib.srwl.PropagElecField(thisSlice.wfr, optBLW)
             wflist.append(thisSlice.wfr)
-
         #Now add wavefronts together
         wfr = copy.deepcopy(wflist[0])
         for slice_index in np.arange(nslice-1):
