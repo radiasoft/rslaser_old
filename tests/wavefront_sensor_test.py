@@ -3,13 +3,37 @@ u"""Tests for instantiation of LaserCavity, LaserPulse
 and LaserPulseSlice
 """
 from __future__ import absolute_import, division, print_function
+from tabnanny import check
+from tkinter import E
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
+import array
 import pytest
+import copy
 import srwlib
 from rslaser.pulse import pulse
 from rslaser.optics.wavefront import WavefrontSensor
 import test_utils
+
+
+EPSILON = 1e-2
+WFR_ATTRS_LIST = [
+    'arElecPropMatr',
+    'arEx',
+    'arEy',
+    'arMomX',
+    'arMomY',
+    'arWfrAuxData',
+    'avgPhotEn',
+    'dRx',
+    'dRy',
+    'presCA',
+    'presFT',
+    'unitElFld',
+    'unitElFldAng',
+    'xc',
+    'yc',
+    ]
 
 
 def test_wfs_instantiation():
@@ -17,11 +41,26 @@ def test_wfs_instantiation():
 
 
 def test_propagate():
+    from pykern import pkunit, pkjson
     p = pulse.LaserPulse()
     wfs = WavefrontSensor('w1', 2.0)
-    # TODO (gurhar1133): check attrs other than avgPhotEn?
     res = wfs.propagate(p)
+    res_attrs = PKDict()
+    for attr in WFR_ATTRS_LIST:
+        res_attrs.update({attr: getattr(res, attr)})
+    pkunit.file_eq('res.txt', actual=str(res_attrs))
     assert res.avgPhotEn == 1.55
+
+
+def check_epsilon_diff(val1, val2, epsilon, attr):
+
+    def _check(x, y, epsilon):
+        assert (x - y)/x < epsilon, f'epsilon check failed with vals: {x}, {y} on attr: {attr}'
+
+    if val1 != 0:
+        _check(val1, val2, epsilon)
+    else:
+        assert abs(val2) < epsilon, f'epsilon check failed with vals: {x}, {y} on attr: {attr}'
 
 
 def test_propagate_ret_type():
@@ -41,12 +80,16 @@ def test_propagate_fail():
 
 
 def test_propagation_vals():
-    '''IN: 1 slice and distance_from_pulse_center = 0, OUT: laserPulseSlice.wfr should remain the same'''
-    # TODO (gurhar1133): get clarity on this one, which attr of srw object are we comparing with res?
-    # rn checking avgPhotEn
     p = pulse.LaserPulse(PKDict(nslice=1))
-    b = p.slice[0].wfr.arElecPropMatr
+    pc = copy.deepcopy(p)
     wfs = WavefrontSensor('w1', 0.0)
     res = wfs.propagate(p)
-    assert res.arElecPropMatr == b
+    for a in WFR_ATTRS_LIST:
+        o = getattr(pc.slice[0].wfr, a)
+        n = getattr(res, a)
+        if type(o) == array.array:
+            for i, v in enumerate(o):
+                check_epsilon_diff(v, n[i], EPSILON, a)
+        else:
+            check_epsilon_diff(o, n, EPSILON, a)
 
