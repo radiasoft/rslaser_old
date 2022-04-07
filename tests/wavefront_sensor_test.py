@@ -49,14 +49,15 @@ def test_propagate():
     for a in WFR_ATTRS_LIST:
         v = getattr(r, a)
         actual.update({a: v})
-    pkunit.file_eq('res.json', actual=pkjson.dump_pretty(actual))
+    pkunit.empty_work_dir()
+    pkunit.file_eq('res.json', actual=actual)
 
 
-def check_epsilon_diff(val1, val2, epsilon, attr):
+def check_epsilon_diff(val1, val2, epsilon, message):
     if val1 != 0:
-        assert (val1 - val2)/val1 < epsilon, f'epsilon check failed with vals: {val1}, {val2} on attr: {attr}'
+        assert (val1 - val2)/val1 < epsilon, message
     else:
-        assert abs(val2) < epsilon, f'epsilon check failed with vals: {val1}, {val2} on attr: {attr}'
+        assert abs(val2) < epsilon, message
 
 
 def test_propagate_ret_type():
@@ -85,7 +86,9 @@ def test_propagation_vals():
         n = getattr(res, a)
         if type(o) == array.array:
             for i, v in enumerate(o):
-                check_epsilon_diff(v, n[i], EPSILON, a)
+                check_epsilon_diff(v, n[i], EPSILON,
+                    f'epsilon check failed with vals: {v}, {n[i]} on attr: {a}, index: {i}')
         else:
-            check_epsilon_diff(o, n, EPSILON, a)
+            check_epsilon_diff(o, n, EPSILON,
+                f'epsilon check failed with vals: {v}, {n[i]} on attr: {a}')
 
