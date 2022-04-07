@@ -43,23 +43,18 @@ def test_wfs_instantiation():
 def test_propagate():
     from pykern import pkunit, pkjson
     p = pulse.LaserPulse()
-    wfs = WavefrontSensor('w1', 2.0)
-    res = wfs.propagate(p)
-    res_attrs = PKDict()
-    for attr in WFR_ATTRS_LIST:
-        res_attrs.update({attr: getattr(res, attr)})
-    # TODO (gurhar1133): for some reason diff is empty, fix test
-    # so that it is not (and that there is no diff)
-    pkunit.file_eq('res.json', actual=res_attrs)
+    w = WavefrontSensor('w1', 2.0)
+    r = w.propagate(p)
+    actual = PKDict()
+    for a in WFR_ATTRS_LIST:
+        v = getattr(r, a)
+        actual.update({a: v})
+    pkunit.file_eq('res.json', actual=pkjson.dump_pretty(actual))
 
 
 def check_epsilon_diff(val1, val2, epsilon, attr):
-    # TODO (gurhar1133): make sure this is correct
-    def _check(x, y, epsilon):
-        assert (x - y)/x < epsilon, f'epsilon check failed with vals: {x}, {y} on attr: {attr}'
-
     if val1 != 0:
-        _check(val1, val2, epsilon)
+        assert (val1 - val2)/val1 < epsilon, f'epsilon check failed with vals: {val1}, {val2} on attr: {attr}'
     else:
         assert abs(val2) < epsilon, f'epsilon check failed with vals: {val1}, {val2} on attr: {attr}'
 
