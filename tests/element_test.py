@@ -72,7 +72,7 @@ def test_crystal_slice_propagate_abcd():
 
 def test_crystal_slice_propagate_exception():
     c = element.CrystalSlice()
-    test_utils.trigger_exception_test(c.propagate, 'should fail')
+    test_utils.trigger_exception_test(c.propagate, [pulse.LaserPulse(), 'should fail'])
 
 
 def test_drift_instantiate():
