@@ -1,12 +1,13 @@
 u"""Tests for Crystal and CrystalSlice
 """
 from ast import Assert
+from re import L
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
+from pykern.pkunit import pkexcept
 import pytest
 from rslaser.optics import element
 from rslaser.pulse import pulse
-import test_utils
 
 
 def test_crystal_instantiation():
@@ -22,11 +23,13 @@ def test_crystal_instantiation2():
 
 
 def test_crystal_instantiation3():
-    test_utils.trigger_exception_test(element.Crystal, 'fail')
+    with pkexcept(element.ElementException):
+        element.Crystal('fail')
 
 
 def test_crystal_instantiation4():
-    test_utils.trigger_exception_test(element.Crystal, PKDict(slice_params=PKDict()))
+    with pkexcept(element.ElementException):
+        element.Crystal(PKDict(slice_params=PKDict()))
 
 
 def test_crystal_instantiation5():
@@ -55,15 +58,18 @@ def test_crystal_slice_instantiation():
 
 
 def test_crystal_slice_propagate_default():
-    test_utils.trigger_exception_test(crystal_slice_prop_test, 'default')
+    with pkexcept(element.ElementException):
+        crystal_slice_prop_test('default')
 
 
 def test_crystal_slice_propagate_attenuate():
-    test_utils.trigger_exception_test(crystal_slice_prop_test, 'attenuate')
+    with pkexcept(NotImplementedError):
+        crystal_slice_prop_test('attenuate')
 
 
 def test_crystal_slice_propagate_placeholder():
-    test_utils.trigger_exception_test(crystal_slice_prop_test, 'placeholder')
+    with pkexcept(NotImplementedError):
+        crystal_slice_prop_test('placeholder')
 
 
 def test_crystal_slice_propagate_abcd():
@@ -72,7 +78,8 @@ def test_crystal_slice_propagate_abcd():
 
 def test_crystal_slice_propagate_exception():
     c = element.CrystalSlice()
-    test_utils.trigger_exception_test(c.propagate, [pulse.LaserPulse(), 'should fail'])
+    with pkexcept(element.ElementException):
+        c.propagate(pulse.LaserPulse(), 'should fail')
 
 
 def test_drift_instantiate():
@@ -108,7 +115,5 @@ def test_lens_propagate_fail():
         )
 
 def trigger_prop_fail(prop_func, pulse):
-    test_utils.trigger_exception_test(
-        prop_func,
-        [pulse, 'should fail']
-    )
+    with pkexcept(element.ElementException):
+        prop_func(pulse, 'should fail')

@@ -7,14 +7,13 @@ from tabnanny import check
 from tkinter import E
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
-from pykern.pkunit import pkfail
+from pykern.pkunit import pkexcept
 import array
 import pytest
 import copy
 import srwlib
 from rslaser.pulse import pulse
-from rslaser.optics.wavefront import WavefrontSensor
-import test_utils
+from rslaser.optics.wavefront import WavefrontSensor, InvalidWaveFrontSensorInputError
 
 
 EPSILON = 1e-2
@@ -70,13 +69,15 @@ def test_propagate_ret_type():
 
 
 def test_fail_instantiate():
-    test_utils.trigger_exception_test(WavefrontSensor, ['w1', '2.0'])
+    with pkexcept(InvalidWaveFrontSensorInputError):
+        WavefrontSensor('w1', '2.0')
 
 
 def test_propagate_fail():
     p = pulse.LaserPulseSlice(0)
     wfs = WavefrontSensor('w1', 2.0)
-    test_utils.trigger_exception_test(wfs.propagate, p)
+    with pkexcept(InvalidWaveFrontSensorInputError):
+        wfs.propagate(p)
 
 
 def test_propagation_vals():

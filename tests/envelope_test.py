@@ -6,27 +6,25 @@ import math
 import numpy as np
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
+from pykern.pkunit import pkexcept
 import pytest
 from rslaser.pulse import pulse
 from rslaser.cavity import laser_cavity
 import scipy.constants as const
-import test_utils
+
 
 def test_envelope():
     e = pulse.LaserPulseEnvelope()
 
 
 def test_envelope2():
-    test_utils.trigger_exception_test(pulse.LaserPulseEnvelope, 1)
+    with pkexcept(pulse.InvalidLaserPulseInputError):
+        pulse.LaserPulseEnvelope(1)
 
 
 def test_envelope3():
-    test_utils.trigger_exception_test(
-        pulse.LaserPulseEnvelope,
-        PKDict(
-            test='test'
-        )
-    )
+    with pkexcept(pulse.InvalidLaserPulseInputError):
+        pulse.LaserPulseEnvelope(PKDict(test='test'))
 
 
 def test_envelope4():
@@ -44,8 +42,5 @@ def test_envelope5():
 
 def test_envelope6():
     e = pulse.LaserPulseEnvelope()
-    test_utils.trigger_exception_test(e.evaluate_envelope_ex, 'should fail')
-
-
-
-
+    with pkexcept(TypeError):
+        e.evaluate_envelope_ex('should fail')
