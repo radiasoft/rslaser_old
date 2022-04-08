@@ -54,7 +54,7 @@ def test_propagate():
     pkunit.file_eq('res.json', actual=actual)
 
 
-def check_epsilon_diff(val1, val2, epsilon, message):
+def _check_epsilon_diff(val1, val2, epsilon, message):
     if val1 != 0:
         if not (val1 - val2)/val1 < epsilon:
             pkfail(message)
@@ -89,9 +89,9 @@ def test_propagation_vals():
         n = getattr(res, a)
         if type(o) == array.array:
             for i, v in enumerate(o):
-                check_epsilon_diff(v, n[i], EPSILON,
+                _check_epsilon_diff(v, n[i], EPSILON,
                     f'epsilon check failed with vals: {v}, {n[i]} on attr: {a}, index: {i}')
         else:
-            check_epsilon_diff(o, n, EPSILON,
+            _check_epsilon_diff(o, n, EPSILON,
                 f'epsilon check failed with vals: {v}, {n[i]} on attr: {a}')
 
