@@ -7,7 +7,7 @@ from tabnanny import check
 from tkinter import E
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
-from pykern.pkunit import pkexcept
+from pykern.pkunit import pkexcept, pkfail
 import array
 import pytest
 import copy
