@@ -7,6 +7,7 @@ from tabnanny import check
 from tkinter import E
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
+from pykern.pkunit import pkfail
 import array
 import pytest
 import copy
@@ -55,9 +56,11 @@ def test_propagate():
 
 def check_epsilon_diff(val1, val2, epsilon, message):
     if val1 != 0:
-        assert (val1 - val2)/val1 < epsilon, message
+        if not (val1 - val2)/val1 < epsilon:
+            pkfail(message)
     else:
-        assert abs(val2) < epsilon, message
+        if not abs(val2) < epsilon:
+            pkfail(message)
 
 
 def test_propagate_ret_type():
