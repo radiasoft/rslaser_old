@@ -34,7 +34,6 @@ def test_instantiation01():
     l = pulse.LaserPulse()
     pulse_instantiation_test(l, 'phE')
     pulse_instantiation_test(l, '_lambda0')
-
     k = PKDict(chirp=0.01*(scipy.constants.h * scipy.constants.c / scipy.constants.e / 1e-6))
     l = pulse.LaserPulse(k)
     slice_instantiation_test(l, '_lambda0')
