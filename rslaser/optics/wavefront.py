@@ -1,4 +1,3 @@
-from dis import dis
 import math
 from rslaser.utils.validator import ValidatorBase
 from rslaser.pulse import pulse
