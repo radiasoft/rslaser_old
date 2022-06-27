@@ -12,7 +12,11 @@ pksetup.setup(
     author_email='pip@radiasoft.net',
     description='A Python library for modeling chirped pulse amplifiers in high-power short-pulse lasers',
     install_requires=[
+        'rsmath@git+https://github.com/radiasoft/rsmath.git',
+        'matplotlib',
+        'numpy',
         'pykern',
+        'scipy',
     ],
     license='http://www.apache.org/licenses/LICENSE-2.0.html',
     url='https://github.com/radiasoft/rslaser',
