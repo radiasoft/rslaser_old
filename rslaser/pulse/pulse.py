@@ -77,13 +77,12 @@ class LaserPulse(ValidatorBase):
                 z_center (float): # longitudinal location of pulse center [m]
                 x_shift (float): horizontal shift of the spot center [m]
                 y_shift (float): vertical shift of the spot center [m]
-                d_to_w (float): distance to waist [m]
                 slice_params (PKDict):
-                        sigrW (float): RMS waist size [m]
-                        propLen (float): propagation length used so that the SRW Gaussian wavefront is not created at z=0 [m]
+                        sigx (float): horizontal RMS waist size [m]
+                        sigy (float): vertical RMS waist size [m]
+                        num_sig (int): no. of sigmas for Gsn range
                         pulseE (float): maximum pulse energy for SRW Gaussian wavefronts [J]
                         poltype (int): polarization 1- lin. hor., 2- lin. vert., 3- lin. 45 deg., 4- lin.135 deg., 5- circ. right, 6- circ. left
-                        sampFact (float) : sampling factor for Gaussian wavefront grid (for propagation, effective if > 0)
                         mx (int): transverse Gauss-Hermite mode order in horizontal direction
                         my (int): transverse Gauss-Hermite mode order in vertical direction
 
@@ -109,6 +108,9 @@ class LaserPulse(ValidatorBase):
         self.envelope = LaserPulseEnvelope(e)
         # instantiate the array of slices
         self.slice = []
+        self.sigx = params.sigx
+        self.sigy = params.sigy
+        self.num_sig = params.num_sig
         self.nslice = params.nslice
         self.phE = params.phE
         self.sig_s = params.tau_fwhm * const.c / 2.355
@@ -185,16 +187,23 @@ class LaserPulseSlice(ValidatorBase):
         self._validate_params(params)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
+        self.sigx = params.sigx
+        self.sigy = params.sigy
+        self.num_sig = params.num_sig
+        self.z_waist = params.z_waist
         self.phE = params.phE
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
-        rmsAngDiv = constConvRad/(self.phE*params.slice_params.sigrW)             ##RMS angular divergence [rad]
+        # rmsAngDiv = constConvRad/(self.phE*params.slice_params.sigrW)             ##RMS angular divergence [rad]
+        rmsAngDiv_x = constConvRad/(self.phE * self.sigx)             ##RMS angular divergence [rad]
+        rmsAngDiv_y = constConvRad/(self.phE * self.sigy)
+        sigrL_x = math.sqrt(self.sigx**2 + (self.z_waist * rmsAngDiv_x)**2)
+        sigrL_y = math.sqrt(self.sigy**2 + (self.z_waist * rmsAngDiv_y)**2)
         #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
         #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
-        d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
-        if params.d_to_w > d_to_w_cutoff:
-            params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
-        sigrL=math.sqrt(params.slice_params.sigrW**2+(params.slice_params.propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
-
+        # d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
+        # if params.d_to_w > d_to_w_cutoff:
+        #     params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
+        sigrL=math.sqrt(params.slice_params.sigrW**2+(params.slice_params.propLen*rmsAngDiv)**2) # beam size at distance 
 
         #***********Gaussian Beam Source
         GsnBm = srwlib.SRWLGsnBm() #Gaussian Beam structure (just parameters)
