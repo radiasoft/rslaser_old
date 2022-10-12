@@ -5,10 +5,139 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 
 import uti_plot_com as srw_io
 import numpy as np
-from math import *
+import math
+# from math import *
 from numpy.fft import *
 from array import array
+
+import srwlib
+from srwlib import srwl
 from srwlib import *
+
+
+
+
+def createGsnSrcSRW(sigx, sigy, num_sig, dist_waist, pulseE, poltype, nx = 400, ny = 400, phE=10e3, mx = 0, my = 0):
+    """
+    This function calculates a Gsn wavefront with waist at zero meters
+    and allows calculation at any longitudinal point via dist_waist.
+    Args:
+        sigx: horizontal beam size at waist [m]
+        sigy: vertical beam size at waist [m]
+        num_sig: no. of sigmas for Gsn range
+        dist_waist: distance of Gsn from waist [m]
+        pulseE: energy per pulse [J]
+        poltype: polarization type (0=linear horizontal, 1=linear vertical, 2=linear 45 deg, 3=linear 135 deg, 4=circular right, 5=circular left, 6=total)
+        nx = no. of horizontal mesh points
+        ny = no. of vertical mesh points
+        phE: photon energy [eV]
+        mx = horizontal Hermite mode
+        my = vertical Hermite mode
+
+    Returns:
+        wfr
+    """
+
+    constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
+    rmsAngDiv_x = constConvRad/(phE*sigx)             ##RMS angular divergence [rad]
+    rmsAngDiv_y = constConvRad/(phE*sigy)
+    sigrL_x = math.sqrt(sigx**2+(dist_waist*rmsAngDiv_x)**2)
+    sigrL_y = math.sqrt(sigy**2+(dist_waist*rmsAngDiv_y)**2)
+
+    # Gaussian Beam Source
+    GsnBm = SRWLGsnBm() #Gaussian Beam structure (just parameters)
+    GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
+    GsnBm.y = 0
+    GsnBm.z = 0.0 # Longitudinal Position of Waist [m]
+    GsnBm.xp = 0 # Average Angles of Gaussian Beam at Waist [rad]
+    GsnBm.yp = 0
+    GsnBm.avgPhotEn = phE # Photon Energy [eV]
+    GsnBm.pulseEn = pulseE # Energy per Pulse [J] - to be corrected
+    GsnBm.repRate = 1 # Rep. Rate [Hz] - to be corrected
+    GsnBm.polar = poltype # 1- linear horizontal?
+    GsnBm.sigX = sigx # Horiz. RMS size at Waist [m]
+    GsnBm.sigY = sigy # Vert. RMS size at Waist [m]
+
+    GsnBm.sigT = 10e-15 #Pulse duration [s] (not used?)
+    GsnBm.mx = mx #Transverse Gauss-Hermite Mode Orders
+    GsnBm.my = my
+    # create mesh
+    wfr = SRWLWfr() #Initial Electric Field Wavefront
+    wfr.allocate(1, nx, ny) #Numbers of points vs Photon Energy (1), Horizontal and Vertical Positions (dummy)
+    wfr.mesh.zStart = dist_waist #Longitudinal Position [m] at which initial Electric Field has to be calculated, i.e. the position of the first optical element
+    wfr.mesh.eStart = GsnBm.avgPhotEn #Initial Photon Energy [eV]
+    wfr.mesh.eFin = GsnBm.avgPhotEn #Final Photon Energy [eV]
+
+    wfr.unitElFld = 1 # Electric field units: 0- arbitrary, 1- sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or sqrt(W/mm^2), depending on representation (freq. or time)
+
+    distSrc = wfr.mesh.zStart - GsnBm.z
+    # Horizontal and Vertical Position Range for the Initial Wavefront calculation        
+    xAp = num_sig * sigrL_x
+    yAp = num_sig * sigrL_y
+        
+    wfr.mesh.xStart = -xAp #Initial Horizontal Position [m]
+    wfr.mesh.xFin = xAp #Final Horizontal Position [m]
+    wfr.mesh.yStart = -yAp #Initial Vertical Position [m]
+    wfr.mesh.yFin = yAp #Final Vertical Position [m]
+    # sampFactNxNyForProp = sampFact #sampling factor for adjusting nx, ny (effective if > 0)
+    arPrecPar = [0] # sampFact set to zero to allow manual setting of mesh size via wfr.allocate()
+
+    srwl.CalcElecFieldGaussian(wfr, GsnBm, arPrecPar)
+
+    return wfr
+
+def calc_int_from_wfr(_wfr, _pol=6, _int_type=0, _det=None, _fname='', _pr=True):
+# def calc_int_from_wfr(self, _wfr, _pol=6, _int_type=0, _det=None, _fname='', _pr=True):
+        """Calculates intensity from electric field and saving it to a file
+        :param _wfr: electric field wavefront (instance of SRWLWfr)
+        :param _pol: polarization component to extract: 
+            0- Linear Horizontal; 
+            1- Linear Vertical; 
+            2- Linear 45 degrees; 
+            3- Linear 135 degrees; 
+            4- Circular Right; 
+            5- Circular Left; 
+            6- Total
+        :param _int_type: "type" of a characteristic to be extracted:
+           -1- No Intensity / Electric Field components extraction is necessary (only Wavefront will be calculated)
+            0- "Single-Electron" Intensity; 
+            1- "Multi-Electron" Intensity; 
+            2- "Single-Electron" Flux; 
+            3- "Multi-Electron" Flux; 
+            4- "Single-Electron" Radiation Phase; 
+            5- Re(E): Real part of Single-Electron Electric Field;
+            6- Im(E): Imaginary part of Single-Electron Electric Field;
+            7- "Single-Electron" Intensity, integrated over Time or Photon Energy (i.e. Fluence);
+        :param _det: detector (instance of SRWLDet)
+        :param _fname: name of file to save the resulting data to (for the moment, in ASCII format)
+        :param _pr: switch specifying if printing tracing the execution should be done or not
+        :return: 1D array with (C-aligned) resulting intensity data
+        """
+
+        if _pr:
+            print('Extracting intensity and saving it to a file ... ', end='')
+            t0 = time.time();
+            
+        sNumTypeInt = 'f'
+        if(_int_type == 4): sNumTypeInt = 'd' #Phase? - if asking for phase, set array to double type
+
+        resMeshI = deepcopy(_wfr.mesh)
+
+        depType = resMeshI.get_dep_type()
+        if(depType < 0): Exception('Incorrect numbers of points in the mesh structure')
+        
+        arI = srwlib.array(sNumTypeInt, [0]*resMeshI.ne*resMeshI.nx*resMeshI.ny)
+        srwl.CalcIntFromElecField(arI, _wfr, _pol, _int_type, depType, resMeshI.eStart, resMeshI.xStart, resMeshI.yStart)
+
+        if(_det is not None):
+            resStkDet = _det.treat_int(arI, resMeshI)
+            arI = resStkDet.arS
+            resMeshI = resStkDet.mesh
+
+        if(len(_fname) > 0): srwl_uti_save_intens_ascii(arI, resMeshI, _fname, 0, ['Photon Energy', 'Horizontal Position', 'Vertical Position', ''], _arUnits=['eV', 'm', 'm', 'ph/s/.1%bw/mm^2'])
+        if _pr: print('completed (lasted', round(time.time() - t0, 2), 's)')
+
+        return arI, resMeshI
 
 #Read and plot generic SRW .dat files created
 def read_srw_file(filename):
