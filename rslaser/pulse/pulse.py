@@ -228,13 +228,14 @@ class LaserPulseSlice(ValidatorBase):
         
         # sig_s = params.tau_fwhm * const.c / 2.355
         ds = 2*params.num_sig_long*self.sig_s/params.nslice    # longitudinal spacing between slices
-        self._pulse_pos = -params.num_sig_long*self.sig_s+slice_index*ds
+        self._pulse_pos = self.dist_waist - params.num_sig_long*self.sig_s+slice_index*ds
         
         # calculate slice energy intensity (not energy associated with lambda)
         sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
         
+        
      
-        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self.dist_waist, sliceEnInt, params.slice_params.poltype, \
+        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
                                            self.nx_slice, self.ny_slice, self.phE, params.slice_params.mx, params.slice_params.my)
         
         
