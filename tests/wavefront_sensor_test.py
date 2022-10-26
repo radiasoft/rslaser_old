@@ -5,7 +5,10 @@ and LaserPulseSlice
 from __future__ import absolute_import, division, print_function
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
+import pykern.pksubprocess
 import pykern.pkunit
+import pykern.pkio
+import re
 import array
 import pytest
 import copy
@@ -67,3 +70,19 @@ def test_propagation02():
     p = pulse.LaserPulseSlice(0)
     with pykern.pkunit.pkexcept(InvalidWaveFrontSensorInputError):
         wfs.propagate(p)
+
+
+def _ndiff_files(expect_path, actual_path, diff_file, data_dir):
+    pykern.pksubprocess.check_call_with_signals(
+        [
+            "ndiff",
+            actual_path,
+            expect_path,
+            data_dir.join("ndiff_conf.txt"),
+        ],
+        output=str(diff_file),
+    )
+
+    d = pykern.pkio.read_text(diff_file)
+    if re.search("diffs have been detected", d):
+        raise AssertionError(f"{d}")
