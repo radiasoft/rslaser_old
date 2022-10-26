@@ -45,12 +45,10 @@ def test_instantiation01():
 
 def test_propagation01():
     from pykern import pkunit
+    from pykern import pkio
 
-    # TODO (gurhar1133):
-    # 1) change this to an ndiff test
-    # 2) ask rob about doing pkunit.ndiff_files()
-    # 3) clean out long comments
-
+    data_dir = pkunit.data_dir()
+    work_dir = pkunit.empty_work_dir()
     p = pulse.LaserPulse()
     w = WavefrontSensor('w1', 2.0)
     r = w.propagate(p)
@@ -58,8 +56,15 @@ def test_propagation01():
     for a in WFR_ATTRS_LIST:
         v = getattr(r, a)
         actual.update({a: v})
-    pkunit.empty_work_dir()
-    pkunit.file_eq('res.json', actual=actual)
+    _ndiff_files(
+        data_dir.join("res.txt"),
+        pkio.write_text(
+            work_dir.join("res_actual.txt"),
+            str(actual),
+        ),
+        work_dir.join("ndiff.out"),
+        data_dir
+    )
 
 
 def test_propagation02():

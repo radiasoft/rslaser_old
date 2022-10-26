@@ -201,12 +201,12 @@ class LaserPulseSlice(ValidatorBase):
         self.nx_slice = params.slice_params.nx_slice
         self.ny_slice = params.slice_params.ny_slice
         self.dist_waist = params.dist_waist
-        
+
         # compute slice energy from central energy, chirp, and slice index
         self.phE = params.phE          # check that this is being properly incremented in the correct place (see LaserPulse class)
         _de = params.chirp / self.nslice   # photon energy shift from slice to slice
         self.phE -= 0.5*params.chirp + (self.nslice * _de)   # so central slice has the central photon energy
-        
+
         self.sig_s = params.tau_fwhm * const.c / 2.355
         self.num_sig_long = params.num_sig_long
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
@@ -221,80 +221,22 @@ class LaserPulseSlice(ValidatorBase):
         # if params.d_to_w > d_to_w_cutoff:
         #     params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
         # sigrL=math.sqrt(params.slice_params.sigrW**2+(params.slice_params.propLen*rmsAngDiv)**2) # beam size at distance
-        
-        
+
+
         # *************begin function below**********
-        
-        
+
+
         # sig_s = params.tau_fwhm * const.c / 2.355
         ds = 2*params.num_sig_long*self.sig_s/params.nslice    # longitudinal spacing between slices
         self._pulse_pos = self.dist_waist - params.num_sig_long*self.sig_s+slice_index*ds
-        
+
         # calculate slice energy intensity (not energy associated with lambda)
         sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
-        
-        
-     
+
+
+
         self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
                                            self.nx_slice, self.ny_slice, self.phE, params.slice_params.mx, params.slice_params.my)
-        
-        
-        
-        #*****************all of below to be put in a function*********************
-        # this function should output a wfr like self.wfr = createGsnSrcSRW()
-        
-        #***********Gaussian Beam Source
-        # GsnBm = srwlib.SRWLGsnBm() #Gaussian Beam structure (just parameters)
-        # GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
-        # GsnBm.y = 0
-        
-        # GsnBm.z = params.slice_params.propLen + self._pulse_pos #Longitudinal Position of Waist [m]
-        # GsnBm.xp = 0 #Average Angles of Gaussian Beam at Waist [rad]
-        # GsnBm.yp = 0
-        # GsnBm.avgPhotEn = self.phE #Photon Energy [eV]
-        # GsnBm.pulseEn = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*sig_s**2)) #Energy per Pulse [J] - to be corrected
-        # GsnBm.repRate = 1 #Rep. Rate [Hz] - to be corrected
-        # GsnBm.polar = params.slice_params.poltype #1- linear horizontal?
-        # GsnBm.sigX = params.slice_params.sigrW #Horiz. RMS size at Waist [m]
-        # GsnBm.sigY = GsnBm.sigX #Vert. RMS size at Waist [m]
-
-        # GsnBm.sigT = 10e-15 #Pulse duration [s] (not used?)
-        # GsnBm.mx = params.slice_params.mx #Transverse Gauss-Hermite Mode Orders
-        # GsnBm.my = params.slice_params.my
-
-        #***********Initial Wavefront
-        # _wfr = srwlib.SRWLWfr() #Initial Electric Field Wavefront
-        # _wfr.allocate(1, 1000, 1000) #Numbers of points vs Photon Energy (1), Horizontal and Vertical Positions (dummy)
-        # _wfr.mesh.zStart = 0.0 #Longitudinal Position [m] at which initial Electric Field has to be calculated, i.e. the position of the first optical element
-        # _wfr.mesh.eStart = GsnBm.avgPhotEn #Initial Photon Energy [eV]
-        # _wfr.mesh.eFin = GsnBm.avgPhotEn #Final Photon Energy [eV]
-
-        # _wfr.unitElFld = 1 #Electric field units: 0- arbitrary, 1- sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or sqrt(W/mm^2), depending on representation (freq. or time)
-
-#         distSrc = _wfr.mesh.zStart - GsnBm.z
-#         #Horizontal and Vertical Position Range for the Initial Wavefront calculation
-#         #can be used to simulate the First Aperture (of M1)
-#         #firstHorAp = 8.*rmsAngDiv*distSrc #[m]
-#         xAp = 8.*sigrL
-#         yAp = xAp #[m]
-
-#         _wfr.mesh.xStart = -0.5*xAp #Initial Horizontal Position [m]
-#         _wfr.mesh.xFin = 0.5*xAp #Final Horizontal Position [m]
-#         _wfr.mesh.yStart = -0.5*yAp #Initial Vertical Position [m]
-#         _wfr.mesh.yFin = 0.5*yAp #Final Vertical Position [m]
-
-#         sampFactNxNyForProp = params.slice_params.sampFact #sampling factor for adjusting nx, ny (effective if > 0)
-#         arPrecPar = [sampFactNxNyForProp]
-
-#         srwlib.srwl.CalcElecFieldGaussian(_wfr, GsnBm, arPrecPar)
-
-#         ##Beamline to propagate to waist ( only if d_to_w(t=0) < d_to_w_cutoff )
-#         if params.d_to_w < d_to_w_cutoff:
-#           optDriftW=srwlib.SRWLOptD(params.slice_params.propLen)
-#           propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
-#           optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
-#           srwlib.srwl.PropagElecField(_wfr, optBLW)
-#         self.wfr = _wfr
 
 
     def _get_params(self, params):
