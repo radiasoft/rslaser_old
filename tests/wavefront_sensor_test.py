@@ -34,15 +34,6 @@ WFR_ATTRS_LIST = [
     ]
 
 
-def _check_epsilon_diff(val1, val2, epsilon, message):
-    if val1 != 0:
-        if not (val1 - val2)/val1 < epsilon:
-            pykern.pkunit.pkfail(message)
-    else:
-        if not abs(val2) < epsilon:
-            pykern.pkunit.pkfail(message)
-
-
 def test_instantiation01():
     WavefrontSensor('w1', 2.0)
     with pykern.pkunit.pkexcept(InvalidWaveFrontSensorInputError):
@@ -50,7 +41,13 @@ def test_instantiation01():
 
 
 def test_propagation01():
-    from pykern import pkunit, pkjson
+    from pykern import pkunit
+
+    # TODO (gurhar1133):
+    # 1) change this to an ndiff test
+    # 2) ask rob about doing pkunit.ndiff_files()
+    # 3) clean out long comments
+
     p = pulse.LaserPulse()
     w = WavefrontSensor('w1', 2.0)
     r = w.propagate(p)
@@ -70,20 +67,3 @@ def test_propagation02():
     p = pulse.LaserPulseSlice(0)
     with pykern.pkunit.pkexcept(InvalidWaveFrontSensorInputError):
         wfs.propagate(p)
-
-
-def test_propagation043():
-    p = pulse.LaserPulse(PKDict(nslice=1))
-    pc = copy.deepcopy(p)
-    wfs = WavefrontSensor('w1', 0.0)
-    res = wfs.propagate(p)
-    for a in WFR_ATTRS_LIST:
-        o = getattr(pc.slice[0].wfr, a)
-        n = getattr(res, a)
-        if type(o) == array.array:
-            for i, v in enumerate(o):
-                _check_epsilon_diff(v, n[i], EPSILON,
-                    f'epsilon check failed with vals: {v}, {n[i]} on attr: {a}, index: {i}')
-        else:
-            _check_epsilon_diff(o, n, EPSILON,
-                f'epsilon check failed with vals: {v}, {n[i]} on attr: {a}')
