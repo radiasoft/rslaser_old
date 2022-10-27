@@ -50,6 +50,14 @@ def test_instantiation02():
 
 
 def test_instantiation03():
+    # TODO (gurhar1133): looks like the validator checks that
+    # things that arent supposed to be there are not there.
+    # But does not trigger InvalidLaserPulseInputError when
+    # there are missing params that are essential.
+    # check if this is happening with both LaserPulse and
+    # LaserPulseSlice validators. May want to reconsider
+    # validation behavior
+
     p = PKDict(PHHe=0.1)
     with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
         pulse.LaserPulse(p)
