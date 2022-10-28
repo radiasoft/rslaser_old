@@ -105,7 +105,7 @@ class LaserPulse(ValidatorBase):
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
 
-    def __init__(self, params=None):
+    def __init__(self, params=None, files=None):
         params = self._get_params(params)
         self._validate_params(params)
         # instantiate the laser envelope
@@ -114,6 +114,7 @@ class LaserPulse(ValidatorBase):
         # self.envelope = LaserPulseEnvelope(e)
         # instantiate the array of slices
         self.slice = []
+        self.files = files
         self.sigx_waist = params.slice_params.sigx_waist
         self.sigy_waist = params.slice_params.sigy_waist
         self.num_sig_trans = params.slice_params.num_sig_trans
@@ -127,7 +128,7 @@ class LaserPulse(ValidatorBase):
         s = params.copy()
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
-            self.slice.append(LaserPulseSlice(i, s))
+            self.slice.append(LaserPulseSlice(i, s, files=self.files))
             # s.phE += _de
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
@@ -186,7 +187,7 @@ class LaserPulseSlice(ValidatorBase):
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
 
-    def __init__(self, slice_index, params=None):
+    def __init__(self, slice_index, params=None, files=None):
         #print([sigrW,propLen,pulseE,poltype])
         # self._validate_type(slice_index, int, 'slice_index')
         params = self._get_params(params)
@@ -229,15 +230,17 @@ class LaserPulseSlice(ValidatorBase):
         # sig_s = params.tau_fwhm * const.c / 2.355
         ds = 2*params.num_sig_long*self.sig_s/params.nslice    # longitudinal spacing between slices
         self._pulse_pos = self.dist_waist - params.num_sig_long*self.sig_s+slice_index*ds
+        self._wavefront(params, files)
 
+
+
+    def _wavefront(self, params, files):
+        if files:
+            return
         # calculate slice energy intensity (not energy associated with lambda)
         sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
-
-
-
         self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
                                            self.nx_slice, self.ny_slice, self.phE, params.slice_params.mx, params.slice_params.my)
-
 
     def _get_params(self, params):
         return self.__fixup_slice_params(super()._get_params(params))
