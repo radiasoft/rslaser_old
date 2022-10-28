@@ -20,38 +20,11 @@ def pulse_instantiation_test(pulse, field):
             pykern.pkunit.pkfail(f'LaserPulseSlice has different {field} than pulse as a whole')
 
 
-def test_no_params_instantiation():
-    l = pulse.LaserPulse()
-
-
-def slice_instantiation_test(pulse, field):
-    a = [getattr(s, field) for s in pulse.slice]
-
-    # TODO (gurhar1133): do we still want to do this?
-    if not len(set(a)) == len(a):
-        pykern.pkunit.pkfail(f'Expected pulse.slice field {field} to all be unique vals')
-
-
 def test_instantiation01():
-    l = pulse.LaserPulse()
-    pulse_instantiation_test(l, 'phE')
-    pulse_instantiation_test(l, '_lambda0')
-    k = PKDict(chirp=0.01*(scipy.constants.h * scipy.constants.c / scipy.constants.e / 1e-6))
-    l = pulse.LaserPulse(k)
-    slice_instantiation_test(l, '_lambda0')
+    pulse.LaserPulse()
+
 
 def test_instantiation02():
-    k = PKDict(chirp=0.01*(scipy.constants.h * scipy.constants.c / scipy.constants.e / 1e-6))
-    l = pulse.LaserPulse(k)
-    slice_instantiation_test(l, 'phE')
-    s = [pulse.LaserPulseSlice(i) for i in range(10)]
-    c = [[i, 0] for i in range(10)]
-    for a in c:
-        with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
-            pulse.LaserPulseSlice(a)
-
-
-def test_instantiation03():
     p = PKDict(PHHe=0.1)
     with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
         pulse.LaserPulse(p)
@@ -61,7 +34,7 @@ def test_instantiation03():
         pulse.LaserPulse(p)
 
 
-def test_instantiation04():
+def test_instantiation03():
     e = "'PKDict' object has no attribute 'sigx_waist'"
     with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
         pulse.LaserPulse([])
@@ -75,7 +48,7 @@ def test_instantiation04():
         pulse.LaserPulse(p)
 
 
-def test_instantiation05():
+def test_instantiation04():
     laser_cavity.LaserCavity()
 
     k = PKDict(n3='fail')
