@@ -12,6 +12,7 @@ import rslaser.optics.wavefront as rswf
 import rsmath.const as rsc
 import rslaser.utils.unit_conversion as units
 import rslaser.utils.srwl_uti_data as srwutil
+import os
 import scipy.constants as const
 import srwlib
 from srwlib import srwl
@@ -236,6 +237,26 @@ class LaserPulseSlice(ValidatorBase):
 
     def _wavefront(self, params, files):
         if files:
+            ccd_name = 'ccd_pump_off.txt'
+            wfs_name = 'wfs_pump_off.txt'
+
+            package_data_dir = rslaser.pkg_resources.resource_filename('rslaser','package_data')
+            ccd_path_to_file = os.path.join(package_data_dir, ccd_name)
+            wfs_path_to_file = os.path.join(package_data_dir, wfs_name)
+
+            # read the pixel size from the diagnostic metadata file
+            meta_file_name = 'wfs_meta.dat'
+            meta_path_to_file = os.path.join(package_data_dir, meta_file_name)
+            with open(meta_path_to_file) as fh:
+                for line in fh:
+                    if line.startswith("pixel_size_h_microns"):
+                        pixel_size_h = float(line.split(":")[-1].split(",")[0])  # microns
+                    if line.startswith("pixel_size_v_microns"):
+                        pixel_size_v = float(line.split(":")[-1].split(",")[0])  # microns
+
+            # central wavelength of the laser pulse
+            lambda0_micron = 0.8
+
             return
         # calculate slice energy intensity (not energy associated with lambda)
         sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
