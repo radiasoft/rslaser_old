@@ -340,7 +340,7 @@ class LaserPulseEnvelope(ValidatorBase):
 
     """
     _INPUT_ERROR = InvalidLaserPulseInputError
-    _DEFAULTS = _ENVELOPE_DEFAULTS
+    _DEFAULTS = _LASER_PULSE_DEFAULTS
 
     def __init__(self, params=None):
         params = self._get_params(params)

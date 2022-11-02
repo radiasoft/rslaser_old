@@ -56,7 +56,7 @@ def test_propagation01():
     for a in WFR_ATTRS_LIST:
         v = getattr(r, a)
         actual.update({a: v})
-    _ndiff_files(
+    ndiff_files(
         data_dir.join("res.txt"),
         pkio.write_text(
             work_dir.join("res_actual.txt"),
@@ -77,7 +77,9 @@ def test_propagation02():
         wfs.propagate(p)
 
 
-def _ndiff_files(expect_path, actual_path, diff_file, data_dir):
+# TODO (gurhar1133): this will be scrapped for file_eq when file_q
+# supports ndiff
+def ndiff_files(expect_path, actual_path, diff_file, data_dir):
     pykern.pksubprocess.check_call_with_signals(
         [
             "ndiff",
