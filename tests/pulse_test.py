@@ -175,3 +175,40 @@ def test_cavity_propagation():
             [1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 1.55, 1.55]]),
         str(results[-1]),
     )
+
+
+def test_from_file():
+
+    slice = PKDict(
+    sigrW = math.sqrt(x_rms*y_rms),
+    propLen = 15,
+    pulseE = 0.001,
+    poltype = 1,
+    sampFact = 0.002,
+    mx = 0,
+    my = 0
+    )
+    pulse = PKDict(
+            phE = 1.55,
+            nslice = 1,
+            chirp = 0,
+            w0 = 2.*math.sqrt(x_rms*y_rms),
+            a0 = .002,
+            dw0x = 0.0,
+            dw0y = 0.0,
+            z_waist = -0.1,
+            dzwx = 0.0,
+            dzwy = 0.0,
+            tau_fwhm = 0.1 / constants.c / math.sqrt(2.),
+            z_center = 0.,
+            x_shift = 0.,
+            y_shift = 0.,
+            d_to_w = 0.1,
+            slice_params=slice,
+    )
+    pulse.LaserPulse(PKDict(**pulse), files=True)
+    # TODO (gurhar1133):
+    # 1) set the first slice wfr to wfr0
+    # 2) make sure that files=True only is called (via assertion) with
+    # single slice pulses
+    # 3) expect and actual testing

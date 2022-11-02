@@ -2,14 +2,17 @@
 u"""Definition of a laser pulse
 Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 """
+import array
 import math
 import cmath
 import numpy as np
 from pykern.pkdebug import pkdp, pkdlog
+from pykern import pkio
 from pykern.pkcollections import PKDict
 from numpy.polynomial.hermite import hermval
 import rslaser.optics.wavefront as rswf
 import rsmath.const as rsc
+import rslaser
 import rslaser.utils.unit_conversion as units
 import rslaser.utils.srwl_uti_data as srwutil
 import os
@@ -106,7 +109,7 @@ class LaserPulse(ValidatorBase):
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
 
-    def __init__(self, params=None, files=None):
+    def __init__(self, params=None, files=False):
         params = self._get_params(params)
         self._validate_params(params)
         # instantiate the laser envelope
@@ -188,7 +191,7 @@ class LaserPulseSlice(ValidatorBase):
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
 
-    def __init__(self, slice_index, params=None, files=None):
+    def __init__(self, slice_index, params=None, files=False):
         #print([sigrW,propLen,pulseE,poltype])
         # self._validate_type(slice_index, int, 'slice_index')
         params = self._get_params(params)
@@ -237,17 +240,12 @@ class LaserPulseSlice(ValidatorBase):
 
     def _wavefront(self, params, files):
         if files:
-            ccd_name = 'ccd_pump_off.txt'
-            wfs_name = 'wfs_pump_off.txt'
-
             package_data_dir = rslaser.pkg_resources.resource_filename('rslaser','package_data')
-            ccd_path_to_file = os.path.join(package_data_dir, ccd_name)
-            wfs_path_to_file = os.path.join(package_data_dir, wfs_name)
+            ccd = pkio.py_path(package_data_dir).join('ccd_pump_off.txt')
+            wfs = pkio.py_path(package_data_dir).join('wfs_pump_off.txt')
+            meta = pkio.py_path(package_data_dir).join('wfs_meta.dat')
 
-            # read the pixel size from the diagnostic metadata file
-            meta_file_name = 'wfs_meta.dat'
-            meta_path_to_file = os.path.join(package_data_dir, meta_file_name)
-            with open(meta_path_to_file) as fh:
+            with open(meta) as fh:
                 for line in fh:
                     if line.startswith("pixel_size_h_microns"):
                         pixel_size_h = float(line.split(":")[-1].split(",")[0])  # microns
@@ -257,6 +255,99 @@ class LaserPulseSlice(ValidatorBase):
             # central wavelength of the laser pulse
             lambda0_micron = 0.8
 
+            ccd_data = np.genfromtxt(ccd, skip_header=1)
+            print('ccd_data.shape = ', ccd_data.shape)
+
+            ccd_data = np.delete(ccd_data, 0, axis=1)
+            ccd_data = np.delete(ccd_data, 1, axis=1)
+            ccd_data = np.delete(ccd_data, 2, axis=1)
+            ccd_data = np.delete(ccd_data, 3, axis=1)
+            ccd_data = np.delete(ccd_data, -4, axis=1)
+            ccd_data = np.delete(ccd_data, -3, axis=1)
+            ccd_data = np.delete(ccd_data, -2, axis=1)
+            ccd_data = np.delete(ccd_data, -1, axis=1)
+            print('ccd_data.shape = ', ccd_data.shape)
+
+
+
+            # specify the mesh size
+            nx = ccd_data.shape[1]
+            ny = ccd_data.shape[0]
+
+            # create the x,y arrays with physical units based on the diagnostic pixel dimensions
+            x_max = 0.002    # [m]
+            x_min = -x_max
+            x1 = np.linspace(x_min, x_max, nx)
+
+            y_max = x_max
+            y_min = -y_max
+            y1 = np.linspace(y_min, y_max, ny)
+
+            x, y = np.meshgrid(x1, y1)
+
+            if False:
+                print('x_min = ', np.min(x1))
+                print('x_max = ', np.max(x1))
+                print('x1.shape = ', x1.shape)
+
+                print('y_min = ', np.min(y1))
+                print('y_max = ', np.max(y1))
+                print('y1.shape = ', y1.shape)
+
+            # Calculate intensity centroid and RMS values
+            xc, yc, xc_rms, yc_rms = _rms_calc_2d(x, y, ccd_data)
+
+
+
+            # parse the measured phases of the wavefront
+            wfs_data = np.genfromtxt(wfs, skip_header=1, skip_footer=0)
+
+            # clean up any NaN's
+            indices = np.isnan(wfs_data)
+            wfs_data = _array_cleaner(wfs_data, indices)
+
+            wfs_data = np.delete(wfs_data, 0, axis=1)
+            wfs_data = np.delete(wfs_data, 1, axis=1)
+            wfs_data = np.delete(wfs_data, 2, axis=1)
+            wfs_data = np.delete(wfs_data, 3, axis=1)
+            wfs_data = np.delete(wfs_data, -4, axis=1)
+            wfs_data = np.delete(wfs_data, -3, axis=1)
+            wfs_data = np.delete(wfs_data, -2, axis=1)
+            wfs_data = np.delete(wfs_data, -1, axis=1)
+
+            # convert from microns to radians
+            rad_per_micron = math.pi / lambda0_micron
+            wfs_data *= rad_per_micron
+
+            phi_min=np.min(wfs_data)
+            phi_max=np.max(wfs_data)
+
+            # we assume the WFS and CCD data are from the same diagnostic
+            # check that the data files have the same number of pixels
+            assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
+
+
+
+            # Calulate the real and imaginary parts of the Ex,Ey electric field components
+            e_norm = np.sqrt(ccd_data)
+            ex_real = np.multiply(e_norm, np.cos(wfs_data)).flatten(order='C')
+            ex_imag = np.multiply(e_norm, np.sin(wfs_data)).flatten(order='C')
+
+            ex_numpy = np.zeros(2*len(ex_real))
+            for i in range(len(ex_real)):
+                ex_numpy[2*i] = ex_real[i]
+                ex_numpy[2*i+1] = ex_imag[i]
+
+            ex = array.array('f', ex_numpy.tolist())
+            ey = array.array('f', len(ex)*[0.])
+
+
+            wfr0 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
+                    _eStart=1.55, _eFin=1.55, _ne=1,
+                    _xStart=x_min, _xFin=x_max, _nx=nx,
+                    _yStart=y_min, _yFin=y_max, _ny=ny,
+                    _zStart=0., _partBeam=None)
+            print(f"wavefront: {wfr0}")
             return
         # calculate slice energy intensity (not energy associated with lambda)
         sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
@@ -709,3 +800,75 @@ class LaserPulseEnvelope(ValidatorBase):
 
         # return the complex valued result
         return result
+
+
+
+def _rms_calc_2d(_x, _y, f_dist):
+    """
+    Calculate the x and y averages and RMS of a 2d distribution f_dist(x,y)
+
+    Args:
+        _x, 2d numpy array that defines x values of the distribution
+        _y, 2d numpy array that defines y values of the distribution
+        f_dist, 2d numpy array that defines the x,y distribution
+
+    Returns:
+        x_avg, y_avg, the average values of x and y
+        x_rms, y_rms, the RMS values of x and y
+
+    Example:
+        >>> xavg, yavg, xrms, yrms = rms_calc_2d(my_array)
+    """
+    x_f = np.multiply(_x, f_dist)
+    y_f = np.multiply(_y, f_dist)
+    sum_f = np.sum(f_dist)
+    x_avg = np.sum(x_f) / sum_f
+    y_avg = np.sum(y_f) / sum_f
+
+    xsq_f = np.multiply(_x, x_f)
+    ysq_f = np.multiply(_y, y_f)
+    x_std = np.sum(xsq_f) / sum_f
+    y_std = np.sum(ysq_f) / sum_f
+
+    x_rms = math.sqrt(x_std - x_avg**2)
+    y_rms = math.sqrt(y_std - y_avg**2)
+    return x_avg, y_avg, x_rms, y_rms
+
+
+def _nan_helper(_arr):
+    """
+    Clean unwanted NaNs from a numpy array, replacing them via interpolation.
+
+    Args:
+        _arr, numpy array with NaNs
+
+    Returns:
+        nans, logical indices of NaNs
+        index, a function with signature indices = index(logical_indices)
+               to convert logical indices of NaNs to 'equivalent' indices
+
+    Example:
+        >>> nans, x = nan_helper(my_array)
+        >>> my_array[nans] = np.interp(x(nans), x(~nans), my_array[~nans])
+    """
+    return np.isnan(_arr), lambda z: z.nonzero()[0]
+
+def _array_cleaner(_arr, _ind):
+    """
+    Clean unwanted values from a numpy array, replacing them via interpolation.
+
+    Args:
+        _arr, numpy array with bad values
+        _ind, precalculated indices of these bad values
+
+    Returns:
+        _arr, cleaned version of the input array
+
+    Example:
+        >>> indices = np.isnan(my_array)
+        >>> my_array = array_cleaner(my_array, indices)
+    """
+    _arr[_ind] = np.nan
+    nans, x = _nan_helper(_arr)
+    _arr[nans] = np.interp(x(nans), x(~nans), _arr[~nans])
+    return _arr
