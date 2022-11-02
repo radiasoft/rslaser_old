@@ -13,8 +13,8 @@ import pytest
 from rslaser.pulse import pulse
 from rslaser.cavity import laser_cavity
 import scipy
-import scipy.constants as const
 import rslaser
+import srwlib
 
 
 _PACKAGE_DATA_DIR = rslaser.pkg_resources.resource_filename("rslaser", "package_data")
@@ -151,56 +151,39 @@ def test_cavity_propagation():
 
 
 def test_from_file():
-    # TODO (gurhar1133): expect and actual testing?
+    from pykern import pkunit
     from pykern import pkio
 
-    s = PKDict(
-        sigx_waist=10e-6,
-        sigy_waist=10e-6,
-        num_sig_trans=6,
-        nx_slice=500,
-        ny_slice=500,
-        pulseE=0.001,
-        poltype=1,
-        mx=0,
-        my=0,
-    )
-    e = PKDict(
-        w0=0.1,
-        a0=0.01,
-        dw0x=0.0,
-        dw0y=0.0,
-        dzwx=0.0,
-        dzwy=0.0,
-        z_center=0,
-        x_shift=0.0,
-        y_shift=0.0,
-    )
-    p = PKDict(
-        **e,
-        nslice=1,
-        chirp=0,
-        phE=1e3,
-        num_sig_long=3.0,
-        dist_waist=0,
-        tau_fwhm=0.1 / const.c / math.sqrt(2.0),
-        slice_params=s,
-    )
+    data_dir = pkunit.data_dir()
+    work_dir = pkunit.empty_work_dir()
+    pulse_inputs = pulse._LASER_PULSE_DEFAULTS.copy()
+    pulse_inputs.nslice = 1
     f = PKDict(
         ccd=pkio.py_path(_PACKAGE_DATA_DIR).join("ccd_pump_off.txt"),
         wfs=pkio.py_path(_PACKAGE_DATA_DIR).join("wfs_pump_off.txt"),
         meta=pkio.py_path(_PACKAGE_DATA_DIR).join("wfs_meta.dat"),
     )
-    pulse.LaserPulse(
-        PKDict(**p),
+    wavefront = pulse.LaserPulse(
+        pulse_inputs,
         files=f,
+    ).slice_wfr(0)
+    intensity = srwlib.array('f', [0]*wavefront.mesh.nx*wavefront.mesh.ny)
+    srwlib.srwl.CalcIntFromElecField(intensity, wavefront, 6, 0, 3, wavefront.mesh.eStart, 0, 0)
+    ndiff_files(
+        data_dir.join("2d_wf_intensity.txt"),
+        pkio.write_text(
+            work_dir.join("2d_wf_intensity_actual.txt"),
+            str(intensity),
+        ),
+        work_dir.join("ndiff.out"),
+        data_dir,
     )
-    p.nslice = 2
+    pulse_inputs.nslice = 2
     with pykern.pkunit.pkexcept(
         pulse.InvalidLaserPulseInputError,
         "cannot use file inputs with more than one slice",
     ):
         pulse.LaserPulse(
-            PKDict(**p),
+            pulse_inputs,
             f,
         )
