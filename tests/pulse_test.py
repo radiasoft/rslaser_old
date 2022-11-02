@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Tests for instantiation of LaserCavity, LaserPulse
+"""Tests for instantiation of LaserCavity, LaserPulse
 and LaserPulseSlice
 """
 from __future__ import absolute_import, division, print_function
@@ -17,12 +17,15 @@ import scipy.constants as const
 import rslaser
 
 
-_PACKAGE_DATA_DIR = rslaser.pkg_resources.resource_filename('rslaser','package_data')
+_PACKAGE_DATA_DIR = rslaser.pkg_resources.resource_filename("rslaser", "package_data")
+
 
 def pulse_instantiation_test(pulse, field):
     for s in pulse.slice:
         if getattr(s, field) != getattr(pulse, field):
-            pykern.pkunit.pkfail(f'LaserPulseSlice has different {field} than pulse as a whole')
+            pykern.pkunit.pkfail(
+                f"LaserPulseSlice has different {field} than pulse as a whole"
+            )
 
 
 def test_instantiation01():
@@ -44,11 +47,7 @@ def test_instantiation03():
     with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
         pulse.LaserPulse([])
     p = PKDict(slice_params=PKDict(**pulse._LASER_PULSE_SLICE_DEFAULTS))
-    p.slice_params = PKDict(
-        slice_params=PKDict(
-            foo='bar', hello='world'
-        )
-    )
+    p.slice_params = PKDict(slice_params=PKDict(foo="bar", hello="world"))
     with pykern.pkunit.pkexcept(e):
         pulse.LaserPulse(p)
 
@@ -56,19 +55,19 @@ def test_instantiation03():
 def test_instantiation04():
     laser_cavity.LaserCavity()
 
-    k = PKDict(n3='fail')
+    k = PKDict(n3="fail")
     with pykern.pkunit.pkexcept(laser_cavity.InvalidLaserCavityInputError):
         laser_cavity.LaserCavity(k)
 
-    k = PKDict(pulse_params=PKDict(chirp=0.01*(scipy.constants.h * scipy.constants.c / 1e-6)))
+    k = PKDict(
+        pulse_params=PKDict(chirp=0.01 * (scipy.constants.h * scipy.constants.c / 1e-6))
+    )
     laser_cavity.LaserCavity(k)
 
     k = PKDict(
         pulse_params=PKDict(
-            chirp=0.01*(scipy.constants.h * scipy.constants.c / 1e-6),
-            slice_params=PKDict(
-                **pulse._LASER_PULSE_SLICE_DEFAULTS
-            )
+            chirp=0.01 * (scipy.constants.h * scipy.constants.c / 1e-6),
+            slice_params=PKDict(**pulse._LASER_PULSE_SLICE_DEFAULTS),
         )
     )
     k.pulse_params.slice_params.update(PKDict(poltype=5))
@@ -77,9 +76,9 @@ def test_instantiation04():
     laser_cavity.LaserCavity(k)
     with pykern.pkunit.pkexcept(
         laser_cavity.InvalidLaserCavityInputError,
-        'Invalid instantiation of LaserCavity with in="should raise"'
-        ):
-        laser_cavity.LaserCavity('should raise')
+        'Invalid instantiation of LaserCavity with in="should raise"',
+    ):
+        laser_cavity.LaserCavity("should raise")
 
 
 def test_cavity_propagation():
@@ -97,38 +96,46 @@ def test_cavity_propagation():
     n2 = 0.02
 
     wavefrontEnergy = 1.55
-    lam = scipy.constants.c * scipy.constants.value('Planck constant in eV/Hz') / wavefrontEnergy
+    lam = (
+        scipy.constants.c
+        * scipy.constants.value("Planck constant in eV/Hz")
+        / wavefrontEnergy
+    )
 
-    L_eff = L_cav + (1/n0 - 1) * L_cryst
-    beta0 = math.sqrt(L_eff * (L_cav / 4 + dfL) - L_eff ** 2 / 4)
+    L_eff = L_cav + (1 / n0 - 1) * L_cryst
+    beta0 = math.sqrt(L_eff * (L_cav / 4 + dfL) - L_eff**2 / 4)
     sigx0 = math.sqrt(lam * beta0 / 4 / math.pi)
 
-    lc = laser_cavity.LaserCavity(PKDict(
-        drift_right_length=L_cav / 2 - L_cryst / 2,
-        drift_left_length=L_cav / 2 - L_cryst / 2,
-        lens_left_focal_length=L_cav / 4 + dfR,
-        lens_right_focal_length=L_cav / 4 + dfL,
-        n0=n0,
-        n2=n2,
-        L_half_cryst=L_cryst / 2,
-        pulse_params=PKDict(
-            phE=wavefrontEnergy,
-            nslice=11,
-            slice_params=PKDict(**pulse._LASER_PULSE_SLICE_DEFAULTS),
-        ),
-    ))
+    lc = laser_cavity.LaserCavity(
+        PKDict(
+            drift_right_length=L_cav / 2 - L_cryst / 2,
+            drift_left_length=L_cav / 2 - L_cryst / 2,
+            lens_left_focal_length=L_cav / 4 + dfR,
+            lens_right_focal_length=L_cav / 4 + dfL,
+            n0=n0,
+            n2=n2,
+            L_half_cryst=L_cryst / 2,
+            pulse_params=PKDict(
+                phE=wavefrontEnergy,
+                nslice=11,
+                slice_params=PKDict(**pulse._LASER_PULSE_SLICE_DEFAULTS),
+            ),
+        )
+    )
 
     results = []
 
     def intensity_callback(position, vals):
         (x, y) = lc.laser_pulse.rmsvals()
-        results.append([
-            lc.laser_pulse.pulsePos(),
-            x,
-            y,
-            lc.laser_pulse.intensity_vals(),
-            lc.laser_pulse.energyvals(),
-        ])
+        results.append(
+            [
+                lc.laser_pulse.pulsePos(),
+                x,
+                y,
+                lc.laser_pulse.intensity_vals(),
+                lc.laser_pulse.energyvals(),
+            ]
+        )
 
     lc.propagate(num_cycles=4, callback=intensity_callback)
 
@@ -139,49 +146,50 @@ def test_cavity_propagation():
             str(results[-1]),
         ),
         work_dir.join("ndiff.out"),
-        data_dir
+        data_dir,
     )
 
 
 def test_from_file():
+    # TODO (gurhar1133): expect and actual testing?
     from pykern import pkio
 
     s = PKDict(
-        sigx_waist = 10e-6,
-        sigy_waist = 10e-6,
-        num_sig_trans = 6,
-        nx_slice = 500,
-        ny_slice = 500,
-        pulseE = 0.001,
-        poltype = 1,
-        mx = 0,
-        my = 0,
+        sigx_waist=10e-6,
+        sigy_waist=10e-6,
+        num_sig_trans=6,
+        nx_slice=500,
+        ny_slice=500,
+        pulseE=0.001,
+        poltype=1,
+        mx=0,
+        my=0,
     )
     e = PKDict(
-        w0=.1,
-        a0=.01,
+        w0=0.1,
+        a0=0.01,
         dw0x=0.0,
         dw0y=0.0,
         dzwx=0.0,
         dzwy=0.0,
         z_center=0,
-        x_shift = 0.,
-        y_shift=0.,
+        x_shift=0.0,
+        y_shift=0.0,
     )
     p = PKDict(
-            **e,
-            nslice = 1,
-            chirp = 0,
-            phE = 1e3,
-            num_sig_long=3.,
-            dist_waist = 0,
-            tau_fwhm= 0.1 / const.c / math.sqrt(2.),
-            slice_params=s,
+        **e,
+        nslice=1,
+        chirp=0,
+        phE=1e3,
+        num_sig_long=3.0,
+        dist_waist=0,
+        tau_fwhm=0.1 / const.c / math.sqrt(2.0),
+        slice_params=s,
     )
     f = PKDict(
-        ccd=pkio.py_path(_PACKAGE_DATA_DIR).join('ccd_pump_off.txt'),
-        wfs=pkio.py_path(_PACKAGE_DATA_DIR).join('wfs_pump_off.txt'),
-        meta=pkio.py_path(_PACKAGE_DATA_DIR).join('wfs_meta.dat'),
+        ccd=pkio.py_path(_PACKAGE_DATA_DIR).join("ccd_pump_off.txt"),
+        wfs=pkio.py_path(_PACKAGE_DATA_DIR).join("wfs_pump_off.txt"),
+        meta=pkio.py_path(_PACKAGE_DATA_DIR).join("wfs_meta.dat"),
     )
     pulse.LaserPulse(
         PKDict(**p),
@@ -190,11 +198,9 @@ def test_from_file():
     p.nslice = 2
     with pykern.pkunit.pkexcept(
         pulse.InvalidLaserPulseInputError,
-        "cannot use file inputs with more than one slice"
-        ):
+        "cannot use file inputs with more than one slice",
+    ):
         pulse.LaserPulse(
             PKDict(**p),
             f,
         )
-    # TODO (gurhar1133):
-    # 4) expect and actual testing

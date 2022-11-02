@@ -176,7 +176,7 @@ class LaserPulse(ValidatorBase):
         return [s.phE for s in self.slice]
 
     def slice_wfr(self,slice_index):
-        return self.slice(slice_index).wfr
+        return self.slice[slice_index].wfr
 
 
 class LaserPulseSlice(ValidatorBase):
