@@ -5,7 +5,10 @@ and LaserPulseSlice
 from __future__ import absolute_import, division, print_function
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
+import pykern.pksubprocess
 import pykern.pkunit
+import pykern.pkio
+import re
 import array
 import pytest
 import copy
@@ -34,15 +37,6 @@ WFR_ATTRS_LIST = [
     ]
 
 
-def _check_epsilon_diff(val1, val2, epsilon, message):
-    if val1 != 0:
-        if not (val1 - val2)/val1 < epsilon:
-            pykern.pkunit.pkfail(message)
-    else:
-        if not abs(val2) < epsilon:
-            pykern.pkunit.pkfail(message)
-
-
 def test_instantiation01():
     WavefrontSensor('w1', 2.0)
     with pykern.pkunit.pkexcept(InvalidWaveFrontSensorInputError):
@@ -50,7 +44,11 @@ def test_instantiation01():
 
 
 def test_propagation01():
-    from pykern import pkunit, pkjson
+    from pykern import pkunit
+    from pykern import pkio
+
+    data_dir = pkunit.data_dir()
+    work_dir = pkunit.empty_work_dir()
     p = pulse.LaserPulse()
     w = WavefrontSensor('w1', 2.0)
     r = w.propagate(p)
@@ -58,8 +56,15 @@ def test_propagation01():
     for a in WFR_ATTRS_LIST:
         v = getattr(r, a)
         actual.update({a: v})
-    pkunit.empty_work_dir()
-    pkunit.file_eq('res.json', actual=actual)
+    ndiff_files(
+        data_dir.join("res.txt"),
+        pkio.write_text(
+            work_dir.join("res_actual.txt"),
+            str(actual),
+        ),
+        work_dir.join("ndiff.out"),
+        data_dir
+    )
 
 
 def test_propagation02():
@@ -72,18 +77,19 @@ def test_propagation02():
         wfs.propagate(p)
 
 
-def test_propagation043():
-    p = pulse.LaserPulse(PKDict(nslice=1))
-    pc = copy.deepcopy(p)
-    wfs = WavefrontSensor('w1', 0.0)
-    res = wfs.propagate(p)
-    for a in WFR_ATTRS_LIST:
-        o = getattr(pc.slice[0].wfr, a)
-        n = getattr(res, a)
-        if type(o) == array.array:
-            for i, v in enumerate(o):
-                _check_epsilon_diff(v, n[i], EPSILON,
-                    f'epsilon check failed with vals: {v}, {n[i]} on attr: {a}, index: {i}')
-        else:
-            _check_epsilon_diff(o, n, EPSILON,
-                f'epsilon check failed with vals: {v}, {n[i]} on attr: {a}')
+# TODO (gurhar1133): this will be scrapped for file_eq when file_q
+# supports ndiff
+def ndiff_files(expect_path, actual_path, diff_file, data_dir):
+    pykern.pksubprocess.check_call_with_signals(
+        [
+            "ndiff",
+            actual_path,
+            expect_path,
+            data_dir.join("ndiff_conf.txt"),
+        ],
+        output=str(diff_file),
+    )
+
+    d = pykern.pkio.read_text(diff_file)
+    if re.search("diffs have been detected", d):
+        raise AssertionError(f"{d}")

@@ -2,7 +2,8 @@
 u"""Definition of a laser pulse
 Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 """
-import math, cmath
+import math
+import cmath
 import numpy as np
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
@@ -10,44 +11,46 @@ from numpy.polynomial.hermite import hermval
 import rslaser.optics.wavefront as rswf
 import rsmath.const as rsc
 import rslaser.utils.unit_conversion as units
+import rslaser.utils.srwl_uti_data as srwutil
 import scipy.constants as const
 import srwlib
 from srwlib import srwl
 from rslaser.utils.validator import ValidatorBase
 
-
 _LASER_PULSE_SLICE_DEFAULTS = PKDict(
-        sigrW=0.000186,
-        propLen=15,
-        pulseE=0.001,
-        poltype=1,
-        sampFact=1,
-        mx=0,
-        my=0
+        sigx_waist = 10e-6,
+        sigy_waist = 10e-6,
+        num_sig_trans = 6,
+        nx_slice = 500,
+        ny_slice = 500,
+        pulseE = 0.001,
+        poltype = 1,
+        mx = 0,
+        my = 0,
     )
 _ENVELOPE_DEFAULTS = PKDict(
-    phE=1.55,
     w0=.1,
     a0=.01,
     dw0x=0.0,
     dw0y=0.0,
-    z_waist=0,
+    # z_waist=0,
     dzwx=0.0,
     dzwy=0.0,
-    tau_fwhm=0.1 / const.c / math.sqrt(2.),
+    # tau_fwhm=0.1 / const.c / math.sqrt(2.),
     z_center=0,
     x_shift = 0.,
     y_shift=0.,
 )
 _LASER_PULSE_DEFAULTS = PKDict(
         **_ENVELOPE_DEFAULTS,
-        nslice=3,
-        chirp=0,
-        d_to_w=0,
-        sigma_cutoff=3.,
+        nslice = 3,
+        chirp = 0,
+        phE = 1e3,
+        num_sig_long=3.,
+        dist_waist = 0,
+        tau_fwhm= 0.1 / const.c / math.sqrt(2.),
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
 )
-
 
 
 
@@ -66,24 +69,25 @@ class LaserPulse(ValidatorBase):
                 phE (float): Photon energy [eV]
                 nslice (int): number of slices
                 chirp (float): energy variation from first to last slice in laser pulse [eV]
+                dist_waist (float): distance from waist at which initial wavefront is calculated [m]
                 w0 (float): beamsize of laser pulse at waist [m]
                 a0 (float): laser amplitude, a=0.85e-9 lambda[micron] sqrt(I[W/cm^2])
                 dw0x (float): horizontal variation in waist size [m]
                 dw0y (float): vertical variation in waist size [m]
-                z_waist (float): longitudinal location of the waist [m]
                 dzwx (float): location (in z) of horizontal waist [m]
                 dzwy (float): location (in z) of vertical waist [m]
                 tau_fwhm (float): FWHM laser pulse length [s]
                 z_center (float): # longitudinal location of pulse center [m]
                 x_shift (float): horizontal shift of the spot center [m]
                 y_shift (float): vertical shift of the spot center [m]
-                d_to_w (float): distance to waist [m]
                 slice_params (PKDict):
-                        sigrW (float): RMS waist size [m]
-                        propLen (float): propagation length used so that the SRW Gaussian wavefront is not created at z=0 [m]
+                        sigx_waist (float): horizontal RMS waist size [m]
+                        sigy_waist (float): vertical RMS waist size [m]
+                        nx_slice (int): no. of horizontal mesh points in slice
+                        ny_slice (int): no. of vertical mesh points in slice
+                        num_sig_trans (int): no. of sigmas for transverse Gsn range
                         pulseE (float): maximum pulse energy for SRW Gaussian wavefronts [J]
                         poltype (int): polarization 1- lin. hor., 2- lin. vert., 3- lin. 45 deg., 4- lin.135 deg., 5- circ. right, 6- circ. left
-                        sampFact (float) : sampling factor for Gaussian wavefront grid (for propagation, effective if > 0)
                         mx (int): transverse Gauss-Hermite mode order in horizontal direction
                         my (int): transverse Gauss-Hermite mode order in vertical direction
 
@@ -105,22 +109,26 @@ class LaserPulse(ValidatorBase):
         params = self._get_params(params)
         self._validate_params(params)
         # instantiate the laser envelope
-        e = self._get_envelope_params(params)
-        self.envelope = LaserPulseEnvelope(e)
+        # note: next two lines commented out - error is thrown since phE moved from ENVELOPE_DEFAULTS to LASER_PULSE_DEFAULTS
+        # e = self._get_envelope_params(params)
+        # self.envelope = LaserPulseEnvelope(e)
         # instantiate the array of slices
         self.slice = []
+        self.sigx_waist = params.slice_params.sigx_waist
+        self.sigy_waist = params.slice_params.sigy_waist
+        self.num_sig_trans = params.slice_params.num_sig_trans
         self.nslice = params.nslice
         self.phE = params.phE
         self.sig_s = params.tau_fwhm * const.c / 2.355
-        self.sigma_cutoff = params.sigma_cutoff
+        self.num_sig_long = params.num_sig_long
         self._lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))
-        self.phE -= 0.5*params.chirp           # so central slice has the central photon energy
-        _de = params.chirp / self.nslice   # photon energy shift from slice to slice
+        # self.phE -= 0.5*params.chirp           # so central slice has the central photon energy
+        # _de = params.chirp / self.nslice   # photon energy shift from slice to slice
         s = params.copy()
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
             self.slice.append(LaserPulseSlice(i, s))
-            s.phE += _de
+            # s.phE += _de
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
@@ -180,76 +188,55 @@ class LaserPulseSlice(ValidatorBase):
 
     def __init__(self, slice_index, params=None):
         #print([sigrW,propLen,pulseE,poltype])
-        self._validate_type(slice_index, int, 'slice_index')
+        # self._validate_type(slice_index, int, 'slice_index')
         params = self._get_params(params)
         self._validate_params(params)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
-        self.phE = params.phE
+        self.sigx_waist = params.slice_params.sigx_waist
+        self.sigy_waist = params.slice_params.sigy_waist
+        self.num_sig_trans = params.slice_params.num_sig_trans
+        # self.z_waist = params.z_waist
+        self.nslice = params.nslice
+        self.nx_slice = params.slice_params.nx_slice
+        self.ny_slice = params.slice_params.ny_slice
+        self.dist_waist = params.dist_waist
+
+        # compute slice energy from central energy, chirp, and slice index
+        self.phE = params.phE          # check that this is being properly incremented in the correct place (see LaserPulse class)
+        _de = params.chirp / self.nslice   # photon energy shift from slice to slice
+        self.phE -= 0.5*params.chirp + (self.nslice * _de)   # so central slice has the central photon energy
+
+        self.sig_s = params.tau_fwhm * const.c / 2.355
+        self.num_sig_long = params.num_sig_long
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
-        rmsAngDiv = constConvRad/(self.phE*params.slice_params.sigrW)             ##RMS angular divergence [rad]
+        # rmsAngDiv = constConvRad/(self.phE*params.slice_params.sigrW)             ##RMS angular divergence [rad]
+        rmsAngDiv_x = constConvRad/(self.phE * self.sigx_waist)             ##RMS angular divergence [rad]
+        rmsAngDiv_y = constConvRad/(self.phE * self.sigy_waist)
+        sigrL_x = math.sqrt(self.sigx_waist**2 + (self.dist_waist * rmsAngDiv_x)**2)
+        sigrL_y = math.sqrt(self.sigy_waist**2 + (self.dist_waist * rmsAngDiv_y)**2)
         #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
         #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
-        d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
-        if params.d_to_w > d_to_w_cutoff:
-            params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
-        sigrL=math.sqrt(params.slice_params.sigrW**2+(params.slice_params.propLen*rmsAngDiv)**2)  ##required RMS size to produce requested RMS beam size after propagation by propLen
+        # d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
+        # if params.d_to_w > d_to_w_cutoff:
+        #     params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
+        # sigrL=math.sqrt(params.slice_params.sigrW**2+(params.slice_params.propLen*rmsAngDiv)**2) # beam size at distance
 
 
-        #***********Gaussian Beam Source
-        GsnBm = srwlib.SRWLGsnBm() #Gaussian Beam structure (just parameters)
-        GsnBm.x = 0 #Transverse Positions of Gaussian Beam Center at Waist [m]
-        GsnBm.y = 0
-        sig_s = params.tau_fwhm * const.c / 2.355
-        ds = 2*params.sigma_cutoff*sig_s/params.nslice
-        self._pulse_pos = -params.sigma_cutoff*sig_s+slice_index*ds
-        GsnBm.z = params.slice_params.propLen + self._pulse_pos #Longitudinal Position of Waist [m]
-        GsnBm.xp = 0 #Average Angles of Gaussian Beam at Waist [rad]
-        GsnBm.yp = 0
-        GsnBm.avgPhotEn = self.phE #Photon Energy [eV]
-        GsnBm.pulseEn = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*sig_s**2)) #Energy per Pulse [J] - to be corrected
-        GsnBm.repRate = 1 #Rep. Rate [Hz] - to be corrected
-        GsnBm.polar = params.slice_params.poltype #1- linear horizontal?
-        GsnBm.sigX = params.slice_params.sigrW #Horiz. RMS size at Waist [m]
-        GsnBm.sigY = GsnBm.sigX #Vert. RMS size at Waist [m]
+        # *************begin function below**********
 
-        GsnBm.sigT = 10e-15 #Pulse duration [s] (not used?)
-        GsnBm.mx = params.slice_params.mx #Transverse Gauss-Hermite Mode Orders
-        GsnBm.my = params.slice_params.my
 
-        #***********Initial Wavefront
-        _wfr = srwlib.SRWLWfr() #Initial Electric Field Wavefront
-        _wfr.allocate(1, 1000, 1000) #Numbers of points vs Photon Energy (1), Horizontal and Vertical Positions (dummy)
-        _wfr.mesh.zStart = 0.0 #Longitudinal Position [m] at which initial Electric Field has to be calculated, i.e. the position of the first optical element
-        _wfr.mesh.eStart = GsnBm.avgPhotEn #Initial Photon Energy [eV]
-        _wfr.mesh.eFin = GsnBm.avgPhotEn #Final Photon Energy [eV]
+        # sig_s = params.tau_fwhm * const.c / 2.355
+        ds = 2*params.num_sig_long*self.sig_s/params.nslice    # longitudinal spacing between slices
+        self._pulse_pos = self.dist_waist - params.num_sig_long*self.sig_s+slice_index*ds
 
-        _wfr.unitElFld = 1 #Electric field units: 0- arbitrary, 1- sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or sqrt(W/mm^2), depending on representation (freq. or time)
+        # calculate slice energy intensity (not energy associated with lambda)
+        sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
 
-        distSrc = _wfr.mesh.zStart - GsnBm.z
-        #Horizontal and Vertical Position Range for the Initial Wavefront calculation
-        #can be used to simulate the First Aperture (of M1)
-        #firstHorAp = 8.*rmsAngDiv*distSrc #[m]
-        xAp = 8.*sigrL
-        yAp = xAp #[m]
 
-        _wfr.mesh.xStart = -0.5*xAp #Initial Horizontal Position [m]
-        _wfr.mesh.xFin = 0.5*xAp #Final Horizontal Position [m]
-        _wfr.mesh.yStart = -0.5*yAp #Initial Vertical Position [m]
-        _wfr.mesh.yFin = 0.5*yAp #Final Vertical Position [m]
 
-        sampFactNxNyForProp = params.slice_params.sampFact #sampling factor for adjusting nx, ny (effective if > 0)
-        arPrecPar = [sampFactNxNyForProp]
-
-        srwlib.srwl.CalcElecFieldGaussian(_wfr, GsnBm, arPrecPar)
-
-        ##Beamline to propagate to waist ( only if d_to_w(t=0) < d_to_w_cutoff )
-        if params.d_to_w < d_to_w_cutoff:
-          optDriftW=srwlib.SRWLOptD(params.slice_params.propLen)
-          propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
-          optBLW = srwlib.SRWLOptC([optDriftW],[propagParDrift])
-          srwlib.srwl.PropagElecField(_wfr, optBLW)
-        self.wfr = _wfr
+        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
+                                           self.nx_slice, self.ny_slice, self.phE, params.slice_params.mx, params.slice_params.my)
 
 
     def _get_params(self, params):
@@ -297,7 +284,7 @@ class LaserPulseEnvelope(ValidatorBase):
 
     """
     _INPUT_ERROR = InvalidLaserPulseInputError
-    _DEFAULTS = _ENVELOPE_DEFAULTS
+    _DEFAULTS = _LASER_PULSE_DEFAULTS
 
     def __init__(self, params=None):
         params = self._get_params(params)

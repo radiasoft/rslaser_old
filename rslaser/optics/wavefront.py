@@ -38,8 +38,8 @@ class WavefrontSensor(ValidatorBase):
         for slice_index in np.arange(nslice):
             thisSlice = laser_pulse.slice[slice_index]
             #Now compute position of slice
-            ds = 2*laser_pulse.sigma_cutoff*laser_pulse.sig_s/(nslice)
-            slice_pos = -laser_pulse.sigma_cutoff*laser_pulse.sig_s+slice_index*ds
+            ds = 2*laser_pulse.num_sig_trans*laser_pulse.sig_s/(nslice)
+            slice_pos = -laser_pulse.num_sig_trans*laser_pulse.sig_s+slice_index*ds
             sd = slice_pos + self.distance_from_pulse_center #distance to propagate
             #now create an SRW optical container with a drift of length pd
             optDrift=srwlib.SRWLOptD(sd)
