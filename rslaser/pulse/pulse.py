@@ -7,15 +7,12 @@ import math
 import cmath
 import numpy as np
 from pykern.pkdebug import pkdp, pkdlog
-from pykern import pkio
 from pykern.pkcollections import PKDict
 from numpy.polynomial.hermite import hermval
 import rslaser.optics.wavefront as rswf
 import rsmath.const as rsc
-import rslaser
 import rslaser.utils.unit_conversion as units
 import rslaser.utils.srwl_uti_data as srwutil
-import os
 import scipy.constants as const
 import srwlib
 from srwlib import srwl
@@ -55,8 +52,6 @@ _LASER_PULSE_DEFAULTS = PKDict(
         tau_fwhm= 0.1 / const.c / math.sqrt(2.),
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
 )
-
-
 
 
 class InvalidLaserPulseInputError(Exception):
@@ -746,39 +741,6 @@ class LaserPulseEnvelope(ValidatorBase):
 
         # return the complex valued result
         return result
-
-
-
-def _rms_calc_2d(_x, _y, f_dist):
-    """
-    Calculate the x and y averages and RMS of a 2d distribution f_dist(x,y)
-
-    Args:
-        _x, 2d numpy array that defines x values of the distribution
-        _y, 2d numpy array that defines y values of the distribution
-        f_dist, 2d numpy array that defines the x,y distribution
-
-    Returns:
-        x_avg, y_avg, the average values of x and y
-        x_rms, y_rms, the RMS values of x and y
-
-    Example:
-        >>> xavg, yavg, xrms, yrms = rms_calc_2d(my_array)
-    """
-    x_f = np.multiply(_x, f_dist)
-    y_f = np.multiply(_y, f_dist)
-    sum_f = np.sum(f_dist)
-    x_avg = np.sum(x_f) / sum_f
-    y_avg = np.sum(y_f) / sum_f
-
-    xsq_f = np.multiply(_x, x_f)
-    ysq_f = np.multiply(_y, y_f)
-    x_std = np.sum(xsq_f) / sum_f
-    y_std = np.sum(ysq_f) / sum_f
-
-    x_rms = math.sqrt(x_std - x_avg**2)
-    y_rms = math.sqrt(y_std - y_avg**2)
-    return x_avg, y_avg, x_rms, y_rms
 
 
 def _nan_helper(_arr):
