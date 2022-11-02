@@ -175,7 +175,6 @@ def test_from_file():
             tau_fwhm= 0.1 / const.c / math.sqrt(2.),
             slice_params=s,
     )
-
     package_data_dir = rslaser.pkg_resources.resource_filename('rslaser','package_data')
     pulse.LaserPulse(
         PKDict(**p),
@@ -185,7 +184,18 @@ def test_from_file():
             meta=pkio.py_path(package_data_dir).join('wfs_meta.dat'),
         )
     )
+    p.nslice = 2
+    with pykern.pkunit.pkexcept(
+        pulse.InvalidLaserPulseInputError,
+        "cannot use file inputs with more than one slice"
+        ):
+        pulse.LaserPulse(
+            PKDict(**p),
+            files=PKDict(
+                ccd=pkio.py_path(package_data_dir).join('ccd_pump_off.txt'),
+                wfs=pkio.py_path(package_data_dir).join('wfs_pump_off.txt'),
+                meta=pkio.py_path(package_data_dir).join('wfs_meta.dat'),
+            )
+        )
     # TODO (gurhar1133):
-    # 2) make sure that files is not None only is case (via assertion) with
-    # single slice pulses
     # 4) expect and actual testing

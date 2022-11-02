@@ -111,7 +111,7 @@ class LaserPulse(ValidatorBase):
 
     def __init__(self, params=None, files=None):
         params = self._get_params(params)
-        self._validate_params(params)
+        self._validate_params(params, files)
         # instantiate the laser envelope
         # note: next two lines commented out - error is thrown since phE moved from ENVELOPE_DEFAULTS to LASER_PULSE_DEFAULTS
         # e = self._get_envelope_params(params)
@@ -143,6 +143,11 @@ class LaserPulse(ValidatorBase):
             if k in _ENVELOPE_DEFAULTS:
                 e[k] = params[k]
         return e
+
+    def _validate_params(self, input_params, files):
+        if files and input_params.nslice > 1:
+            raise self._INPUT_ERROR("cannot use file inputs with more than one slice")
+        super()._validate_params(input_params)
 
     def compute_middle_slice_intensity(self):
         wfr = self.slice[len(self.slice) // 2].wfr
