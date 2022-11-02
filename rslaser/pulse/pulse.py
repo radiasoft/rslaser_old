@@ -109,7 +109,7 @@ class LaserPulse(ValidatorBase):
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
 
-    def __init__(self, params=None, files=False):
+    def __init__(self, params=None, files=None):
         params = self._get_params(params)
         self._validate_params(params)
         # instantiate the laser envelope
@@ -191,7 +191,7 @@ class LaserPulseSlice(ValidatorBase):
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
 
-    def __init__(self, slice_index, params=None, files=False):
+    def __init__(self, slice_index, params=None, files=None):
         #print([sigrW,propLen,pulseE,poltype])
         # self._validate_type(slice_index, int, 'slice_index')
         params = self._get_params(params)
@@ -236,16 +236,9 @@ class LaserPulseSlice(ValidatorBase):
         self._pulse_pos = self.dist_waist - params.num_sig_long*self.sig_s+slice_index*ds
         self._wavefront(params, files)
 
-
-
     def _wavefront(self, params, files):
         if files:
-            package_data_dir = rslaser.pkg_resources.resource_filename('rslaser','package_data')
-            ccd = pkio.py_path(package_data_dir).join('ccd_pump_off.txt')
-            wfs = pkio.py_path(package_data_dir).join('wfs_pump_off.txt')
-            meta = pkio.py_path(package_data_dir).join('wfs_meta.dat')
-
-            with open(meta) as fh:
+            with open(files.meta) as fh:
                 for line in fh:
                     if line.startswith("pixel_size_h_microns"):
                         pixel_size_h = float(line.split(":")[-1].split(",")[0])  # microns
@@ -254,21 +247,8 @@ class LaserPulseSlice(ValidatorBase):
 
             # central wavelength of the laser pulse
             lambda0_micron = 0.8
-
-            ccd_data = np.genfromtxt(ccd, skip_header=1)
-            print('ccd_data.shape = ', ccd_data.shape)
-
-            ccd_data = np.delete(ccd_data, 0, axis=1)
-            ccd_data = np.delete(ccd_data, 1, axis=1)
-            ccd_data = np.delete(ccd_data, 2, axis=1)
-            ccd_data = np.delete(ccd_data, 3, axis=1)
-            ccd_data = np.delete(ccd_data, -4, axis=1)
-            ccd_data = np.delete(ccd_data, -3, axis=1)
-            ccd_data = np.delete(ccd_data, -2, axis=1)
-            ccd_data = np.delete(ccd_data, -1, axis=1)
-            print('ccd_data.shape = ', ccd_data.shape)
-
-
+            ccd_data = np.genfromtxt(files.ccd, skip_header=1)
+            ccd_data = _reshape_data(ccd_data)
 
             # specify the mesh size
             nx = ccd_data.shape[1]
@@ -277,56 +257,20 @@ class LaserPulseSlice(ValidatorBase):
             # create the x,y arrays with physical units based on the diagnostic pixel dimensions
             x_max = 0.002    # [m]
             x_min = -x_max
-            x1 = np.linspace(x_min, x_max, nx)
-
             y_max = x_max
             y_min = -y_max
-            y1 = np.linspace(y_min, y_max, ny)
-
-            x, y = np.meshgrid(x1, y1)
-
-            if False:
-                print('x_min = ', np.min(x1))
-                print('x_max = ', np.max(x1))
-                print('x1.shape = ', x1.shape)
-
-                print('y_min = ', np.min(y1))
-                print('y_max = ', np.max(y1))
-                print('y1.shape = ', y1.shape)
-
-            # Calculate intensity centroid and RMS values
-            xc, yc, xc_rms, yc_rms = _rms_calc_2d(x, y, ccd_data)
-
-
 
             # parse the measured phases of the wavefront
-            wfs_data = np.genfromtxt(wfs, skip_header=1, skip_footer=0)
+            wfs_data = np.genfromtxt(files.wfs, skip_header=1, skip_footer=0)
 
             # clean up any NaN's
             indices = np.isnan(wfs_data)
-            wfs_data = _array_cleaner(wfs_data, indices)
-
-            wfs_data = np.delete(wfs_data, 0, axis=1)
-            wfs_data = np.delete(wfs_data, 1, axis=1)
-            wfs_data = np.delete(wfs_data, 2, axis=1)
-            wfs_data = np.delete(wfs_data, 3, axis=1)
-            wfs_data = np.delete(wfs_data, -4, axis=1)
-            wfs_data = np.delete(wfs_data, -3, axis=1)
-            wfs_data = np.delete(wfs_data, -2, axis=1)
-            wfs_data = np.delete(wfs_data, -1, axis=1)
+            wfs_data = _reshape_data(_array_cleaner(wfs_data, indices))
 
             # convert from microns to radians
             rad_per_micron = math.pi / lambda0_micron
             wfs_data *= rad_per_micron
-
-            phi_min=np.min(wfs_data)
-            phi_max=np.max(wfs_data)
-
-            # we assume the WFS and CCD data are from the same diagnostic
-            # check that the data files have the same number of pixels
             assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
-
-
 
             # Calulate the real and imaginary parts of the Ex,Ey electric field components
             e_norm = np.sqrt(ccd_data)
@@ -337,22 +281,19 @@ class LaserPulseSlice(ValidatorBase):
             for i in range(len(ex_real)):
                 ex_numpy[2*i] = ex_real[i]
                 ex_numpy[2*i+1] = ex_imag[i]
-
             ex = array.array('f', ex_numpy.tolist())
             ey = array.array('f', len(ex)*[0.])
-
-
-            wfr0 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
+            self.wfr = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
                     _eStart=1.55, _eFin=1.55, _ne=1,
                     _xStart=x_min, _xFin=x_max, _nx=nx,
                     _yStart=y_min, _yFin=y_max, _ny=ny,
                     _zStart=0., _partBeam=None)
-            print(f"wavefront: {wfr0}")
             return
         # calculate slice energy intensity (not energy associated with lambda)
         sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
         self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
                                            self.nx_slice, self.ny_slice, self.phE, params.slice_params.mx, params.slice_params.my)
+
 
     def _get_params(self, params):
         return self.__fixup_slice_params(super()._get_params(params))
@@ -872,3 +813,15 @@ def _array_cleaner(_arr, _ind):
     nans, x = _nan_helper(_arr)
     _arr[nans] = np.interp(x(nans), x(~nans), _arr[~nans])
     return _arr
+
+
+def _reshape_data(data):
+    data = np.delete(data, 0, axis=1)
+    data = np.delete(data, 1, axis=1)
+    data = np.delete(data, 2, axis=1)
+    data = np.delete(data, 3, axis=1)
+    data = np.delete(data, -4, axis=1)
+    data = np.delete(data, -3, axis=1)
+    data = np.delete(data, -2, axis=1)
+    data = np.delete(data, -1, axis=1)
+    return data

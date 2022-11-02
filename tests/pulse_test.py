@@ -12,7 +12,8 @@ import pytest
 from rslaser.pulse import pulse
 from rslaser.cavity import laser_cavity
 import scipy
-
+import scipy.constants as const
+import rslaser
 
 def pulse_instantiation_test(pulse, field):
     for s in pulse.slice:
@@ -178,37 +179,51 @@ def test_cavity_propagation():
 
 
 def test_from_file():
+    from pykern import pkio
 
-    slice = PKDict(
-    sigrW = math.sqrt(x_rms*y_rms),
-    propLen = 15,
-    pulseE = 0.001,
-    poltype = 1,
-    sampFact = 0.002,
-    mx = 0,
-    my = 0
+    s = PKDict(
+        sigx_waist = 10e-6,
+        sigy_waist = 10e-6,
+        num_sig_trans = 6,
+        nx_slice = 500,
+        ny_slice = 500,
+        pulseE = 0.001,
+        poltype = 1,
+        mx = 0,
+        my = 0,
     )
-    pulse = PKDict(
-            phE = 1.55,
+    e = PKDict(
+        w0=.1,
+        a0=.01,
+        dw0x=0.0,
+        dw0y=0.0,
+        dzwx=0.0,
+        dzwy=0.0,
+        z_center=0,
+        x_shift = 0.,
+        y_shift=0.,
+    )
+    p = PKDict(
+            **e,
             nslice = 1,
             chirp = 0,
-            w0 = 2.*math.sqrt(x_rms*y_rms),
-            a0 = .002,
-            dw0x = 0.0,
-            dw0y = 0.0,
-            z_waist = -0.1,
-            dzwx = 0.0,
-            dzwy = 0.0,
-            tau_fwhm = 0.1 / constants.c / math.sqrt(2.),
-            z_center = 0.,
-            x_shift = 0.,
-            y_shift = 0.,
-            d_to_w = 0.1,
-            slice_params=slice,
+            phE = 1e3,
+            num_sig_long=3.,
+            dist_waist = 0,
+            tau_fwhm= 0.1 / const.c / math.sqrt(2.),
+            slice_params=s,
     )
-    pulse.LaserPulse(PKDict(**pulse), files=True)
+
+    package_data_dir = rslaser.pkg_resources.resource_filename('rslaser','package_data')
+    pulse.LaserPulse(
+        PKDict(**p),
+        files=PKDict(
+            ccd=pkio.py_path(package_data_dir).join('ccd_pump_off.txt'),
+            wfs=pkio.py_path(package_data_dir).join('wfs_pump_off.txt'),
+            meta=pkio.py_path(package_data_dir).join('wfs_meta.dat'),
+        )
+    )
     # TODO (gurhar1133):
-    # 1) set the first slice wfr to wfr0
-    # 2) make sure that files=True only is called (via assertion) with
+    # 2) make sure that files is not None only is case (via assertion) with
     # single slice pulses
-    # 3) expect and actual testing
+    # 4) expect and actual testing
