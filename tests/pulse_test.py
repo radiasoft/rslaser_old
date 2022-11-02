@@ -16,6 +16,9 @@ import scipy
 import scipy.constants as const
 import rslaser
 
+
+_PACKAGE_DATA_DIR = rslaser.pkg_resources.resource_filename('rslaser','package_data')
+
 def pulse_instantiation_test(pulse, field):
     for s in pulse.slice:
         if getattr(s, field) != getattr(pulse, field):
@@ -175,14 +178,14 @@ def test_from_file():
             tau_fwhm= 0.1 / const.c / math.sqrt(2.),
             slice_params=s,
     )
-    package_data_dir = rslaser.pkg_resources.resource_filename('rslaser','package_data')
+    f = PKDict(
+        ccd=pkio.py_path(_PACKAGE_DATA_DIR).join('ccd_pump_off.txt'),
+        wfs=pkio.py_path(_PACKAGE_DATA_DIR).join('wfs_pump_off.txt'),
+        meta=pkio.py_path(_PACKAGE_DATA_DIR).join('wfs_meta.dat'),
+    )
     pulse.LaserPulse(
         PKDict(**p),
-        files=PKDict(
-            ccd=pkio.py_path(package_data_dir).join('ccd_pump_off.txt'),
-            wfs=pkio.py_path(package_data_dir).join('wfs_pump_off.txt'),
-            meta=pkio.py_path(package_data_dir).join('wfs_meta.dat'),
-        )
+        files=f,
     )
     p.nslice = 2
     with pykern.pkunit.pkexcept(
@@ -191,11 +194,7 @@ def test_from_file():
         ):
         pulse.LaserPulse(
             PKDict(**p),
-            files=PKDict(
-                ccd=pkio.py_path(package_data_dir).join('ccd_pump_off.txt'),
-                wfs=pkio.py_path(package_data_dir).join('wfs_pump_off.txt'),
-                meta=pkio.py_path(package_data_dir).join('wfs_meta.dat'),
-            )
+            f,
         )
     # TODO (gurhar1133):
     # 4) expect and actual testing
