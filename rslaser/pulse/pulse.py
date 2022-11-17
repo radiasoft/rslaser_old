@@ -2,6 +2,7 @@
 u"""Definition of a laser pulse
 Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 """
+import array
 import math
 import cmath
 import numpy as np
@@ -51,8 +52,6 @@ _LASER_PULSE_DEFAULTS = PKDict(
         tau_fwhm= 0.1 / const.c / math.sqrt(2.),
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
 )
-
-
 
 
 class InvalidLaserPulseInputError(Exception):
@@ -105,15 +104,16 @@ class LaserPulse(ValidatorBase):
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
 
-    def __init__(self, params=None):
+    def __init__(self, params=None, files=None):
         params = self._get_params(params)
-        self._validate_params(params)
+        self._validate_params(params, files)
         # instantiate the laser envelope
         # note: next two lines commented out - error is thrown since phE moved from ENVELOPE_DEFAULTS to LASER_PULSE_DEFAULTS
         # e = self._get_envelope_params(params)
         # self.envelope = LaserPulseEnvelope(e)
         # instantiate the array of slices
         self.slice = []
+        self.files = files
         self.sigx_waist = params.slice_params.sigx_waist
         self.sigy_waist = params.slice_params.sigy_waist
         self.num_sig_trans = params.slice_params.num_sig_trans
@@ -127,7 +127,7 @@ class LaserPulse(ValidatorBase):
         s = params.copy()
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
-            self.slice.append(LaserPulseSlice(i, s))
+            self.slice.append(LaserPulseSlice(i, s, files=self.files))
             # s.phE += _de
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
@@ -138,6 +138,11 @@ class LaserPulse(ValidatorBase):
             if k in _ENVELOPE_DEFAULTS:
                 e[k] = params[k]
         return e
+
+    def _validate_params(self, input_params, files):
+        if files and input_params.nslice > 1:
+            raise self._INPUT_ERROR("cannot use file inputs with more than one slice")
+        super()._validate_params(input_params)
 
     def compute_middle_slice_intensity(self):
         wfr = self.slice[len(self.slice) // 2].wfr
@@ -166,7 +171,7 @@ class LaserPulse(ValidatorBase):
         return [s.phE for s in self.slice]
 
     def slice_wfr(self,slice_index):
-        return self.slice(slice_index).wfr
+        return self.slice[slice_index].wfr
 
 
 class LaserPulseSlice(ValidatorBase):
@@ -186,7 +191,7 @@ class LaserPulseSlice(ValidatorBase):
     _INPUT_ERROR = InvalidLaserPulseInputError
     _DEFAULTS = _LASER_PULSE_DEFAULTS
 
-    def __init__(self, slice_index, params=None):
+    def __init__(self, slice_index, params=None, files=None):
         #print([sigrW,propLen,pulseE,poltype])
         # self._validate_type(slice_index, int, 'slice_index')
         params = self._get_params(params)
@@ -229,12 +234,63 @@ class LaserPulseSlice(ValidatorBase):
         # sig_s = params.tau_fwhm * const.c / 2.355
         ds = 2*params.num_sig_long*self.sig_s/params.nslice    # longitudinal spacing between slices
         self._pulse_pos = self.dist_waist - params.num_sig_long*self.sig_s+slice_index*ds
+        self._wavefront(params, files)
 
+    def _wavefront(self, params, files):
+        if files:
+            with open(files.meta) as fh:
+                for line in fh:
+                    if line.startswith("pixel_size_h_microns"):
+                        pixel_size_h = float(line.split(":")[-1].split(",")[0])  # microns
+                    if line.startswith("pixel_size_v_microns"):
+                        pixel_size_v = float(line.split(":")[-1].split(",")[0])  # microns
+
+            # central wavelength of the laser pulse
+            lambda0_micron = 0.8
+            ccd_data = np.genfromtxt(files.ccd, skip_header=1)
+            ccd_data = _reshape_data(ccd_data)
+
+            # specify the mesh size
+            nx = ccd_data.shape[1]
+            ny = ccd_data.shape[0]
+
+            # create the x,y arrays with physical units based on the diagnostic pixel dimensions
+            x_max = 0.002    # [m]
+            x_min = -x_max
+            y_max = x_max
+            y_min = -y_max
+
+            # parse the measured phases of the wavefront
+            wfs_data = np.genfromtxt(files.wfs, skip_header=1, skip_footer=0)
+
+            # clean up any NaN's
+            indices = np.isnan(wfs_data)
+            wfs_data = _reshape_data(_array_cleaner(wfs_data, indices))
+
+            # convert from microns to radians
+            rad_per_micron = math.pi / lambda0_micron
+            wfs_data *= rad_per_micron
+            assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
+
+            # Calulate the real and imaginary parts of the Ex,Ey electric field components
+            e_norm = np.sqrt(ccd_data)
+            ex_real = np.multiply(e_norm, np.cos(wfs_data)).flatten(order='C')
+            ex_imag = np.multiply(e_norm, np.sin(wfs_data)).flatten(order='C')
+
+            ex_numpy = np.zeros(2*len(ex_real))
+            for i in range(len(ex_real)):
+                ex_numpy[2*i] = ex_real[i]
+                ex_numpy[2*i+1] = ex_imag[i]
+            ex = array.array('f', ex_numpy.tolist())
+            ey = array.array('f', len(ex)*[0.])
+            self.wfr = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
+                    _eStart=1.55, _eFin=1.55, _ne=1,
+                    _xStart=x_min, _xFin=x_max, _nx=nx,
+                    _yStart=y_min, _yFin=y_max, _ny=ny,
+                    _zStart=0., _partBeam=None)
+            return
         # calculate slice energy intensity (not energy associated with lambda)
         sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
-
-
-
         self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
                                            self.nx_slice, self.ny_slice, self.phE, params.slice_params.mx, params.slice_params.my)
 
@@ -685,3 +741,54 @@ class LaserPulseEnvelope(ValidatorBase):
 
         # return the complex valued result
         return result
+
+
+def _nan_helper(_arr):
+    """
+    Clean unwanted NaNs from a numpy array, replacing them via interpolation.
+
+    Args:
+        _arr, numpy array with NaNs
+
+    Returns:
+        nans, logical indices of NaNs
+        index, a function with signature indices = index(logical_indices)
+               to convert logical indices of NaNs to 'equivalent' indices
+
+    Example:
+        >>> nans, x = nan_helper(my_array)
+        >>> my_array[nans] = np.interp(x(nans), x(~nans), my_array[~nans])
+    """
+    return np.isnan(_arr), lambda z: z.nonzero()[0]
+
+def _array_cleaner(_arr, _ind):
+    """
+    Clean unwanted values from a numpy array, replacing them via interpolation.
+
+    Args:
+        _arr, numpy array with bad values
+        _ind, precalculated indices of these bad values
+
+    Returns:
+        _arr, cleaned version of the input array
+
+    Example:
+        >>> indices = np.isnan(my_array)
+        >>> my_array = array_cleaner(my_array, indices)
+    """
+    _arr[_ind] = np.nan
+    nans, x = _nan_helper(_arr)
+    _arr[nans] = np.interp(x(nans), x(~nans), _arr[~nans])
+    return _arr
+
+
+def _reshape_data(data):
+    data = np.delete(data, 0, axis=1)
+    data = np.delete(data, 1, axis=1)
+    data = np.delete(data, 2, axis=1)
+    data = np.delete(data, 3, axis=1)
+    data = np.delete(data, -4, axis=1)
+    data = np.delete(data, -3, axis=1)
+    data = np.delete(data, -2, axis=1)
+    data = np.delete(data, -1, axis=1)
+    return data
