@@ -2,6 +2,8 @@ import numpy as np
 from pykern.pkcollections import PKDict
 import srwlib
 from rslaser.utils.validator import ValidatorBase
+from rslaser.utils import srwl_uti_data as srwutil
+from rsmath import lct as rslct
 
 
 _CRYSTAL_SLICE_DEFAULTS = PKDict(
@@ -40,14 +42,16 @@ class Crystal(Element):
             n2 (float): quadratic variation of index of refraction, with n(r) = n0 - 1/2 n2 r^2  [m^-2]
             length (float): total length of crystal [m]
             nslice (int): number of crystal slices
+            l_scale: length scale factor for LCT propagation
     """
     _DEFAULTS = _CRYSTAL_DEFAULTS.copy()
     _INPUT_ERROR = ElementException
     def __init__(self, params=None):
         params = self._get_params(params)
-        self._validate_params(params)
+        # self._validate_params(params)
         self.length = params.length
         self.nslice = params.nslice
+        self.l_scale = params.l_scale
         self.slice = []
         for _ in range(self.nslice):
             self.slice.append(
@@ -55,7 +59,8 @@ class Crystal(Element):
                     PKDict(
                         n0=params.n0,
                         n2=params.n2,
-                        length=params.length / params.nslice
+                        length=params.length / params.nslice,
+                        l_scale = params.l_scale
                     )
                 )
             )
@@ -77,8 +82,9 @@ class CrystalSlice(Element):
         params (PKDict) with fields:
             length
             n0 (float): on-axis index of refraction
-            n2 (float): transverse variation of index of refraction
+            n2 (float): transverse variation of index of refraction [1/m^2]
             n(r) = n0 - 0.5 n2 r^2
+            l_scale: length scale factor for LCT propagation
 
     To be added: alpha0, alpha2 laser gain parameters
 
@@ -90,10 +96,11 @@ class CrystalSlice(Element):
     _INPUT_ERROR = ElementException
     def __init__(self, params=None):
         params = self._get_params(params)
-        self._validate_params(params)
+        # self._validate_params(params)
         self.length = params.length
         self.n0 = params.n0
         self.n2 = params.n2
+        self.l_scale = params.l_scale
         # self.pop_inv = params._pop_inv
 
         #  Assuming wfr0 exsts, created e.g. via
@@ -122,7 +129,75 @@ class CrystalSlice(Element):
             # for i in np.arange(nslices):
             #     print ('Pulse slice ', i+1, ' of ', nslices, ' propagated through crystal slice.')
             # return laser_pulse
-        if prop_type == 'abcd':
+            
+        if prop_type == 'abcd_lct':
+            nslices_pulse = len(laser_pulse.slice)
+            L_cryst = self.length
+            n0 = self.n0
+            n2 = self.n2
+            l_scale = self.l_scale
+            
+            phE = laser_pulse.phE
+            
+            ##Convert energy to wavelength
+            hc_ev_um = 1.23984198   # hc [eV*um]
+            phLambda = hc_ev_um / phE * 1e-6 # wavelength corresponding to phE in meters
+            print("Wavelength corresponding to %g keV: %g microns" %(phE * 1e-3, phLambda / 1e-6))
+            
+            # calculate components of ABCD matrix corrected with wavelength and scale factor
+            gamma = np.sqrt(n2/n0)
+            A = np.cos(gamma*L_cryst)
+            B = (1/gamma)*np.sin(gamma*L_cryst) * phLambda / (l_scale**2)
+            C = -gamma*np.sin(gamma*L_cryst) / phLambda * (l_scale**2)
+            D = np.cos(gamma*L_cryst)
+            abcd_mat_cryst = np.array([[ A,  B  ],
+                     [ C, D ]])
+            print('A: %g' %A)
+            print('B: %g' %B)
+            print('C: %g' %C)
+            print('D: %g' %D)
+            
+            # for i in np.arange(nslices_pulse):
+            i = 0
+            thisSlice = laser_pulse.slice[i]
+            #print(type(thisSlice))
+
+            # construct 2d numpy complex E_field from pulse wfr object
+            wfr0 = thisSlice.wfr
+            re0, re0_mesh = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=5, _det=None, _fname='', _pr=True)
+            im0, im0_mesh = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=6, _det=None, _fname='', _pr=True)
+            re0_2d = np.array(re0).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
+            im0_2d = np.array(im0).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
+
+            Etot0_2d = re0_2d + 1j*im0_2d
+
+            xvals_slice = np.linspace(wfr0.mesh.xStart,wfr0.mesh.xFin,wfr0.mesh.nx)
+            yvals_slice = np.linspace(wfr0.mesh.yStart,wfr0.mesh.yFin,wfr0.mesh.ny)
+
+            dX = xvals_slice[1] - xvals_slice[0]                       # horizontal spacing [m]
+            dX_scale = dX / l_scale
+            dY = yvals_slice[1] - yvals_slice[0]                       # vertical spacing [m]
+            dY_scale = dY / l_scale            
+
+            # define input signal
+            in_signal_2d = (dX_scale, dY_scale, Etot0_2d)
+
+            # calculate 2D LCT
+            dX_out, dY_out, out_signal_2d = rslct.apply_lct_2d_sep(abcd_mat_cryst, abcd_mat_cryst, in_signal_2d)                
+
+            # extract propagated complex field and calculate corresponding x and y mesh arrays
+            hx = dX_out * l_scale 
+            hy = dY_out * l_scale
+            sig_arr = out_signal_2d
+            ny, nx = np.shape(sig_arr)
+            local_xv = rslct.lct_abscissae(nx, hx)
+            local_yv = rslct.lct_abscissae(ny, hy)
+                
+                
+            return local_xv, local_yv, sig_arr
+        # return laser_pulse            
+            
+        if prop_type == 'n0n2':
             nslices = len(laser_pulse.slice)
             L_cryst = self.length
             n0 = self.n0
