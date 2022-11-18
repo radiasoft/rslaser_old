@@ -361,7 +361,7 @@ class LaserPulseEnvelope(ValidatorBase):
         self.set_waist_x(params.w0 + params.dw0x)         # horizontal waist size [m]
         self.set_waist_y(params.w0 + params.dw0y)         # vertical waist size [m]
 
-        self.z_waist = params.z_waist                 # the longitudinal location of the waist
+        # self.z_waist = params.z_waist                 # the longitudinal location of the waist
         self.z_waist_x = params.dzwx                  # location (in z) of horizontal waist
         self.z_waist_y = params.dzwy                  # location (in z) of vertical waist
 
@@ -530,7 +530,7 @@ class LaserPulseEnvelope(ValidatorBase):
         # account for location of pulse center
         z_local = _z - self.z_center
         # account for the waist location
-        _z -= self.z_waist
+        # _z -= self.z_waist
 
         # determine whether xArray is really a Numpy array
         try:
