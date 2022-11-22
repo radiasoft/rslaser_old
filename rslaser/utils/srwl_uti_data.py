@@ -71,10 +71,10 @@ def createGsnSrcSRW(sigx, sigy, num_sig, dist_waist, pulseE, poltype, nx = 400, 
     wfr.unitElFld = 1 # Electric field units: 0- arbitrary, 1- sqrt(Phot/s/0.1%bw/mm^2), 2- sqrt(J/eV/mm^2) or sqrt(W/mm^2), depending on representation (freq. or time)
 
     distSrc = wfr.mesh.zStart - GsnBm.z
-    # Horizontal and Vertical Position Range for the Initial Wavefront calculation        
+    # Horizontal and Vertical Position Range for the Initial Wavefront calculation
     xAp = num_sig * sigrL_x
     yAp = num_sig * sigrL_y
-        
+
     wfr.mesh.xStart = -xAp #Initial Horizontal Position [m]
     wfr.mesh.xFin = xAp #Final Horizontal Position [m]
     wfr.mesh.yStart = -yAp #Initial Vertical Position [m]
@@ -90,21 +90,21 @@ def calc_int_from_wfr(_wfr, _pol=6, _int_type=0, _det=None, _fname='', _pr=True)
 # def calc_int_from_wfr(self, _wfr, _pol=6, _int_type=0, _det=None, _fname='', _pr=True):
         """Calculates intensity from electric field and saving it to a file
         :param _wfr: electric field wavefront (instance of SRWLWfr)
-        :param _pol: polarization component to extract: 
-            0- Linear Horizontal; 
-            1- Linear Vertical; 
-            2- Linear 45 degrees; 
-            3- Linear 135 degrees; 
-            4- Circular Right; 
-            5- Circular Left; 
+        :param _pol: polarization component to extract:
+            0- Linear Horizontal;
+            1- Linear Vertical;
+            2- Linear 45 degrees;
+            3- Linear 135 degrees;
+            4- Circular Right;
+            5- Circular Left;
             6- Total
         :param _int_type: "type" of a characteristic to be extracted:
            -1- No Intensity / Electric Field components extraction is necessary (only Wavefront will be calculated)
-            0- "Single-Electron" Intensity; 
-            1- "Multi-Electron" Intensity; 
-            2- "Single-Electron" Flux; 
-            3- "Multi-Electron" Flux; 
-            4- "Single-Electron" Radiation Phase; 
+            0- "Single-Electron" Intensity;
+            1- "Multi-Electron" Intensity;
+            2- "Single-Electron" Flux;
+            3- "Multi-Electron" Flux;
+            4- "Single-Electron" Radiation Phase;
             5- Re(E): Real part of Single-Electron Electric Field;
             6- Im(E): Imaginary part of Single-Electron Electric Field;
             7- "Single-Electron" Intensity, integrated over Time or Photon Energy (i.e. Fluence);
@@ -117,7 +117,7 @@ def calc_int_from_wfr(_wfr, _pol=6, _int_type=0, _det=None, _fname='', _pr=True)
         if _pr:
             print('Extracting intensity and saving it to a file ... ', end='')
             t0 = time.time();
-            
+
         sNumTypeInt = 'f'
         if(_int_type == 4): sNumTypeInt = 'd' #Phase? - if asking for phase, set array to double type
 
@@ -125,7 +125,7 @@ def calc_int_from_wfr(_wfr, _pol=6, _int_type=0, _det=None, _fname='', _pr=True)
 
         depType = resMeshI.get_dep_type()
         if(depType < 0): Exception('Incorrect numbers of points in the mesh structure')
-        
+
         arI = srwlib.array(sNumTypeInt, [0]*resMeshI.ne*resMeshI.nx*resMeshI.ny)
         srwl.CalcIntFromElecField(arI, _wfr, _pol, _int_type, depType, resMeshI.eStart, resMeshI.xStart, resMeshI.yStart)
 
@@ -157,7 +157,7 @@ def read_srw_file(filename):
 def rmsfile(file):
     flux0=read_srw_file(file)
     data2D=flux0['data']
-    datax=np.sum(data2D,axis=1) 
+    datax=np.sum(data2D,axis=1)
     datay=np.sum(data2D,axis=0)
     hx = flux0['horizontal_extent']
     hy = flux0['vertical_extent']
@@ -170,13 +170,13 @@ def rmsfile(file):
     Ny=shape[1]
     dx = (xmax-xmin)/Nx
     dy = (ymax-ymin)/Ny
-    xvals = np.linspace(xmin,xmax,Nx) 
+    xvals = np.linspace(xmin,xmax,Nx)
     yvals = np.linspace(ymin,ymax,Ny)
-    sxsq=sum(datax*xvals*xvals)/sum(datax) 
+    sxsq=sum(datax*xvals*xvals)/sum(datax)
     xavg=sum(datax*xvals)/sum(datax)
     sx=sqrt(sxsq-xavg*xavg)
 
-    sysq=sum(datay*yvals*yvals)/sum(datay) 
+    sysq=sum(datay*yvals*yvals)/sum(datay)
     yavg=sum(datay*yvals)/sum(datay)
     sy=sqrt(sysq-yavg*yavg)
     return sx, sy
@@ -185,7 +185,7 @@ def rmsfile(file):
 def transformSRWIntensityFile(filein,fileout):
     flux0=read_srw_file(filein)
     data2D=flux0['data']
-    datax=np.sum(data2D,axis=1) 
+    datax=np.sum(data2D,axis=1)
     datay=np.sum(data2D,axis=0)
     hx = flux0['horizontal_extent']
     hy = flux0['vertical_extent']
@@ -225,4 +225,3 @@ def wfrGetPol(wfr):
     norm=math.sqrt(ReEx00**2+ImEx00**2+ReEy00**2+ImEy00**2)  ##Normalization so that abs(Re[Pvec])^2+abs(Im[Pvec])^2=1
     Pvec=(1/norm)*np.array([ReEx00+ImEx00*(1j), ReEy00+ImEy00*(1j)])
     return Pvec
-    
