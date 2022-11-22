@@ -14,4 +14,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: pykern test
+      - run: curl -LsS https://radia.run | bash -s python-ci
