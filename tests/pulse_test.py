@@ -138,7 +138,6 @@ def test_cavity_propagation():
         )
 
     lc.propagate(num_cycles=4, callback=intensity_callback)
-
     ndiff_files(
         data_dir.join("res.txt"),
         pkio.write_text(
