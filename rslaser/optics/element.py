@@ -11,14 +11,16 @@ _CRYSTAL_SLICE_DEFAULTS = PKDict(
     n0=1.75,
     n2=0.001,
     length=0.2,
+    l_scale=1,
 )
 
 _CRYSTAL_DEFAULTS = PKDict(
         n0= _CRYSTAL_SLICE_DEFAULTS.n0,
         n2= _CRYSTAL_SLICE_DEFAULTS.n2,
         length=_CRYSTAL_SLICE_DEFAULTS.length*3,
+        l_scale=_CRYSTAL_SLICE_DEFAULTS.l_scale,
         nslice=3,
-    )
+)
 
 class ElementException(Exception):
     pass
@@ -49,7 +51,7 @@ class Crystal(Element):
     _INPUT_ERROR = ElementException
     def __init__(self, params=None):
         params = self._get_params(params)
-        # self._validate_params(params)
+        self._validate_params(params)
         self.length = params.length
         self.nslice = params.nslice
         self.l_scale = params.l_scale
@@ -97,7 +99,7 @@ class CrystalSlice(Element):
     _INPUT_ERROR = ElementException
     def __init__(self, params=None):
         params = self._get_params(params)
-        # self._validate_params(params)
+        self._validate_params(params)
         self.length = params.length
         self.n0 = params.n0
         self.n2 = params.n2
@@ -130,21 +132,21 @@ class CrystalSlice(Element):
             # for i in np.arange(nslices):
             #     print ('Pulse slice ', i+1, ' of ', nslices, ' propagated through crystal slice.')
             # return laser_pulse
-            
+
         if prop_type == 'abcd_lct':
             nslices_pulse = len(laser_pulse.slice)
             L_cryst = self.length
             n0 = self.n0
             n2 = self.n2
             l_scale = self.l_scale
-            
+
             phE = laser_pulse.phE
-            
+
             ##Convert energy to wavelength
             hc_ev_um = 1.23984198   # hc [eV*um]
             phLambda = hc_ev_um / phE * 1e-6 # wavelength corresponding to phE in meters
             print("Wavelength corresponding to %g keV: %g microns" %(phE * 1e-3, phLambda / 1e-6))
-            
+
             # calculate components of ABCD matrix corrected with wavelength and scale factor
             gamma = np.sqrt(n2/n0)
             A = np.cos(gamma*L_cryst)
@@ -157,14 +159,14 @@ class CrystalSlice(Element):
             print('B: %g' %B)
             print('C: %g' %C)
             print('D: %g' %D)
-            
-            
+
+
             for i in np.arange(nslices_pulse):
             # i = 0
                 thisSlice = laser_pulse.slice[i]
 
                 # construct 2d numpy complex E_field from pulse wfr object
-                # pol = 6 in calc_int_from_wfr() for full electric 
+                # pol = 6 in calc_int_from_wfr() for full electric
                 # field (0 corresponds to horizontal, 1 corresponds to vertical polarization)
                 wfr0 = thisSlice.wfr
 
@@ -189,7 +191,7 @@ class CrystalSlice(Element):
                 dX = xvals_slice[1] - xvals_slice[0]                       # horizontal spacing [m]
                 dX_scale = dX / l_scale
                 dY = yvals_slice[1] - yvals_slice[0]                       # vertical spacing [m]
-                dY_scale = dY / l_scale            
+                dY_scale = dY / l_scale
 
                 # define horizontal and vertical input signals
                 in_signal_2d_x = (dX_scale, dY_scale, Etot0_2d_x)
@@ -202,7 +204,7 @@ class CrystalSlice(Element):
 
                 # extract propagated complex field and calculate corresponding x and y mesh arrays
                 # we assume same mesh for both components of E_field
-                hx = dX_out * l_scale 
+                hx = dX_out * l_scale
                 hy = dY_out * l_scale
                 # sig_arr_x = out_signal_2d_x
                 # sig_arr_y = out_signal_2d_y
@@ -243,10 +245,10 @@ class CrystalSlice(Element):
                         _zStart=0., _partBeam=None)
 
                 thisSlice.wfr = wfr1
-                
+
             # return wfr1
-            return laser_pulse            
-            
+            return laser_pulse
+
         if prop_type == 'n0n2':
             nslices = len(laser_pulse.slice)
             L_cryst = self.length
@@ -314,7 +316,7 @@ class Lens(Element):
 
     Args:
         f (float): focal length [m]
-        
+
     Returns:
         SRW beamline element representing lens
     """

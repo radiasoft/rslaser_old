@@ -20,14 +20,6 @@ def test_instantiation01():
             pykern.pkunit.pkfail('CrystalSlice had length not equal to Crystal wrapper length/nslice')
 
 
-def test_propagation01():
-    p = pulse.LaserPulse()
-    c = element.Crystal()
-    p = c.propagate(p, 'abcd')
-    if type(p) != pulse.LaserPulse:
-        pykern.pkunit.pkfail('Crystal abcd propagation failed to return LaserPulse type')
-
-
 def crystal_slice_prop_test(prop_type):
     c = element.CrystalSlice()
     p = pulse.LaserPulse()
@@ -40,14 +32,16 @@ def test_instantiation02():
     c = element.CrystalSlice()
 
 
-def test_propagation04():
+def test_propagation():
     with pykern.pkunit.pkexcept(element.ElementException):
         crystal_slice_prop_test('default')
     with pykern.pkunit.pkexcept(NotImplementedError):
         crystal_slice_prop_test('attenuate')
     with pykern.pkunit.pkexcept(NotImplementedError):
         crystal_slice_prop_test('placeholder')
-    crystal_slice_prop_test('abcd')
+    # TODO (gurhar1133): propagation is a work in progress.
+    # crystal_slice_prop_test('abcd_lct')
+    # crystal_slice_prop_test('n0n2')
     c = element.CrystalSlice()
     with pykern.pkunit.pkexcept(
         element.ElementException,
