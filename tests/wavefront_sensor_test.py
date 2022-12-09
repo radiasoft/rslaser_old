@@ -56,14 +56,12 @@ def test_propagation01():
     for a in WFR_ATTRS_LIST:
         v = getattr(r, a)
         actual.update({a: v})
-    ndiff_files(
-        data_dir.join("res.txt"),
-        pkio.write_text(
-            work_dir.join("res_actual.txt"),
+    pkunit.file_eq(
+        expect_path=data_dir.join("res.ndiff"),
+        actual_path=pkio.write_text(
+            work_dir.join("res_actual.ndiff"),
             str(actual),
         ),
-        work_dir.join("ndiff.out"),
-        data_dir
     )
 
 
@@ -75,21 +73,3 @@ def test_propagation02():
     p = pulse.LaserPulseSlice(0)
     with pykern.pkunit.pkexcept(InvalidWaveFrontSensorInputError):
         wfs.propagate(p)
-
-
-# TODO (gurhar1133): this will be scrapped for file_eq when file_q
-# supports ndiff
-def ndiff_files(expect_path, actual_path, diff_file, data_dir):
-    pykern.pksubprocess.check_call_with_signals(
-        [
-            "ndiff",
-            actual_path,
-            expect_path,
-            data_dir.join("ndiff_conf.txt"),
-        ],
-        output=str(diff_file),
-    )
-
-    d = pykern.pkio.read_text(diff_file)
-    if re.search("diffs have been detected", d):
-        raise AssertionError(f"{d}")
