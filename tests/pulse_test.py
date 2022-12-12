@@ -7,7 +7,6 @@ import math
 import numpy as np
 from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
-from wavefront_sensor_test import ndiff_files
 import pykern.pkunit
 import pytest
 from rslaser.pulse import pulse
@@ -155,7 +154,6 @@ def test_from_file():
     from pykern import pkio
 
     data_dir = pkunit.data_dir()
-    work_dir = pkunit.empty_work_dir()
     pulse_inputs = pulse._LASER_PULSE_DEFAULTS.copy()
     pulse_inputs.nslice = 1
     f = PKDict(
@@ -169,14 +167,9 @@ def test_from_file():
     ).slice_wfr(0)
     intensity = srwlib.array('f', [0]*wavefront.mesh.nx*wavefront.mesh.ny)
     srwlib.srwl.CalcIntFromElecField(intensity, wavefront, 6, 0, 3, wavefront.mesh.eStart, 0, 0)
-    ndiff_files(
-        data_dir.join("2d_wf_intensity.txt"),
-        pkio.write_text(
-            work_dir.join("2d_wf_intensity_actual.txt"),
-            str(intensity),
-        ),
-        work_dir.join("ndiff.out"),
-        data_dir,
+    pkunit.file_eq(
+        data_dir.join("2d_wf_intensity.ndiff"),
+        actual=str(intensity),
     )
     pulse_inputs.nslice = 2
     with pykern.pkunit.pkexcept(
