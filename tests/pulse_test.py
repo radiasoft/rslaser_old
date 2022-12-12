@@ -154,7 +154,6 @@ def test_from_file():
     from pykern import pkio
 
     data_dir = pkunit.data_dir()
-    work_dir = pkunit.empty_work_dir()
     pulse_inputs = pulse._LASER_PULSE_DEFAULTS.copy()
     pulse_inputs.nslice = 1
     f = PKDict(
@@ -170,10 +169,7 @@ def test_from_file():
     srwlib.srwl.CalcIntFromElecField(intensity, wavefront, 6, 0, 3, wavefront.mesh.eStart, 0, 0)
     pkunit.file_eq(
         data_dir.join("2d_wf_intensity.ndiff"),
-        actual_path=pkio.write_text(
-            work_dir.join("2d_wf_intensity_actual.ndiff"),
-            str(intensity),
-        ),
+        actual=str(intensity),
     )
     pulse_inputs.nslice = 2
     with pykern.pkunit.pkexcept(

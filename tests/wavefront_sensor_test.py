@@ -58,10 +58,7 @@ def test_propagation01():
         actual.update({a: v})
     pkunit.file_eq(
         expect_path=data_dir.join("res.ndiff"),
-        actual_path=pkio.write_text(
-            work_dir.join("res_actual.ndiff"),
-            str(actual),
-        ),
+        actual=str(actual),
     )
 
 
