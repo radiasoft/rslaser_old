@@ -193,7 +193,7 @@ class LaserPulseSlice(ValidatorBase):
 
     def __init__(self, slice_index, params=None, files=None):
         #print([sigrW,propLen,pulseE,poltype])
-        # self._validate_type(slice_index, int, 'slice_index')
+        self._validate_type(slice_index, int, 'slice_index')
         params = self._get_params(params)
         self._validate_params(params)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
@@ -232,8 +232,8 @@ class LaserPulseSlice(ValidatorBase):
 
 
         # sig_s = params.tau_fwhm * const.c / 2.355
-        ds = 2*params.num_sig_long*self.sig_s/params.nslice    # longitudinal spacing between slices
-        self._pulse_pos = self.dist_waist - params.num_sig_long*self.sig_s+slice_index*ds
+        ds = 2 * params.num_sig_long * self.sig_s / params.nslice    # longitudinal spacing between slices
+        self._pulse_pos = self.dist_waist - params.num_sig_long * self.sig_s + (slice_index + 0.5) * ds
         self._wavefront(params, files)
 
     def _wavefront(self, params, files):
