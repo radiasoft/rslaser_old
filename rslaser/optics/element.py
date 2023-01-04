@@ -49,8 +49,9 @@ class Crystal(Element):
     """
     Args:
         params (PKDict) with fields:
-            n0 (float): on axis index of refraction in crystal slice
-            n2 (float): quadratic variation of index of refraction, with n(r) = n0 - 1/2 n2 r^2  [m^-2]
+            n0 (float): array of on axis index of refractions in crystal slices
+            n2 (float): array of quadratic variations of index of refractions, with n(r) = n0 - 1/2 n2 r^2  [m^-2]
+            note: n0, n2 should be an array of length nslice; if nslice = 1, they should be single values
             length (float): total length of crystal [m]
             nslice (int): number of crystal slices
             l_scale: length scale factor for LCT propagation
@@ -64,12 +65,12 @@ class Crystal(Element):
         self.nslice = params.nslice
         self.l_scale = params.l_scale
         self.slice = []
-        for _ in range(self.nslice):
+        for j in range(self.nslice):
             self.slice.append(
                 CrystalSlice(
                     PKDict(
-                        n0=params.n0,
-                        n2=params.n2,
+                        n0=params.n0[j],
+                        n2=params.n2[j],
                         length=params.length / params.nslice,
                         l_scale = params.l_scale
                     )
@@ -147,6 +148,7 @@ class CrystalSlice(Element):
             L_cryst = self.length
             n0 = self.n0
             n2 = self.n2
+            print('n0: %g, n2: %g' %(n0, n2)) 
             l_scale = self.l_scale
 
             phE = laser_pulse.phE
@@ -377,7 +379,7 @@ class CrystalSlice(Element):
             L_cryst = self.length
             n0 = self.n0
             n2 = self.n2
-            #n2 = 0.001
+            print('n0: %g, n2: %g' %(n0, n2))
 
             for i in np.arange(nslices):
                 thisSlice = laser_pulse.slice[i]
