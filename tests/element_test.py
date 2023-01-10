@@ -9,7 +9,7 @@ from rslaser.pulse import pulse
 
 
 def test_instantiation01():
-    element.Crystal(PKDict(n0=.3))
+    element.Crystal()
     with pykern.pkunit.pkexcept(element.ElementException):
         element.Crystal('fail')
     with pykern.pkunit.pkexcept(element.ElementException):
