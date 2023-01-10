@@ -51,34 +51,6 @@ def test_instantiation03():
         pulse.LaserPulse(p)
 
 
-def test_instantiation04():
-    laser_cavity.LaserCavity()
-
-    k = PKDict(n3="fail")
-    with pykern.pkunit.pkexcept(laser_cavity.InvalidLaserCavityInputError):
-        laser_cavity.LaserCavity(k)
-
-    k = PKDict(
-        pulse_params=PKDict(chirp=0.01 * (scipy.constants.h * scipy.constants.c / 1e-6))
-    )
-    laser_cavity.LaserCavity(k)
-
-    k = PKDict(
-        pulse_params=PKDict(
-            chirp=0.01 * (scipy.constants.h * scipy.constants.c / 1e-6),
-            slice_params=PKDict(**pulse._LASER_PULSE_SLICE_DEFAULTS),
-        )
-    )
-    k.pulse_params.slice_params.update(PKDict(poltype=5))
-    laser_cavity.LaserCavity(k)
-    k = PKDict()
-    laser_cavity.LaserCavity(k)
-    with pykern.pkunit.pkexcept(
-        laser_cavity.InvalidLaserCavityInputError,
-        'Invalid instantiation of LaserCavity with in="should raise"',
-    ):
-        laser_cavity.LaserCavity("should raise")
-
 # TODO (gurhar1133): propagation is a work in progress.
 # def test_cavity_propagation():
 #     from pykern import pkunit

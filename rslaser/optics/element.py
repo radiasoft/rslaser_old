@@ -6,7 +6,7 @@ from rslaser.utils.validator import ValidatorBase
 from rslaser.utils import srwl_uti_data as srwutil
 from rsmath import lct as rslct
 
-
+_N_SLICE_DEFAULT = 3
 _CRYSTAL_SLICE_DEFAULTS = PKDict(
     n0=1.75,
     n2=0.001,
@@ -19,11 +19,11 @@ _CRYSTAL_SLICE_DEFAULTS = PKDict(
 )
 
 _CRYSTAL_DEFAULTS = PKDict(
-        n0= _CRYSTAL_SLICE_DEFAULTS.n0,
-        n2= _CRYSTAL_SLICE_DEFAULTS.n2,
+        n0=[_CRYSTAL_SLICE_DEFAULTS.n0 for _ in range(_N_SLICE_DEFAULT)],
+        n2=[_CRYSTAL_SLICE_DEFAULTS.n0 for _ in range(_N_SLICE_DEFAULT)],
         length=_CRYSTAL_SLICE_DEFAULTS.length,
         l_scale=_CRYSTAL_SLICE_DEFAULTS.l_scale,
-        nslice=3,
+        nslice=_N_SLICE_DEFAULT,
         A = _CRYSTAL_SLICE_DEFAULTS.A,
         B = _CRYSTAL_SLICE_DEFAULTS.B,
         C = _CRYSTAL_SLICE_DEFAULTS.C,
@@ -148,7 +148,7 @@ class CrystalSlice(Element):
             L_cryst = self.length
             n0 = self.n0
             n2 = self.n2
-            print('n0: %g, n2: %g' %(n0, n2)) 
+            print('n0: %g, n2: %g' %(n0, n2))
             l_scale = self.l_scale
 
             phE = laser_pulse.phE
@@ -259,12 +259,12 @@ class CrystalSlice(Element):
 
             # return wfr1
             return laser_pulse
-        
+
         if prop_type == 'abcd_lct':
             print('prop_type = abcd_lct')
             nslices_pulse = len(laser_pulse.slice)
             l_scale = self.l_scale
-          
+
             phE = laser_pulse.phE
 
             ##Convert energy to wavelength
