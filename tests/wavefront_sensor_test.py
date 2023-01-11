@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-u"""Tests for instantiation of LaserCavity, LaserPulse
+u"""Tests for instantiation of LaserPulse
 and LaserPulseSlice
 """
 from __future__ import absolute_import, division, print_function
