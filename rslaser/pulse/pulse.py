@@ -114,9 +114,9 @@ class LaserPulse(ValidatorBase):
         # instantiate the array of slices
         self.slice = []
         self.files = files
-        self.sigx_waist = params.slice_params.sigx_waist
-        self.sigy_waist = params.slice_params.sigy_waist
-        self.num_sig_trans = params.slice_params.num_sig_trans
+        #self.sigx_waist = params.slice_params.sigx_waist
+        #self.sigy_waist = params.slice_params.sigy_waist
+        #self.num_sig_trans = params.slice_params.num_sig_trans
         self.nslice = params.nslice
         self.phE = params.phE
         self.sig_s = params.tau_fwhm * const.c / 2.355
