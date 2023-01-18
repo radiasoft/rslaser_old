@@ -215,7 +215,7 @@ class LaserPulseSlice(ValidatorBase):
         self.num_sig_long = params.num_sig_long
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
         # rmsAngDiv = constConvRad/(self.phE*params.slice_params.sigrW)             ##RMS angular divergence [rad]
-        rmsAngDiv_x = constConvRad/(self.phE * self.sigx_waist)             ##RMS angular divergence [rad]
+        rmsAngDiv_x = constConvRad/(self.phE * self.sigx_waist)                     ##RMS angular divergence [rad]
         rmsAngDiv_y = constConvRad/(self.phE * self.sigy_waist)
         sigrL_x = math.sqrt(self.sigx_waist**2 + (self.dist_waist * rmsAngDiv_x)**2)
         sigrL_y = math.sqrt(self.sigy_waist**2 + (self.dist_waist * rmsAngDiv_y)**2)
@@ -232,7 +232,8 @@ class LaserPulseSlice(ValidatorBase):
 
         # sig_s = params.tau_fwhm * const.c / 2.355
         ds = 2 * params.num_sig_long * self.sig_s / params.nslice    # longitudinal spacing between slices
-        self._pulse_pos = self.dist_waist - params.num_sig_long * self.sig_s + (slice_index + 0.5) * ds
+        # self._pulse_pos = self.dist_waist - params.num_sig_long * self.sig_s + (slice_index + 0.5) * ds
+        self._pulse_pos = -params.num_sig_long * self.sig_s + (slice_index + 0.5) * ds
         self._wavefront(params, files)
 
     def _wavefront(self, params, files):
@@ -292,23 +293,6 @@ class LaserPulseSlice(ValidatorBase):
         sliceEnInt = params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
         self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, -self._pulse_pos + self.dist_waist, sliceEnInt, params.poltype, \
                                            self.nx_slice, self.ny_slice, self.phE, params.mx, params.my)
-
-
-    # def _get_params(self, params):
-    #     return self.__fixup_slice_params(super()._get_params(params))
-
-    # def __fixup_slice_params(self, params):
-    #     self._validate_type(params.slice_params, PKDict, 'params.slice_params')
-    #     for s in self._DEFAULTS.slice_params:
-    #         if s not in params.slice_params:
-    #             params.slice_params[s] = self._DEFAULTS.slice_params[s]
-    #     return params
-
-    # def _validate_params(self, input_params):
-    #     super()._validate_params(input_params)
-    #     for p in input_params.slice_params:
-    #         if p not in self._DEFAULTS.slice_params.keys():
-    #             raise self._INPUT_ERROR(f'invalid inputs: {p} is not a parameter to {self.__class__}')
 
 
 class LaserPulseEnvelope(ValidatorBase):
