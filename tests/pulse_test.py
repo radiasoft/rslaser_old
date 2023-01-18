@@ -25,28 +25,14 @@ def pulse_instantiation_test(pulse, field):
             )
 
 
-def test_instantiation01():
+def test_instantiation():
     pulse.LaserPulse()
-
-
-def test_instantiation02():
-    p = PKDict(PHHe=0.1)
+    p = pulse._LASER_PULSE_DEFAULTS.copy()
+    p.update(PKDict(blonk=9))
     with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
         pulse.LaserPulse(p)
-    p = PKDict(slice_params=PKDict(**pulse._LASER_PULSE_SLICE_DEFAULTS))
-    p.slice_params.update(PKDict(blonk=9))
     with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
-        pulse.LaserPulse(p)
-
-
-def test_instantiation03():
-    e = "'PKDict' object has no attribute 'sigx_waist'"
-    with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
-        pulse.LaserPulse([])
-    p = PKDict(slice_params=PKDict(**pulse._LASER_PULSE_SLICE_DEFAULTS))
-    p.slice_params = PKDict(slice_params=PKDict(foo="bar", hello="world"))
-    with pykern.pkunit.pkexcept(e):
-        pulse.LaserPulse(p)
+        pulse.LaserPulse(PKDict(foo="bar", hello="world"))
 
 
 # TODO (gurhar1133): propagation is a work in progress.

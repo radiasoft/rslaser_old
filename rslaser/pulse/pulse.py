@@ -50,7 +50,7 @@ _LASER_PULSE_DEFAULTS = PKDict(
         num_sig_long=3.,
         dist_waist = 0,
         tau_fwhm= 0.1 / const.c / math.sqrt(2.),
-        slice_params=_LASER_PULSE_SLICE_DEFAULTS,
+        **_LASER_PULSE_SLICE_DEFAULTS,
 )
 
 
@@ -114,9 +114,9 @@ class LaserPulse(ValidatorBase):
         # instantiate the array of slices
         self.slice = []
         self.files = files
-        self.sigx_waist = params.slice_params.sigx_waist
-        self.sigy_waist = params.slice_params.sigy_waist
-        self.num_sig_trans = params.slice_params.num_sig_trans
+        self.sigx_waist = params.sigx_waist
+        self.sigy_waist = params.sigy_waist
+        self.num_sig_trans = params.num_sig_trans
         self.nslice = params.nslice
         self.phE = params.phE
         self.sig_s = params.tau_fwhm * const.c / 2.355
@@ -124,10 +124,9 @@ class LaserPulse(ValidatorBase):
         self._lambda0 = abs(units.calculate_lambda0_from_phE(params.phE))
         # self.phE -= 0.5*params.chirp           # so central slice has the central photon energy
         # _de = params.chirp / self.nslice   # photon energy shift from slice to slice
-        s = params.copy()
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
-            self.slice.append(LaserPulseSlice(i, s, files=self.files))
+            self.slice.append(LaserPulseSlice(i, params.copy(), files=self.files))
             # s.phE += _de
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
@@ -198,13 +197,13 @@ class LaserPulseSlice(ValidatorBase):
         self._validate_params(params)
         self._lambda0 = units.calculate_lambda0_from_phE(params.phE)
         self.slice_index = slice_index
-        self.sigx_waist = params.slice_params.sigx_waist
-        self.sigy_waist = params.slice_params.sigy_waist
-        self.num_sig_trans = params.slice_params.num_sig_trans
+        self.sigx_waist = params.sigx_waist
+        self.sigy_waist = params.sigy_waist
+        self.num_sig_trans = params.num_sig_trans
         # self.z_waist = params.z_waist
         self.nslice = params.nslice
-        self.nx_slice = params.slice_params.nx_slice
-        self.ny_slice = params.slice_params.ny_slice
+        self.nx_slice = params.nx_slice
+        self.ny_slice = params.ny_slice
         self.dist_waist = params.dist_waist
 
         # compute slice energy from central energy, chirp, and slice index
@@ -290,26 +289,26 @@ class LaserPulseSlice(ValidatorBase):
                     _zStart=0., _partBeam=None)
             return
         # calculate slice energy intensity (not energy associated with lambda)
-        sliceEnInt = params.slice_params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
-        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
-                                           self.nx_slice, self.ny_slice, self.phE, params.slice_params.mx, params.slice_params.my)
+        sliceEnInt = params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
+        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, -self._pulse_pos + self.dist_waist, sliceEnInt, params.poltype, \
+                                           self.nx_slice, self.ny_slice, self.phE, params.mx, params.my)
 
 
-    def _get_params(self, params):
-        return self.__fixup_slice_params(super()._get_params(params))
+    # def _get_params(self, params):
+    #     return self.__fixup_slice_params(super()._get_params(params))
 
-    def __fixup_slice_params(self, params):
-        self._validate_type(params.slice_params, PKDict, 'params.slice_params')
-        for s in self._DEFAULTS.slice_params:
-            if s not in params.slice_params:
-                params.slice_params[s] = self._DEFAULTS.slice_params[s]
-        return params
+    # def __fixup_slice_params(self, params):
+    #     self._validate_type(params.slice_params, PKDict, 'params.slice_params')
+    #     for s in self._DEFAULTS.slice_params:
+    #         if s not in params.slice_params:
+    #             params.slice_params[s] = self._DEFAULTS.slice_params[s]
+    #     return params
 
-    def _validate_params(self, input_params):
-        super()._validate_params(input_params)
-        for p in input_params.slice_params:
-            if p not in self._DEFAULTS.slice_params.keys():
-                raise self._INPUT_ERROR(f'invalid inputs: {p} is not a parameter to {self.__class__}')
+    # def _validate_params(self, input_params):
+    #     super()._validate_params(input_params)
+    #     for p in input_params.slice_params:
+    #         if p not in self._DEFAULTS.slice_params.keys():
+    #             raise self._INPUT_ERROR(f'invalid inputs: {p} is not a parameter to {self.__class__}')
 
 
 class LaserPulseEnvelope(ValidatorBase):
