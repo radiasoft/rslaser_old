@@ -60,8 +60,8 @@ class InvalidLaserPulseInputError(Exception):
 
 class LaserPulse(ValidatorBase):
     """
-    The LaserPulse contains a LaserPulseEnvelope object to represent the initial envelope,
-    as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
+    The LaserPulse contains an array of LaserPulseSlice instances, which track
+    details of the evolution in time.
 
     Args:
         params (PKDict):
@@ -79,20 +79,18 @@ class LaserPulse(ValidatorBase):
                 z_center (float): # longitudinal location of pulse center [m]
                 x_shift (float): horizontal shift of the spot center [m]
                 y_shift (float): vertical shift of the spot center [m]
-                slice_params (PKDict):
-                        sigx_waist (float): horizontal RMS waist size [m]
-                        sigy_waist (float): vertical RMS waist size [m]
-                        nx_slice (int): no. of horizontal mesh points in slice
-                        ny_slice (int): no. of vertical mesh points in slice
-                        num_sig_trans (int): no. of sigmas for transverse Gsn range
-                        pulseE (float): maximum pulse energy for SRW Gaussian wavefronts [J]
-                        poltype (int): polarization 1- lin. hor., 2- lin. vert., 3- lin. 45 deg., 4- lin.135 deg., 5- circ. right, 6- circ. left
-                        mx (int): transverse Gauss-Hermite mode order in horizontal direction
-                        my (int): transverse Gauss-Hermite mode order in vertical direction
+                sigx_waist (float): horizontal RMS waist size [m]
+                sigy_waist (float): vertical RMS waist size [m]
+                nx_slice (int): no. of horizontal mesh points in slice
+                ny_slice (int): no. of vertical mesh points in slice
+                num_sig_trans (int): no. of sigmas for transverse Gsn range
+                pulseE (float): maximum pulse energy for SRW Gaussian wavefronts [J]
+                poltype (int): polarization 1- lin. hor., 2- lin. vert., 3- lin. 45 deg., 4- lin.135 deg., 5- circ. right, 6- circ. left
+                mx (int): transverse Gauss-Hermite mode order in horizontal direction
+                my (int): transverse Gauss-Hermite mode order in vertical direction
 
     Returns:
         instance of class with attributes:
-            envelope: Gaussian envelope structure
             slice: list of LaserPulseSlices each with an SRW wavefront object
             nslice: number of slices
             phE: Photon energy [eV]
@@ -107,10 +105,6 @@ class LaserPulse(ValidatorBase):
     def __init__(self, params=None, files=None):
         params = self._get_params(params)
         self._validate_params(params, files)
-        # instantiate the laser envelope
-        # note: next two lines commented out - error is thrown since phE moved from ENVELOPE_DEFAULTS to LASER_PULSE_DEFAULTS
-        # e = self._get_envelope_params(params)
-        # self.envelope = LaserPulseEnvelope(e)
         # instantiate the array of slices
         self.slice = []
         self.files = files
@@ -130,13 +124,6 @@ class LaserPulse(ValidatorBase):
             # s.phE += _de
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
-
-    def _get_envelope_params(self, params):
-        e = PKDict()
-        for k in params:
-            if k in _ENVELOPE_DEFAULTS:
-                e[k] = params[k]
-        return e
 
     def _validate_params(self, input_params, files):
         if files and input_params.nslice > 1:
