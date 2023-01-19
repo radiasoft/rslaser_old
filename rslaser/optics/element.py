@@ -116,7 +116,7 @@ class CrystalSlice(Element):
         # self.pop_inv = params._pop_inv
 
         #  Assuming wfr0 exsts, created e.g. via
-        #  wfr0=createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)
+        #  wfr0=createGsnSrcSRW(sigrW,propLen,pulseE,poltype,photon_e_ev,sampFact,mx,my)
         #n_x = wfr0.mesh.nx  #  nr of grid points in x
         #n_y = wfr0.mesh.ny  #  nr of grid points in y
         #sig_cr_sec = np.ones((n_x, n_y), dtype=np.float32)
@@ -151,12 +151,12 @@ class CrystalSlice(Element):
             print('n0: %g, n2: %g' %(n0, n2))
             l_scale = self.l_scale
 
-            phE = laser_pulse.phE
+            photon_e_ev = laser_pulse.photon_e_ev
 
             ##Convert energy to wavelength
             hc_ev_um = 1.23984198   # hc [eV*um]
-            phLambda = hc_ev_um / phE * 1e-6 # wavelength corresponding to phE in meters
-            print("Wavelength corresponding to %g keV: %g microns" %(phE * 1e-3, phLambda / 1e-6))
+            phLambda = hc_ev_um / photon_e_ev * 1e-6 # wavelength corresponding to photon_e_ev in meters
+            print("Wavelength corresponding to %g keV: %g microns" %(photon_e_ev * 1e-3, phLambda / 1e-6))
 
             # calculate components of ABCD matrix corrected with wavelength and scale factor for use in LCT algorithm
             gamma = np.sqrt(n2/n0)
@@ -250,7 +250,7 @@ class CrystalSlice(Element):
 
 
                 wfr1 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
-                        _eStart=phE, _eFin=phE, _ne=1,
+                        _eStart=photon_e_ev, _eFin=photon_e_ev, _ne=1,
                         _xStart=x_min, _xFin=x_max, _nx=nx,
                         _yStart=y_min, _yFin=y_max, _ny=ny,
                         _zStart=0., _partBeam=None)
@@ -265,12 +265,12 @@ class CrystalSlice(Element):
             nslices_pulse = len(laser_pulse.slice)
             l_scale = self.l_scale
 
-            phE = laser_pulse.phE
+            photon_e_ev = laser_pulse.photon_e_ev
 
             ##Convert energy to wavelength
             hc_ev_um = 1.23984198   # hc [eV*um]
-            phLambda = hc_ev_um / phE * 1e-6 # wavelength corresponding to phE in meters
-            print("Wavelength corresponding to %g keV: %g microns" %(phE * 1e-3, phLambda / 1e-6))
+            phLambda = hc_ev_um / photon_e_ev * 1e-6 # wavelength corresponding to photon_e_ev in meters
+            print("Wavelength corresponding to %g keV: %g microns" %(photon_e_ev * 1e-3, phLambda / 1e-6))
 
             # rescale ABCD matrix with wavelength and scale factor for use in LCT algorithm
             A = self.A
@@ -363,7 +363,7 @@ class CrystalSlice(Element):
 
 
                 wfr1 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
-                        _eStart=phE, _eFin=phE, _ne=1,
+                        _eStart=photon_e_ev, _eFin=photon_e_ev, _ne=1,
                         _xStart=x_min, _xFin=x_max, _nx=nx,
                         _yStart=y_min, _yFin=y_max, _ny=ny,
                         _zStart=0., _partBeam=None)
