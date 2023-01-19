@@ -9,7 +9,6 @@ from pykern.pkcollections import PKDict
 import pykern.pkunit
 import pytest
 from rslaser.pulse import pulse
-from rslaser.cavity import laser_cavity
 import scipy.constants as const
 
 

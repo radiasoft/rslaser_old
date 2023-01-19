@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Tests for instantiation of LaserCavity, LaserPulse
-and LaserPulseSlice
+"""Tests for instantiation of LaserPulse and LaserPulseSlice
 """
 from __future__ import absolute_import, division, print_function
 import math
@@ -10,7 +9,6 @@ from pykern.pkcollections import PKDict
 import pykern.pkunit
 import pytest
 from rslaser.pulse import pulse
-from rslaser.cavity import laser_cavity
 import scipy
 import rslaser
 import srwlib
