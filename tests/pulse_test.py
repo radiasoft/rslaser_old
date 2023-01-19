@@ -40,12 +40,11 @@ def test_instantiation02():
 
 
 def test_instantiation03():
-    e = "'PKDict' object has no attribute 'sigx_waist'"
     with pykern.pkunit.pkexcept(pulse.InvalidLaserPulseInputError):
         pulse.LaserPulse([])
     p = PKDict(slice_params=PKDict(**pulse._LASER_PULSE_SLICE_DEFAULTS))
-    p.slice_params = PKDict(slice_params=PKDict(foo="bar", hello="world"))
-    with pykern.pkunit.pkexcept(e):
+    p.slice_params = PKDict(foo="bar", hello="world")
+    with pykern.pkunit.pkexcept("'PKDict' object has no attribute 'num_sig_trans'"):
         pulse.LaserPulse(p)
 
 
