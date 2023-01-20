@@ -18,7 +18,15 @@ import srwlib
 from srwlib import srwl
 from rslaser.utils.validator import ValidatorBase
 
-_LASER_PULSE_SLICE_DEFAULTS = PKDict(
+
+_LASER_PULSE_DEFAULTS = PKDict(
+        nslice = 3,
+        chirp = 0,
+        photon_e_ev = 1e3,
+        num_sig_long=3.,
+        dist_waist = 0,
+        tau_fwhm= 0.1 / const.c / math.sqrt(2.),
+        pulseE = 0.001,
         sigx_waist = 10e-6,
         sigy_waist = 10e-6,
         num_sig_trans = 6,
@@ -27,7 +35,7 @@ _LASER_PULSE_SLICE_DEFAULTS = PKDict(
         poltype = 1,
         mx = 0,
         my = 0,
-    )
+)
 _ENVELOPE_DEFAULTS = PKDict(
     w0=.1,
     a0=.01,
@@ -38,17 +46,8 @@ _ENVELOPE_DEFAULTS = PKDict(
     z_center=0,
     x_shift = 0.,
     y_shift=0.,
-)
-_LASER_PULSE_DEFAULTS = PKDict(
-        **_ENVELOPE_DEFAULTS,
-        nslice = 3,
-        chirp = 0,
-        photon_e_ev = 1e3,
-        num_sig_long=3.,
-        dist_waist = 0,
-        tau_fwhm= 0.1 / const.c / math.sqrt(2.),
-        pulseE = 0.001,
-        **_LASER_PULSE_SLICE_DEFAULTS,
+    photon_e_ev = 1e3,
+    tau_fwhm= 0.1 / const.c / math.sqrt(2.),
 )
 
 
@@ -345,7 +344,7 @@ class LaserPulseEnvelope(ValidatorBase):
 
     """
     _INPUT_ERROR = InvalidLaserPulseInputError
-    _DEFAULTS = _LASER_PULSE_DEFAULTS
+    _DEFAULTS = _ENVELOPE_DEFAULTS
 
     def __init__(self, params=None):
         params = self._get_params(params)
