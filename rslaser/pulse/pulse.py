@@ -59,9 +59,6 @@ class LaserPulse(ValidatorBase):
     """
     The LaserPulse contains an array of LaserPulseSlice instances, which track
     details of the evolution in time.
-
-    Note (KW): Does not create LaserPulseEnvelope object currently
-
     Args:
         params (PKDict):
                 photon_e_ev (float): Photon energy [eV]
