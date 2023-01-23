@@ -167,7 +167,7 @@ class LaserPulseSlice(ValidatorBase):
 
     Args:
         slice_index (int): index of slice
-        params (PKDict): see slice_params field in input params to LaserPulse class __init__
+        params (PKDict): accepts input params from LaserPulse class __init__
 
     Returns:
         instance of class
@@ -204,20 +204,11 @@ class LaserPulseSlice(ValidatorBase):
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
         rmsAngDiv_x = constConvRad/(self.photon_e_ev * self.sigx_waist)             ##RMS angular divergence [rad]
         rmsAngDiv_y = constConvRad/(self.photon_e_ev * self.sigy_waist)
-        # rmsAngDiv = constConvRad/(self.photon_e_ev * params.slice_params.sigrW)             ##RMS angular divergence [rad]
 
         sigrL_x = math.sqrt(self.sigx_waist**2 + (self.dist_waist * rmsAngDiv_x)**2)
         sigrL_y = math.sqrt(self.sigy_waist**2 + (self.dist_waist * rmsAngDiv_y)**2)
-        #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
-        #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
-        # d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
-        # if params.d_to_w > d_to_w_cutoff:
-        #     params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
-        # sigrL=math.sqrt(params.slice_params.sigrW**2+(params.slice_params.propLen*rmsAngDiv)**2) # beam size at distance
-
 
         # *************begin function below**********
-
 
         # sig_s = params.tau_fwhm * const.c / 2.355
         self.ds = 2 * params.num_sig_long * self.sig_s / params.nslice    # longitudinal spacing between slices
@@ -292,8 +283,8 @@ class LaserPulseSlice(ValidatorBase):
         # calculate field energy in this slice
         sliceEnInt = length_factor * self.pulseE_slice*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
 
-        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
-                                           self.nx_slice, self.ny_slice, self.photon_e_ev, params.slice_params.mx, params.slice_params.my)
+        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.poltype, \
+                                           self.nx_slice, self.ny_slice, self.photon_e_ev, params.mx, params.my)
 
     def calc_init_n_photons(self):
 
