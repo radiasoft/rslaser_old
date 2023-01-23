@@ -120,7 +120,6 @@ class LaserPulse(ValidatorBase):
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
             self.slice.append(LaserPulseSlice(i, params.copy(), files=self.files))
-            # s.phE += _de
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
