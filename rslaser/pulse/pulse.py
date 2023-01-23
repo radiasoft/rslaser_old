@@ -18,7 +18,15 @@ import srwlib
 from srwlib import srwl
 from rslaser.utils.validator import ValidatorBase
 
-_LASER_PULSE_SLICE_DEFAULTS = PKDict(
+
+_LASER_PULSE_DEFAULTS = PKDict(
+        nslice = 3,
+        chirp = 0,
+        photon_e_ev = 1e3,
+        num_sig_long=3.,
+        dist_waist = 0,
+        tau_fwhm= 0.1 / const.c / math.sqrt(2.),
+        pulseE = 0.001,
         sigx_waist = 10e-6,
         sigy_waist = 10e-6,
         num_sig_trans = 6,
@@ -27,7 +35,7 @@ _LASER_PULSE_SLICE_DEFAULTS = PKDict(
         poltype = 1,
         mx = 0,
         my = 0,
-    )
+)
 _ENVELOPE_DEFAULTS = PKDict(
     w0=.1,
     a0=.01,
@@ -38,18 +46,8 @@ _ENVELOPE_DEFAULTS = PKDict(
     z_center=0,
     x_shift = 0.,
     y_shift=0.,
-)
-_LASER_PULSE_DEFAULTS = PKDict(
-        **_ENVELOPE_DEFAULTS,
-
-        nslice = 3,
-        chirp = 0,
-        photon_e_ev = 1e3,
-        num_sig_long=3.,
-        dist_waist = 0,
-        tau_fwhm= 0.1 / const.c / math.sqrt(2.),
-        pulseE = 0.001,
-        slice_params=_LASER_PULSE_SLICE_DEFAULTS,
+    photon_e_ev = 1e3,
+    tau_fwhm= 0.1 / const.c / math.sqrt(2.),
 )
 
 
@@ -59,11 +57,8 @@ class InvalidLaserPulseInputError(Exception):
 
 class LaserPulse(ValidatorBase):
     """
-    The LaserPulse contains a LaserPulseEnvelope object to represent the initial envelope,
-    as well as an array of LaserPulseSlice instances, which track details of the evolution in time.
-
-    Note (KW): Does not create LaserPulseEnvelope object currently
-
+    The LaserPulse contains an array of LaserPulseSlice instances, which track
+    details of the evolution in time.
     Args:
         params (PKDict):
                 photon_e_ev (float): Photon energy [eV]
@@ -81,19 +76,18 @@ class LaserPulse(ValidatorBase):
                 z_center (float): # longitudinal location of pulse center [m]
                 x_shift (float): horizontal shift of the spot center [m]
                 y_shift (float): vertical shift of the spot center [m]
-                slice_params (PKDict):
-                        sigx_waist (float): horizontal RMS waist size [m]
-                        sigy_waist (float): vertical RMS waist size [m]
-                        nx_slice (int): no. of horizontal mesh points in slice
-                        ny_slice (int): no. of vertical mesh points in slice
-                        num_sig_trans (int): no. of sigmas for transverse Gsn range
-                        poltype (int): polarization 1- lin. hor., 2- lin. vert., 3- lin. 45 deg., 4- lin.135 deg., 5- circ. right, 6- circ. left
-                        mx (int): transverse Gauss-Hermite mode order in horizontal direction
-                        my (int): transverse Gauss-Hermite mode order in vertical direction
+                sigx_waist (float): horizontal RMS waist size [m]
+                sigy_waist (float): vertical RMS waist size [m]
+                nx_slice (int): no. of horizontal mesh points in slice
+                ny_slice (int): no. of vertical mesh points in slice
+                num_sig_trans (int): no. of sigmas for transverse Gsn range
+                pulseE (float): maximum pulse energy for SRW Gaussian wavefronts [J]
+                poltype (int): polarization 1- lin. hor., 2- lin. vert., 3- lin. 45 deg., 4- lin.135 deg., 5- circ. right, 6- circ. left
+                mx (int): transverse Gauss-Hermite mode order in horizontal direction
+                my (int): transverse Gauss-Hermite mode order in vertical direction
 
     Returns:
         instance of class with attributes:
-            (Note KW - Not currently created/returned) envelope: Gaussian envelope structure
             slice: list of LaserPulseSlices each with an SRW wavefront object
             nslice: number of slices
             photon_e_ev: Photon energy [eV]
@@ -109,13 +103,12 @@ class LaserPulse(ValidatorBase):
         params = self._get_params(params)
 
         self._validate_params(params, files)
-
         # instantiate the array of slices
         self.slice = []
         self.files = files
-        #self.sigx_waist = params.slice_params.sigx_waist
-        #self.sigy_waist = params.slice_params.sigy_waist
-        self.num_sig_trans = params.slice_params.num_sig_trans
+        self.sigx_waist = params.sigx_waist
+        self.sigy_waist = params.sigy_waist
+        self.num_sig_trans = params.num_sig_trans
         self.nslice = params.nslice
         self.photon_e_ev = params.photon_e_ev
         self.sig_s = params.tau_fwhm * const.c / 2.355
@@ -124,21 +117,11 @@ class LaserPulse(ValidatorBase):
         self.pulseE = params.pulseE
         # self.photon_e -= 0.5*params.chirp           # so central slice has the central photon energy
         # _de = params.chirp / self.nslice   # photon energy shift from slice to slice
-
-        s = params.copy()
         for i in range(params.nslice):
             # add the slices; each (slowly) instantiates an SRW wavefront object
-            self.slice.append(LaserPulseSlice(i, s, files=self.files))
-            # s.photon_e += _de
+            self.slice.append(LaserPulseSlice(i, params.copy(), files=self.files))
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
-
-    def _get_envelope_params(self, params):
-        e = PKDict()
-        for k in params:
-            if k in _ENVELOPE_DEFAULTS:
-                e[k] = params[k]
-        return e
 
     def _validate_params(self, input_params, files):
         if files and input_params.nslice > 1:
@@ -184,7 +167,7 @@ class LaserPulseSlice(ValidatorBase):
 
     Args:
         slice_index (int): index of slice
-        params (PKDict): see slice_params field in input params to LaserPulse class __init__
+        params (PKDict): accepts input params from LaserPulse class __init__
 
     Returns:
         instance of class
@@ -199,12 +182,13 @@ class LaserPulseSlice(ValidatorBase):
         self._validate_params(params)
         self._lambda0 = units.calculate_lambda0_from_phE(params.photon_e_ev)
         self.slice_index = slice_index
-        self.sigx_waist = params.slice_params.sigx_waist
-        self.sigy_waist = params.slice_params.sigy_waist
-        self.num_sig_trans = params.slice_params.num_sig_trans
+        self.sigx_waist = params.sigx_waist
+        self.sigy_waist = params.sigy_waist
+        self.num_sig_trans = params.num_sig_trans
+        # self.z_waist = params.z_waist
         self.nslice = params.nslice
-        self.nx_slice = params.slice_params.nx_slice
-        self.ny_slice = params.slice_params.ny_slice
+        self.nx_slice = params.nx_slice
+        self.ny_slice = params.ny_slice
         self.dist_waist = params.dist_waist
 
         #  (Note KW: called this pulseE_slice because right now LPS is also passed pulseE for the whole pulse)
@@ -220,20 +204,11 @@ class LaserPulseSlice(ValidatorBase):
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
         rmsAngDiv_x = constConvRad/(self.photon_e_ev * self.sigx_waist)             ##RMS angular divergence [rad]
         rmsAngDiv_y = constConvRad/(self.photon_e_ev * self.sigy_waist)
-        # rmsAngDiv = constConvRad/(self.photon_e_ev * params.slice_params.sigrW)             ##RMS angular divergence [rad]
 
         sigrL_x = math.sqrt(self.sigx_waist**2 + (self.dist_waist * rmsAngDiv_x)**2)
         sigrL_y = math.sqrt(self.sigy_waist**2 + (self.dist_waist * rmsAngDiv_y)**2)
-        #  if at t=0 distance to the waist location d_to_w < d_to_w_cutoff, initialization in SRW involves/requires propagation
-        #  from the distance-to-waist > d_to_w_cutoff to the actual z(t=0) for which d_to_w < d_to_w_cutoff
-        # d_to_w_cutoff = 0.001  # [m] - verify that this is a reasonable value
-        # if params.d_to_w > d_to_w_cutoff:
-        #     params.slice_params.propLen = params.d_to_w  #  d_to_w = L_d1 +0.5*L_c in the single-pass example
-        # sigrL=math.sqrt(params.slice_params.sigrW**2+(params.slice_params.propLen*rmsAngDiv)**2) # beam size at distance
-
 
         # *************begin function below**********
-
 
         # sig_s = params.tau_fwhm * const.c / 2.355
         self.ds = 2 * params.num_sig_long * self.sig_s / params.nslice    # longitudinal spacing between slices
@@ -298,36 +273,18 @@ class LaserPulseSlice(ValidatorBase):
                     _yStart=y_min, _yFin=y_max, _ny=ny,
                     _zStart=0., _partBeam=None)
             return
-
+ 
         # Adjust for the length of the pulse + a constant factor to make pulseE = sum(energy_2d)
         constant_factor = 2.94e-2
-
-        #2.94E-02 = pulseE_slice / total_slice_energy
 
         # Since pulseE = fwhm_tau * spot_size * intensity, new_pulseE = old_pulseE / fwhm_tau
         length_factor = constant_factor / self.ds
 
-        # calculate slice energy (not energy associated with lambda)
+        # calculate field energy in this slice
         sliceEnInt = length_factor * self.pulseE_slice*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
 
-        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
-                                           self.nx_slice, self.ny_slice, self.photon_e_ev, params.slice_params.mx, params.slice_params.my)
-
-    def _get_params(self, params):
-        return self.__fixup_slice_params(super()._get_params(params))
-
-    def __fixup_slice_params(self, params):
-        self._validate_type(params.slice_params, PKDict, 'params.slice_params')
-        for s in self._DEFAULTS.slice_params:
-            if s not in params.slice_params:
-                params.slice_params[s] = self._DEFAULTS.slice_params[s]
-        return params
-
-    def _validate_params(self, input_params):
-        super()._validate_params(input_params)
-        for p in input_params.slice_params:
-            if p not in self._DEFAULTS.slice_params.keys():
-                raise self._INPUT_ERROR(f'invalid inputs: {p} is not a parameter to {self.__class__}')
+        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.poltype, \
+                                           self.nx_slice, self.ny_slice, self.photon_e_ev, params.mx, params.my)
 
     def calc_init_n_photons(self):
 
@@ -382,7 +339,7 @@ class LaserPulseEnvelope(ValidatorBase):
 
     """
     _INPUT_ERROR = InvalidLaserPulseInputError
-    _DEFAULTS = _LASER_PULSE_DEFAULTS
+    _DEFAULTS = _ENVELOPE_DEFAULTS
 
     def __init__(self, params=None):
         params = self._get_params(params)
