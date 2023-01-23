@@ -282,10 +282,18 @@ class LaserPulseSlice(ValidatorBase):
                     _yStart=y_min, _yFin=y_max, _ny=ny,
                     _zStart=0., _partBeam=None)
             return
-        # calculate slice energy intensity (not energy associated with lambda)
-        sliceEnInt = params.pulseE*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
-        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, -self._pulse_pos + self.dist_waist, sliceEnInt, params.poltype, \
-                                           self.nx_slice, self.ny_slice, self.photon_e_ev, params.mx, params.my)
+ 
+        # Adjust for the length of the pulse + a constant factor to make pulseE = sum(energy_2d)
+        constant_factor = 2.94e-2
+
+        # Since pulseE = fwhm_tau * spot_size * intensity, new_pulseE = old_pulseE / fwhm_tau
+        length_factor = constant_factor / self.ds
+
+        # calculate field energy in this slice
+        sliceEnInt = length_factor * self.pulseE_slice*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
+
+        self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.slice_params.poltype, \
+                                           self.nx_slice, self.ny_slice, self.photon_e_ev, params.slice_params.mx, params.slice_params.my)
 
     def calc_init_n_photons(self):
 
