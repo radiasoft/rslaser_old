@@ -140,6 +140,9 @@ class CrystalSlice(Element):
         self.sigma_mesh = np.exp(-(xv**2.0 + yv**2.0)/((self.sigma_xfin-self.sigma_xstart)/4.0)**2.0)
 
     def propagate(self, laser_pulse, prop_type):
+        
+        # Testing gain in 'n0n2_srw' prop_type
+        
         if prop_type == 'attenuate':
             raise NotImplementedError(f'{self}.propagate() with prop_type="attenuate" is not currently supported')
             # n_x = wfront.mesh.nx  #  nr of grid points in x
@@ -197,10 +200,6 @@ class CrystalSlice(Element):
                 # pol = 6 in calc_int_from_wfr() for full electric
                 # field (0 corresponds to horizontal, 1 corresponds to vertical polarization)
                 wfr0 = thisSlice.wfr
-                
-                # Interpolate the excited state density mesh of the current crystal slice to 
-                # match the laser_pulse wavefront before propagation (for use with gain calculation)
-                self.interpolate_sigma(wfr0)
 
                 # horizontal component of electric field
                 re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=5, _det=None, _fname='', _pr=True)
@@ -314,10 +313,6 @@ class CrystalSlice(Element):
                 # pol = 6 in calc_int_from_wfr() for full electric
                 # field (0 corresponds to horizontal, 1 corresponds to vertical polarization)
                 wfr0 = thisSlice.wfr
-
-                # Interpolate the excited state density mesh of the current crystal slice to 
-                # match the laser_pulse wavefront before propagation (for use with gain calculation)
-                self.interpolate_sigma(wfr0)
                 
                 # horizontal component of electric field
                 re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=5, _det=None, _fname='', _pr=True)
