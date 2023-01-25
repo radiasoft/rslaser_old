@@ -1,5 +1,5 @@
 
-from srwlib.srwl import PropagElecField
+from srwlib import srwl
 
 class ElementException(Exception):
     pass
@@ -11,5 +11,5 @@ class Element(ValidatorBase):
         if not hasattr(self, '_srwc'):
             raise ElementException(f'_srwc field is expected to be set on {self}')
         for w in laser_pulse.slice:
-            PropagElecField(w.wfr,self._srwc)
+            srwl.PropagElecField(w.wfr,self._srwc)
         return laser_pulse
