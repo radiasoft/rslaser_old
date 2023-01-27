@@ -562,4 +562,3 @@ class Lens(Element):
             [srwlib.SRWLOptL(f, f)],
             [[0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]]
         )
-
