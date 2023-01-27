@@ -1,5 +1,5 @@
-
 from srwlib import srwl
+from rslaser.utils.validator import ValidatorBase
 
 class ElementException(Exception):
     pass
