@@ -43,10 +43,7 @@ def test_propagation():
     # crystal_slice_prop_test('abcd_lct')
     # crystal_slice_prop_test('n0n2')
     c = crystal.CrystalSlice()
-    with pykern.pkunit.pkexcept(
-        element.ElementException,
-        'Invalid element="should raise" should have raised'
-        ):
+    with pykern.pkunit.pkexcept(KeyError):
         c.propagate(pulse.LaserPulse(), 'should raise')
 
 
