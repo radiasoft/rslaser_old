@@ -4,24 +4,24 @@ from pykern.pkdebug import pkdp, pkdlog
 from pykern.pkcollections import PKDict
 import pykern.pkunit
 import pytest
-from rslaser.optics import element
+from rslaser.optics import element, lens, drift, crystal
 from rslaser.pulse import pulse
 
 
 def test_instantiation01():
-    element.Crystal()
+    crystal.Crystal()
     with pykern.pkunit.pkexcept(element.ElementException):
-        element.Crystal('fail')
+        crystal.Crystal('fail')
     with pykern.pkunit.pkexcept(element.ElementException):
-        element.Crystal(PKDict(slice_params=PKDict()))
-    c = element.Crystal()
+        crystal.Crystal(PKDict(slice_params=PKDict()))
+    c = crystal.Crystal()
     for s in c.slice:
         if s.length != c.length/c.nslice:
             pykern.pkunit.pkfail('CrystalSlice had length not equal to Crystal wrapper length/nslice')
 
 
 def crystal_slice_prop_test(prop_type):
-    c = element.CrystalSlice()
+    c = crystal.CrystalSlice()
     p = pulse.LaserPulse()
     p = c.propagate(p, prop_type)
     if type(p) != pulse.LaserPulse:
@@ -29,7 +29,7 @@ def crystal_slice_prop_test(prop_type):
 
 
 def test_instantiation02():
-    c = element.CrystalSlice()
+    c = crystal.CrystalSlice()
 
 
 def test_propagation():
@@ -42,7 +42,7 @@ def test_propagation():
     # TODO (gurhar1133): propagation is a work in progress.
     # crystal_slice_prop_test('abcd_lct')
     # crystal_slice_prop_test('n0n2')
-    c = element.CrystalSlice()
+    c = crystal.CrystalSlice()
     with pykern.pkunit.pkexcept(
         element.ElementException,
         'Invalid element="should raise" should have raised'
@@ -51,28 +51,28 @@ def test_propagation():
 
 
 def test_instantiation03():
-    element.Drift(0.01)
+    drift.Drift(0.01)
 
 
 def test_propagation05():
-    d = element.Drift(0.01)
+    d = drift.Drift(0.01)
     p = pulse.LaserPulse()
     d.propagate(p)
     trigger_prop_fail(
-        element.Drift(0.01).propagate,
+        drift.Drift(0.01).propagate,
         pulse.LaserPulse()
         )
 
 
 def test_instantiation04():
-    element.Lens(0.2)
+    lens.Lens(0.2)
 
 
 def test_propagation06():
-    l = element.Lens(0.2)
+    l = lens.Lens(0.2)
     l.propagate(pulse.LaserPulse())
     trigger_prop_fail(
-        element.Lens(0.01).propagate,
+        lens.Lens(0.01).propagate,
         pulse.LaserPulse()
         )
 
