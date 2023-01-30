@@ -9,7 +9,7 @@ from scipy.interpolate import RectBivariateSpline
 from rsmath import lct as rslct
 from rslaser.utils.validator import ValidatorBase
 from rslaser.utils import srwl_uti_data as srwutil
-from . import ElementException, Element
+from rslaser.optics.element import ElementException, Element
 
 _N_SLICE_DEFAULT = 3
 _CRYSTAL_SLICE_DEFAULTS = PKDict(
@@ -444,12 +444,12 @@ class CrystalSlice(Element):
             default=super().propagate,
         )[prop_type](laser_pulse)
 
-'''
-1. If wfr is larger than persistent mesh, need to augment with zeros so that we can do the algebra with them, then shrink back to persistent
-2. If wfr is smaller than persistent mesh, just interp within
+    '''
+    1. If wfr is larger than persistent mesh, need to augment with zeros so that we can do the algebra with them, then shrink back to persistent
+    2. If wfr is smaller than persistent mesh, just interp within
 
-So, figure out what RectBivariateSpline returns when querrying outside of the interp_map
-'''
+    So, figure out what RectBivariateSpline returns when querrying outside of the interp_map
+    '''
 
     def interpolate_pop_inversion(self, lp_wfr):
         # Function returns a temporary mesh that is a copy of the original interpolated to match the wfr mesh 
