@@ -113,19 +113,24 @@ class CrystalSlice(Element):
 
         # 2d mesh of excited state density (sigma), populating it
         # and its params with dummy variables for interpolation
-        self.pop_inversion_nx = 32
-        self.pop_inversion_ny = 32
-        self.pop_inversion_xstart = -10.0e-5
-        self.pop_inversion_xfin = 10.0e-5
-        self.pop_inversion_ystart = -10.0e-5
-        self.pop_inversion_yfin = 10.0e-5
+        self.pop_inversion_nx = 64
+        self.pop_inversion_ny = 64
+        self.pop_inversion_xstart = -60.0e-6
+        self.pop_inversion_xfin = 60.0e-6
+        self.pop_inversion_ystart = -60.0e-6
+        self.pop_inversion_yfin = 60.0e-6
         
         x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
         y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
         xv, yv = np.meshgrid(x, y)
         
-        # Create a mesh with a gaussian shape (until better default params are provided)
-        self.pop_inversion_mesh = np.exp(-(xv**2.0 + yv**2.0)/((self.pop_inversion_xfin-self.pop_inversion_xstart)/4.0)**2.0)
+        # Create a default mesh of num_excited_states/m^3
+        # NOTE: need to add exponential decay in 'z' for multiple slices...
+        pump_wavelength = 532.0e-9  # [m]
+        crystal_alpha = 1.2  # [1/m]
+        pump_waist = 1.64/1000.0  # [m]
+        absorbed_pump = (2.0/3.0)* 20.0/1000.0  # [J]
+        self.pop_inversion_mesh = (pump_wavelength/(const.h *const.c)) *((2.0 *absorbed_pump *np.exp(-2.0 *(xv**2.0 +yv**2.0) /pump_waist**2.0))/(const.pi *pump_waist**2.0)) *(1.0 -np.exp(-crystal_alpha *self.length)) /self.length
 
     def _propagate_attenuate(self, laser_pulse):
         # n_x = wfront.mesh.nx  #  nr of grid points in x
@@ -391,11 +396,58 @@ class CrystalSlice(Element):
             thisSlice = laser_pulse.slice[i]
             #print(type(thisSlice))
 
-            # Interpolate the excited state density mesh of the current crystal slice to
-            # match the laser_pulse wavefront mesh (for use with gain calculation)
-            self.temp_pop_inversion = self.interpolate_pop_inversion(thisSlice.wfr)
-                
-            # Call this within the gain method, and there we can set the new self.pop_inversion
+            if n2 == 0:
+                #print('n2 = 0')
+                #A = 1.0
+                #B = L_cryst
+                #C = 0.0
+                #D = 1.0
+                optDrift = srwlib.SRWLOptD(L_cryst/n0)
+                propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+                #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+                optBL = srwlib.SRWLOptC([optDrift],[propagParDrift])
+                #print("L_cryst/n0=",L_cryst/n0)
+            else:
+                #print('n2 .ne. 0')
+                gamma = np.sqrt(n2/n0)
+                A = np.cos(gamma*L_cryst)
+                B = (1/gamma)*np.sin(gamma*L_cryst)
+                C = -gamma*np.sin(gamma*L_cryst)
+                D = np.cos(gamma*L_cryst)
+                f1= B/(1-A)
+                L = B
+                f2 = B/(1-D)
+
+                optLens1 = srwlib.SRWLOptL(f1, f1)
+                optDrift = srwlib.SRWLOptD(L)
+                optLens2 = srwlib.SRWLOptL(f2, f2)
+
+                propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+                propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+                propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+
+                optBL = srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
+                #optBL = createABCDbeamline(A,B,C,D)
+
+                srwlib.srwl.PropagElecField(thisSlice.wfr, optBL) # thisSlice s.b. a pointer, not a copy
+                print('Propagated pulse slice ', i+1, ' of ', nslices)
+        return laser_pulse
+
+    def _propagate_gain_test(self, laser_pulse):
+        print('prop_type = gain_test (n0n2_srw)')
+        nslices = len(laser_pulse.slice)
+        L_cryst = self.length
+        n0 = self.n0
+        n2 = self.n2
+        print('n0: %g, n2: %g' %(n0, n2))
+
+        for i in np.arange(nslices):
+            thisSlice = laser_pulse.slice[i]
+            #print(type(thisSlice))
+
+            # Updates the <self.num_photons> of the pulse wavefront 
+            # and <self.pop_inversion_mesh> values of the crystal slice
+            self.calc_gain(thisSlice.wfr)
 
             if n2 == 0:
                 #print('n2 = 0')
@@ -441,17 +493,11 @@ class CrystalSlice(Element):
             abcd_lct=self._propagate_abcd_lct,
             n0n2_lct=self._propagate_n0n2_lct,
             n0n2_srw=self._propagate_n0n2_srw,
+            gain_test=self._propagate_gain_test,
             default=super().propagate,
         )[prop_type](laser_pulse)
 
-    '''
-    1. If wfr is larger than persistent mesh, need to augment with zeros so that we can do the algebra with them, then shrink back to persistent
-    2. If wfr is smaller than persistent mesh, just interp within
-
-    So, figure out what RectBivariateSpline returns when querrying outside of the interp_map
-    '''
-
-    def interpolate_pop_inversion(self, lp_wfr):
+    def _interpolate_pop_inversion(self, lp_wfr):
         # Function returns a temporary mesh that is a copy of the original interpolated to match the wfr mesh 
         # (with possible zero-padding, if needed) for calling in the gain calculation
         
@@ -464,10 +510,37 @@ class CrystalSlice(Element):
         # Interpolate the excited states mesh to match the pulse wavefront params
         if not (np.array_equal(pop_inversion_x, lp_wfr_x) and np.array_equal(pop_inversion_y, lp_wfr_y)):
             
+            # Add a wrapping of zeros    
+            temp_mesh = self.pop_inversion_mesh.copy()
+            
             # Create the spline for interpolation
-            rect_biv_spline = RectBivariateSpline(pop_inversion_x, pop_inversion_y, self.pop_inversion_mesh)
-        
-            # Evaluate the spline at wavefront gridpoints
-            # temp_mesh has same nx,ny,xstart,xfin,ystart,yfin as wfr.mesh now
-            temp_mesh = rect_biv_spline(lp_wfr_x, lp_wfr_y)             
+            rect_biv_spline = RectBivariateSpline(pop_inversion_x, pop_inversion_y, temp_mesh)
+            
+            # Evaluate the spline at wavefront gridpoints (has same nx,ny,xstart,xfin,ystart,yfin as wfr.mesh)    
+            temp_mesh = rect_biv_spline(lp_wfr_x, lp_wfr_y)
+            
+            if (lp_wfr.mesh.xFin > self.pop_inversion_xfin) or (lp_wfr.mesh.xStart < self.pop_inversion_xstart):
+                temp_mesh[lp_wfr_x > self.pop_inversion_xfin,:] = 0.0
+                temp_mesh[lp_wfr_x < self.pop_inversion_xstart,:] = 0.0
+            if (lp_wfr.mesh.yFin > self.pop_inversion_yfin) or (lp_wfr.mesh.yStart < self.pop_inversion_ystart):
+                temp_mesh[:,lp_wfr_y > self.pop_inversion_yfin] = 0.0
+                temp_mesh[:,lp_wfr_y < self.pop_inversion_ystart] = 0.0     
+            
             return temp_mesh
+
+    def calc_gain(self,lp_wfr):
+        
+        # Interpolate the excited state density mesh of the current crystal slice to
+        # match the laser_pulse wavefront mesh 
+        temp_pop_inversion = self._interpolate_pop_inversion(lp_wfr)
+        
+        # Then need to use temp_mesh for calculations
+        
+        # Then need to take calculation result to update pop_inversion_mesh
+        
+        # May be complicated depending on relative size of the two meshes involved in the algebra
+        
+        # Make own propagator for gain testing!
+        # Updates the <self.num_photons> of the pulse wavefront 
+        # and <self.pop_inversion_mesh> values of the crystal slice
+        return 1
