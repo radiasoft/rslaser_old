@@ -1,7 +1,6 @@
 
 import numpy as np
 import array
-import math
 from pykern.pkcollections import PKDict
 import srwlib
 import scipy.constants as const
@@ -445,9 +444,9 @@ class CrystalSlice(Element):
             thisSlice = laser_pulse.slice[i]
             #print(type(thisSlice))
 
-            # Updates the <self.num_photons> of the pulse wavefront 
-            # and <self.pop_inversion_mesh> values of the crystal slice
-            self.calc_gain(thisSlice.wfr)
+            # Updates the self.n_photons_2d of the pulse wavefront 
+            # and the self.pop_inversion_mesh values of the crystal slice
+            self.calc_gain(thisSlice)
 
             if n2 == 0:
                 #print('n2 = 0')
@@ -506,12 +505,11 @@ class CrystalSlice(Element):
         
         lp_wfr_x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
         lp_wfr_y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
-            
+        
+        temp_mesh = self.pop_inversion_mesh.copy()
+        
         # Interpolate the excited states mesh to match the pulse wavefront params
-        if not (np.array_equal(pop_inversion_x, lp_wfr_x) and np.array_equal(pop_inversion_y, lp_wfr_y)):
-            
-            # Add a wrapping of zeros    
-            temp_mesh = self.pop_inversion_mesh.copy()
+        if not (np.array_equal(pop_inversion_x, lp_wfr_x) and np.array_equal(pop_inversion_y, lp_wfr_y)): 
             
             # Create the spline for interpolation
             rect_biv_spline = RectBivariateSpline(pop_inversion_x, pop_inversion_y, temp_mesh)
@@ -519,6 +517,7 @@ class CrystalSlice(Element):
             # Evaluate the spline at wavefront gridpoints (has same nx,ny,xstart,xfin,ystart,yfin as wfr.mesh)    
             temp_mesh = rect_biv_spline(lp_wfr_x, lp_wfr_y)
             
+            # Set any temp_mesh values outside the bounds of the pop_inversion mesh to zero
             if (lp_wfr.mesh.xFin > self.pop_inversion_xfin) or (lp_wfr.mesh.xStart < self.pop_inversion_xstart):
                 temp_mesh[lp_wfr_x > self.pop_inversion_xfin,:] = 0.0
                 temp_mesh[lp_wfr_x < self.pop_inversion_xstart,:] = 0.0
@@ -526,21 +525,67 @@ class CrystalSlice(Element):
                 temp_mesh[:,lp_wfr_y > self.pop_inversion_yfin] = 0.0
                 temp_mesh[:,lp_wfr_y < self.pop_inversion_ystart] = 0.0     
             
-            return temp_mesh
+        return temp_mesh
 
-    def calc_gain(self,lp_wfr):
+    def _interpolate_pop_change(self, lp_wfr, change_pop_inversion):
+        # Function takes the calculated change to the population inversion mesh and 
+        # interpolates/pads/cuts it so that it can be added to self.pop_inversion
+        
+        pop_inversion_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
+        pop_inversion_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
+        
+        lp_wfr_x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
+        lp_wfr_y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
+        # Note: change_pop_inversion has params matching the laser pulse wavefront
+
+        # Interpolate the "change to the population inversion" mesh to match self.pop_inversion
+        if not (np.array_equal(pop_inversion_x, lp_wfr_x) and np.array_equal(pop_inversion_y, lp_wfr_y)):
+            
+            # Create the spline for interpolation
+            rect_biv_spline = RectBivariateSpline(lp_wfr_x, lp_wfr_y, change_pop_inversion)
+            
+            # Evaluate the spline at self.pop_inversion gridpoints 
+            change_pop_inversion = rect_biv_spline(pop_inversion_x, pop_inversion_y)
+            
+            # Set any interpolated values outside the bounds of the original change_pop_inversion mesh to zero
+            change_pop_inversion[pop_inversion_x > lp_wfr.mesh.xFin,:] = 0.0
+            change_pop_inversion[pop_inversion_x < lp_wfr.mesh.xStart,:] = 0.0
+            
+            change_pop_inversion[:,pop_inversion_y > lp_wfr.mesh.yFin] = 0.0
+            change_pop_inversion[:,pop_inversion_y < lp_wfr.mesh.yStart] = 0.0     
+            
+        return change_pop_inversion
+
+    def calc_gain(self,thisSlice):
+        
+        lp_wfr = thisSlice.wfr
         
         # Interpolate the excited state density mesh of the current crystal slice to
         # match the laser_pulse wavefront mesh 
         temp_pop_inversion = self._interpolate_pop_inversion(lp_wfr)
         
-        # Then need to use temp_mesh for calculations
+        # Calculate gain
+        absorp_cross_sec = 2.0e-24             # [m^2] (2.0e-20 cm^2)
+        degen_factor = 1.0                     # Not sure what this value should be
         
-        # Then need to take calculation result to update pop_inversion_mesh
+        dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
+        dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
+        n_incident_photons = thisSlice.n_photons_2d / (dx * dy)   # [1/m^2]
         
-        # May be complicated depending on relative size of the two meshes involved in the algebra
+        energy_gain = (1.0 /(degen_factor *absorp_cross_sec *n_incident_photons)) \
+                *np.log(1 +np.exp((absorp_cross_sec *temp_pop_inversion *self.length) \
+                +(degen_factor *absorp_cross_sec *n_incident_photons)) \
+                -np.exp(absorp_cross_sec *temp_pop_inversion *self.length))
         
-        # Make own propagator for gain testing!
-        # Updates the <self.num_photons> of the pulse wavefront 
-        # and <self.pop_inversion_mesh> values of the crystal slice
-        return 1
+        # Update the number of photons
+        thisSlice.n_photons_2d *= energy_gain
+        
+        # Calculate change factor for pop_inversion
+        change_pop_inversion = -(degen_factor * n_incident_photons * (energy_gain - 1.0) / self.length)
+        
+        # Interpolate the change to the excited state density mesh of the current crystal slice (change_pop_inversion)
+        # so that it matches self.pop_inversion
+        change_pop_inversion = self._interpolate_pop_change(lp_wfr, change_pop_inversion)
+        
+        # Update the pop_inversion_mesh  
+        self.pop_inversion_mesh += change_pop_inversion
