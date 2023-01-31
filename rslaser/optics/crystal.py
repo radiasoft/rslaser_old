@@ -20,6 +20,14 @@ _CRYSTAL_SLICE_DEFAULTS = PKDict(
     B = 1.99999238e-01,
     C = -1.14285279e-04,
     D = 9.99988571e-01,
+    
+    inversion_n_cells = 64,
+    inversion_mesh_extent = 200.0e-6, #[m]
+    
+    crystal_alpha   = 1.2,      # [1/m]
+    pump_waist      = 0.00164,  # [m]
+    pump_wavelength = 532.0e-9, # [m]
+    pump_energy     = 0.02,     # [J], pump laser energy absorbed by the crystal
 )
 
 _CRYSTAL_DEFAULTS = PKDict(
@@ -112,24 +120,20 @@ class CrystalSlice(Element):
 
         # 2d mesh of excited state density (sigma), populating it
         # and its params with dummy variables for interpolation
-        self.pop_inversion_nx = 64
-        self.pop_inversion_ny = 64
-        self.pop_inversion_xstart = -60.0e-6
-        self.pop_inversion_xfin = 60.0e-6
-        self.pop_inversion_ystart = -60.0e-6
-        self.pop_inversion_yfin = 60.0e-6
+        self.pop_inversion_nx = params.inversion_n_cells
+        self.pop_inversion_ny = params.inversion_n_cells
+        self.pop_inversion_xstart = -params.inversion_mesh_extent
+        self.pop_inversion_xfin = params.inversion_mesh_extent
+        self.pop_inversion_ystart = -params.inversion_mesh_extent
+        self.pop_inversion_yfin = params.inversion_mesh_extent
         
         x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
         y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
         xv, yv = np.meshgrid(x, y)
         
-        # Create a default mesh of num_excited_states/m^3
-        # NOTE: need to add exponential decay in 'z' for multiple slices...
-        pump_wavelength = 532.0e-9  # [m]
-        crystal_alpha = 1.2  # [1/m]
-        pump_waist = 1.64/1000.0  # [m]
-        absorbed_pump = (2.0/3.0)* 20.0/1000.0  # [J]
-        self.pop_inversion_mesh = (pump_wavelength/(const.h *const.c)) *((2.0 *absorbed_pump *np.exp(-2.0 *(xv**2.0 +yv**2.0) /pump_waist**2.0))/(const.pi *pump_waist**2.0)) *(1.0 -np.exp(-crystal_alpha *self.length)) /self.length
+        # Create a default mesh of [num_excited_states/m^3]
+        # NOTE: need to add exponential decay in 'z'?
+        self.pop_inversion_mesh = (params.pump_wavelength/(const.h *const.c)) *((2.0 *(2.0/3.0) *params.pump_energy *np.exp(-2.0 *(xv**2.0 +yv**2.0) /params.pump_waist**2.0))/(const.pi *params.pump_waist**2.0)) *(1.0 -np.exp(-params.crystal_alpha *self.length)) /self.length
 
     def _propagate_attenuate(self, laser_pulse):
         # n_x = wfront.mesh.nx  #  nr of grid points in x
