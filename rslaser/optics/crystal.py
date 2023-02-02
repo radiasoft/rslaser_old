@@ -22,7 +22,7 @@ _CRYSTAL_SLICE_DEFAULTS = PKDict(
     D = 9.99988571e-01,
     
     inversion_n_cells = 64,
-    inversion_mesh_extent = 200.0e-6, #[m]
+    inversion_mesh_extent = 0.01, # [m]
     
     crystal_alpha   = 1.2,      # [1/m]
     pump_waist      = 0.00164,  # [m]
@@ -450,7 +450,7 @@ class CrystalSlice(Element):
 
             # Updates the self.n_photons_2d of the pulse wavefront 
             # and the self.pop_inversion_mesh values of the crystal slice
-            self.calc_gain(thisSlice)
+            thisSlice = self.calc_gain(thisSlice)
 
             if n2 == 0:
                 #print('n2 = 0')
@@ -500,6 +500,7 @@ class CrystalSlice(Element):
             default=super().propagate,
         )[prop_type](laser_pulse)
 
+    # KW To Do: consider merging with _interpolate_pop_change()
     def _interpolate_pop_inversion(self, lp_wfr):
         # Function returns a temporary mesh that is a copy of the original interpolated to match the wfr mesh 
         # (with possible zero-padding, if needed) for calling in the gain calculation
@@ -531,6 +532,7 @@ class CrystalSlice(Element):
             
         return temp_mesh
 
+    # KW To Do: consider merging with _interpolate_pop_inversion()
     def _interpolate_pop_change(self, lp_wfr, change_pop_inversion):
         # Function takes the calculated change to the population inversion mesh and 
         # interpolates/pads/cuts it so that it can be added to self.pop_inversion
@@ -575,11 +577,10 @@ class CrystalSlice(Element):
         dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
         dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
         n_incident_photons = thisSlice.n_photons_2d / (dx * dy)   # [1/m^2]
-        
+
         energy_gain = (1.0 /(degen_factor *absorp_cross_sec *n_incident_photons)) \
-                *np.log(1 +np.exp((absorp_cross_sec *temp_pop_inversion *self.length) \
-                +(degen_factor *absorp_cross_sec *n_incident_photons)) \
-                -np.exp(absorp_cross_sec *temp_pop_inversion *self.length))
+                *np.log(1 +np.exp(absorp_cross_sec *temp_pop_inversion *self.length) \
+                *(np.exp(degen_factor *absorp_cross_sec *n_incident_photons) -1.0))
         
         # Update the number of photons
         thisSlice.n_photons_2d *= energy_gain
@@ -593,3 +594,41 @@ class CrystalSlice(Element):
         
         # Update the pop_inversion_mesh  
         self.pop_inversion_mesh += change_pop_inversion
+        
+        # Update the wavefront itself: (KW To Do: make this a separate method?)
+        #    First extract the electric fields
+        
+        # horizontal component of electric field
+        re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=True)
+        im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=True)
+        gain_re0_ex = re0_ex *np.sqrt(energy_gain).flatten(order='C')
+        gain_im0_ex = im0_ex *np.sqrt(energy_gain).flatten(order='C')
+
+        # vertical componenent of electric field
+        re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=True)
+        im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=True)
+        gain_re0_ey = re0_ey *np.sqrt(energy_gain).flatten(order='C')
+        gain_im0_ey = im0_ey *np.sqrt(energy_gain).flatten(order='C')
+        
+        ex_numpy = np.zeros(2*len(gain_re0_ex))
+        for i in range(len(gain_re0_ex)):
+            ex_numpy[2*i] = gain_re0_ex[i]
+            ex_numpy[2*i+1] = gain_im0_ex[i]
+
+        ey_numpy = np.zeros(2*len(gain_re0_ey))
+        for i in range(len(gain_re0_ey)):
+            ey_numpy[2*i] = gain_re0_ey[i]
+            ey_numpy[2*i+1] = gain_im0_ey[i]
+
+        ex = array.array('f', ex_numpy.tolist())
+        ey = array.array('f', ey_numpy.tolist())
+            
+        #    Pass changes to SRW
+        wfr1 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
+                _eStart=thisSlice.photon_e_ev, _eFin=thisSlice.photon_e_ev, _ne=1,
+                _xStart=lp_wfr.mesh.xStart, _xFin=lp_wfr.mesh.xFin, _nx=lp_wfr.mesh.nx,
+                _yStart=lp_wfr.mesh.yStart, _yFin=lp_wfr.mesh.yFin, _ny=lp_wfr.mesh.ny,
+                _zStart=0., _partBeam=None)
+
+        thisSlice.wfr = wfr1
+        return thisSlice

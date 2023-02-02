@@ -22,13 +22,13 @@ from rslaser.utils.validator import ValidatorBase
 _LASER_PULSE_DEFAULTS = PKDict(
         nslice = 3,
         chirp = 0,
-        photon_e_ev = 1e3,
+        photon_e_ev = 1.5, #1e3,
         num_sig_long=3.,
         dist_waist = 0,
         tau_fwhm= 0.1 / const.c / math.sqrt(2.),
         pulseE = 0.001,
-        sigx_waist = 10e-6,
-        sigy_waist = 10e-6,
+        sigx_waist = 1.0e-3,
+        sigy_waist = 1.0e-3,
         num_sig_trans = 6,
         nx_slice = 500,
         ny_slice = 500,
@@ -46,7 +46,7 @@ _ENVELOPE_DEFAULTS = PKDict(
     z_center=0,
     x_shift = 0.,
     y_shift=0.,
-    photon_e_ev = 1e3,
+    photon_e_ev = 1.5, #1e3,
     tau_fwhm= 0.1 / const.c / math.sqrt(2.),
 )
 
@@ -113,7 +113,7 @@ class LaserPulse(ValidatorBase):
         self.photon_e_ev = params.photon_e_ev
         self.sig_s = params.tau_fwhm * const.c / 2.355
         self.num_sig_long = params.num_sig_long
-        self._lambda0 = abs(units.calculate_lambda0_from_phE(params.photon_e_ev))
+        self._lambda0 = abs(units.calculate_lambda0_from_phE(params.photon_e_ev *const.e)) # Function requires energy in J
         self.pulseE = params.pulseE
         # self.photon_e -= 0.5*params.chirp           # so central slice has the central photon energy
         # _de = params.chirp / self.nslice   # photon energy shift from slice to slice
@@ -180,7 +180,7 @@ class LaserPulseSlice(ValidatorBase):
         self._validate_type(slice_index, int, 'slice_index')
         params = self._get_params(params)
         self._validate_params(params)
-        self._lambda0 = units.calculate_lambda0_from_phE(params.photon_e_ev)
+        self._lambda0 = units.calculate_lambda0_from_phE(params.photon_e_ev *const.e) # Function requires energy in J
         self.slice_index = slice_index
         self.sigx_waist = params.sigx_waist
         self.sigy_waist = params.sigy_waist
@@ -198,7 +198,7 @@ class LaserPulseSlice(ValidatorBase):
         self.photon_e_ev = params.photon_e_ev          # check that this is being properly incremented in the correct place (see LaserPulse class)
         _de = params.chirp / self.nslice   # photon energy shift from slice to slice
         self.photon_e_ev -= 0.5*params.chirp + (self.nslice * _de)   # so central slice has the central photon energy
-
+        
         self.sig_s = params.tau_fwhm * const.c / 2.355
         self.num_sig_long = params.num_sig_long
         constConvRad = 1.23984186e-06/(4*3.1415926536)  ##conversion from energy to 1/wavelength
@@ -282,7 +282,7 @@ class LaserPulseSlice(ValidatorBase):
 
         # calculate field energy in this slice
         sliceEnInt = length_factor * self.pulseE_slice*np.exp(-self._pulse_pos**2/(2*self.sig_s**2))
-
+        
         self.wfr = srwutil.createGsnSrcSRW(self.sigx_waist, self.sigy_waist, self.num_sig_trans, self._pulse_pos, sliceEnInt, params.poltype, \
                                            self.nx_slice, self.ny_slice, self.photon_e_ev, params.mx, params.my)
 
@@ -344,7 +344,7 @@ class LaserPulseEnvelope(ValidatorBase):
     def __init__(self, params=None):
         params = self._get_params(params)
         self._validate_params(params)
-        self.lambda0 = abs(units.calculate_lambda0_from_phE(params.photon_e_ev))            # central wavelength [m]
+        self.lambda0 = abs(units.calculate_lambda0_from_phE(params.photon_e_ev *const.e)) # Function requires energy in J # central wavelength [m]
         # useful derived quantities
         self.k0 = rsc.TWO_PI / self.lambda0       # central wavenumber [radians/m]
         self.f0 = const.c / self.lambda0          # central frequency  [Hz]
