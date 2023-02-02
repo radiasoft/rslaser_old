@@ -1,7 +1,6 @@
 
 import numpy as np
 import array
-import math
 from pykern.pkcollections import PKDict
 import srwlib
 import scipy.constants as const
@@ -9,7 +8,7 @@ from scipy.interpolate import RectBivariateSpline
 from rsmath import lct as rslct
 from rslaser.utils.validator import ValidatorBase
 from rslaser.utils import srwl_uti_data as srwutil
-from . import ElementException, Element
+from rslaser.optics.element import ElementException, Element
 
 _N_SLICE_DEFAULT = 3
 _CRYSTAL_SLICE_DEFAULTS = PKDict(
@@ -21,6 +20,14 @@ _CRYSTAL_SLICE_DEFAULTS = PKDict(
     B = 1.99999238e-01,
     C = -1.14285279e-04,
     D = 9.99988571e-01,
+    
+    inversion_n_cells = 64,
+    inversion_mesh_extent = 0.01, # [m]
+    
+    crystal_alpha   = 1.2,      # [1/m]
+    pump_waist      = 0.00164,  # [m]
+    pump_wavelength = 532.0e-9, # [m]
+    pump_energy     = 0.02,     # [J], pump laser energy absorbed by the crystal
 )
 
 _CRYSTAL_DEFAULTS = PKDict(
@@ -113,18 +120,20 @@ class CrystalSlice(Element):
 
         # 2d mesh of excited state density (sigma), populating it
         # and its params with dummy variables for interpolation
-        self.sigma_nx = 100
-        self.sigma_ny = 100
-        self.sigma_xstart = -10.0e-5
-        self.sigma_xfin = 10.0e-5
-        self.sigma_ystart = -10.0e-5
-        self.sigma_yfin = 10.0e-5
-
-        x = np.linspace(self.sigma_xstart,self.sigma_xfin,self.sigma_nx)
-        y = np.linspace(self.sigma_ystart,self.sigma_yfin,self.sigma_ny)
+        self.pop_inversion_nx = params.inversion_n_cells
+        self.pop_inversion_ny = params.inversion_n_cells
+        self.pop_inversion_xstart = -params.inversion_mesh_extent
+        self.pop_inversion_xfin = params.inversion_mesh_extent
+        self.pop_inversion_ystart = -params.inversion_mesh_extent
+        self.pop_inversion_yfin = params.inversion_mesh_extent
+        
+        x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
+        y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
         xv, yv = np.meshgrid(x, y)
-        # Create a mesh with a gaussian shape (until better default params are provided)
-        self.sigma_mesh = np.exp(-(xv**2.0 + yv**2.0)/((self.sigma_xfin-self.sigma_xstart)/4.0)**2.0)
+        
+        # Create a default mesh of [num_excited_states/m^3]
+        # NOTE: need to add exponential decay in 'z'?
+        self.pop_inversion_mesh = (params.pump_wavelength/(const.h *const.c)) *((2.0 *(2.0/3.0) *params.pump_energy *np.exp(-2.0 *(xv**2.0 +yv**2.0) /params.pump_waist**2.0))/(const.pi *params.pump_waist**2.0)) *(1.0 -np.exp(-params.crystal_alpha *self.length)) /self.length
 
     def _propagate_attenuate(self, laser_pulse):
         # n_x = wfront.mesh.nx  #  nr of grid points in x
@@ -390,9 +399,58 @@ class CrystalSlice(Element):
             thisSlice = laser_pulse.slice[i]
             #print(type(thisSlice))
 
-            # Interpolate the excited state density mesh of the current crystal slice to
-            # match the laser_pulse wavefront before propagation (for use with gain calculation)
-            self.interpolate_sigma(thisSlice.wfr)
+            if n2 == 0:
+                #print('n2 = 0')
+                #A = 1.0
+                #B = L_cryst
+                #C = 0.0
+                #D = 1.0
+                optDrift = srwlib.SRWLOptD(L_cryst/n0)
+                propagParDrift = [0, 0, 1., 0, 0, 1., 1., 1., 1., 0, 0, 0]
+                #propagParDrift = [0, 0, 1., 0, 0, 1.1, 1.2, 1.1, 1.2, 0, 0, 0]
+                optBL = srwlib.SRWLOptC([optDrift],[propagParDrift])
+                #print("L_cryst/n0=",L_cryst/n0)
+            else:
+                #print('n2 .ne. 0')
+                gamma = np.sqrt(n2/n0)
+                A = np.cos(gamma*L_cryst)
+                B = (1/gamma)*np.sin(gamma*L_cryst)
+                C = -gamma*np.sin(gamma*L_cryst)
+                D = np.cos(gamma*L_cryst)
+                f1= B/(1-A)
+                L = B
+                f2 = B/(1-D)
+
+                optLens1 = srwlib.SRWLOptL(f1, f1)
+                optDrift = srwlib.SRWLOptD(L)
+                optLens2 = srwlib.SRWLOptL(f2, f2)
+
+                propagParLens1 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+                propagParDrift = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+                propagParLens2 = [0, 0, 1., 0, 0, 1, 1, 1, 1, 0, 0, 0]
+
+                optBL = srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
+                #optBL = createABCDbeamline(A,B,C,D)
+
+                srwlib.srwl.PropagElecField(thisSlice.wfr, optBL) # thisSlice s.b. a pointer, not a copy
+                print('Propagated pulse slice ', i+1, ' of ', nslices)
+        return laser_pulse
+
+    def _propagate_gain_test(self, laser_pulse):
+        print('prop_type = gain_test (n0n2_srw)')
+        nslices = len(laser_pulse.slice)
+        L_cryst = self.length
+        n0 = self.n0
+        n2 = self.n2
+        print('n0: %g, n2: %g' %(n0, n2))
+
+        for i in np.arange(nslices):
+            thisSlice = laser_pulse.slice[i]
+            #print(type(thisSlice))
+
+            # Updates the self.n_photons_2d of the pulse wavefront 
+            # and the self.pop_inversion_mesh values of the crystal slice
+            thisSlice = self.calc_gain(thisSlice)
 
             if n2 == 0:
                 #print('n2 = 0')
@@ -438,84 +496,139 @@ class CrystalSlice(Element):
             abcd_lct=self._propagate_abcd_lct,
             n0n2_lct=self._propagate_n0n2_lct,
             n0n2_srw=self._propagate_n0n2_srw,
+            gain_test=self._propagate_gain_test,
             default=super().propagate,
         )[prop_type](laser_pulse)
 
-    def scale_sigma(self, lp_wfr): # Assumes wfr's xFin, yFin > 0 and xStart, yStart < 0
-
-        dx = (self.sigma_xfin - self.sigma_xstart)/self.sigma_nx
-        dy = (self.sigma_yfin - self.sigma_ystart)/self.sigma_ny
-        nx_init = self.sigma_nx
-        ny_init = self.sigma_ny
-
-        # Update nx, ny, xFin, yFin
-        d_xFin = (lp_wfr.mesh.xFin - self.sigma_xfin)
-        if d_xFin != 0.0:
-            self.sigma_nx += math.ceil(d_xFin/dx)
-            self.sigma_xfin += math.ceil(d_xFin/dx)*dx
-
-        d_yFin = (lp_wfr.mesh.yFin - self.sigma_yfin)
-        if d_yFin != 0.0:
-            self.sigma_ny += math.ceil(d_yFin/dy)
-            self.sigma_yfin += math.ceil(d_yFin/dy)*dy
-
-        # Change the mesh itself
-        if d_xFin > 0:      # Add rows to the end of the mesh
-            self.sigma_mesh = np.append(self.sigma_mesh, np.zeros((math.ceil(d_xFin/dx),np.shape(self.sigma_mesh)[1])), axis=0)
-        elif d_xFin < 0:    # Remove rows from the end of the mesh
-            self.sigma_mesh = np.delete(self.sigma_mesh, np.s_[self.sigma_nx:nx_init], axis=0)
-
-        if d_yFin > 0:      # Add columns to the end of the mesh
-            self.sigma_mesh = np.append(self.sigma_mesh, np.zeros((np.shape(self.sigma_mesh)[0],math.ceil(d_yFin/dy))), axis=1)
-        elif d_yFin < 0:    # Delete columns from the end of the mesh
-            self.sigma_mesh = np.delete(self.sigma_mesh, np.s_[self.sigma_ny:ny_init], axis=1)
-
-        # Update nx, ny, xStart, yStart
-        d_xStart = (self.sigma_xstart - lp_wfr.mesh.xStart)
-        if d_xStart != 0.0:
-            self.sigma_nx += math.ceil(d_xStart/dx)
-            self.sigma_xstart -= math.ceil(d_xStart/dx)*dx
-
-        d_yStart = (self.sigma_ystart - lp_wfr.mesh.yStart)
-        if d_yStart != 0.0:
-            self.sigma_ny += math.ceil(d_yStart/dy)
-            self.sigma_ystart -= math.ceil(d_yStart/dy)*dy
-
-        # Change the mesh itself
-        if d_xStart > 0:    # Add rows to the start of the mesh
-            self.sigma_mesh = np.append(np.zeros((math.ceil(d_xStart/dx),np.shape(self.sigma_mesh)[1])), self.sigma_mesh, axis=0)
-        elif d_xStart < 0:  # Delete rows from the start of the mesh
-            self.sigma_mesh = np.delete(self.sigma_mesh, np.s_[0:-math.ceil(d_xStart/dx)], axis=0)
-
-        if d_yStart > 0:    # Add columns to the start of the mesh
-            self.sigma_mesh = np.append(np.zeros((np.shape(self.sigma_mesh)[0],math.ceil(d_yStart/dy))), self.sigma_mesh, axis=1)
-        elif d_yStart < 0:  # Delete columns from the start of the mesh
-            self.sigma_mesh = np.delete(self.sigma_mesh,  np.s_[0:-math.ceil(d_yStart/dy)], axis=1)
-
-    def interpolate_sigma(self, lp_wfr):
-
-        # Scale the excited states mesh to match the pulse wavefront params
-        self.scale_sigma(lp_wfr)
-
-        excited_states_x = np.linspace(self.sigma_xstart,self.sigma_xfin,self.sigma_nx)
-        excited_states_y = np.linspace(self.sigma_ystart,self.sigma_yfin,self.sigma_ny)
-
+    # KW To Do: consider merging with _interpolate_pop_change()
+    def _interpolate_pop_inversion(self, lp_wfr):
+        # Function returns a temporary mesh that is a copy of the original interpolated to match the wfr mesh 
+        # (with possible zero-padding, if needed) for calling in the gain calculation
+        
+        pop_inversion_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
+        pop_inversion_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
+        
         lp_wfr_x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
         lp_wfr_y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
-
+        
+        temp_mesh = self.pop_inversion_mesh.copy()
+        
         # Interpolate the excited states mesh to match the pulse wavefront params
-        if not (np.array_equal(excited_states_x, lp_wfr_x) and np.array_equal(excited_states_y, lp_wfr_y)):
-
+        if not (np.array_equal(pop_inversion_x, lp_wfr_x) and np.array_equal(pop_inversion_y, lp_wfr_y)): 
+            
             # Create the spline for interpolation
-            rect_biv_spline = RectBivariateSpline(excited_states_x, excited_states_y, self.sigma_mesh)
+            rect_biv_spline = RectBivariateSpline(pop_inversion_x, pop_inversion_y, temp_mesh)
+            
+            # Evaluate the spline at wavefront gridpoints (has same nx,ny,xstart,xfin,ystart,yfin as wfr.mesh)    
+            temp_mesh = rect_biv_spline(lp_wfr_x, lp_wfr_y)
+            
+            # Set any temp_mesh values outside the bounds of the pop_inversion mesh to zero
+            if (lp_wfr.mesh.xFin > self.pop_inversion_xfin) or (lp_wfr.mesh.xStart < self.pop_inversion_xstart):
+                temp_mesh[lp_wfr_x > self.pop_inversion_xfin,:] = 0.0
+                temp_mesh[lp_wfr_x < self.pop_inversion_xstart,:] = 0.0
+            if (lp_wfr.mesh.yFin > self.pop_inversion_yfin) or (lp_wfr.mesh.yStart < self.pop_inversion_ystart):
+                temp_mesh[:,lp_wfr_y > self.pop_inversion_yfin] = 0.0
+                temp_mesh[:,lp_wfr_y < self.pop_inversion_ystart] = 0.0     
+            
+        return temp_mesh
 
-            # Evaluate the spline at wavefront gridpoints
-            self.sigma_mesh = rect_biv_spline(lp_wfr_x, lp_wfr_y)
+    # KW To Do: consider merging with _interpolate_pop_inversion()
+    def _interpolate_pop_change(self, lp_wfr, change_pop_inversion):
+        # Function takes the calculated change to the population inversion mesh and 
+        # interpolates/pads/cuts it so that it can be added to self.pop_inversion
+        
+        pop_inversion_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
+        pop_inversion_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
+        
+        lp_wfr_x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
+        lp_wfr_y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
+        # Note: change_pop_inversion has params matching the laser pulse wavefront
 
-            # Adjust the mesh params
-            self.sigma_xstart = lp_wfr.mesh.xStart
-            self.sigma_xfin = lp_wfr.mesh.xFin
-            self.sigma_ystart = lp_wfr.mesh.yStart
-            self.sigma_yfin = lp_wfr.mesh.yFin
-            self.sigma_nx = np.shape(self.sigma_mesh)[0]
-            self.sigma_ny = np.shape(self.sigma_mesh)[1]
+        # Interpolate the "change to the population inversion" mesh to match self.pop_inversion
+        if not (np.array_equal(pop_inversion_x, lp_wfr_x) and np.array_equal(pop_inversion_y, lp_wfr_y)):
+            
+            # Create the spline for interpolation
+            rect_biv_spline = RectBivariateSpline(lp_wfr_x, lp_wfr_y, change_pop_inversion)
+            
+            # Evaluate the spline at self.pop_inversion gridpoints 
+            change_pop_inversion = rect_biv_spline(pop_inversion_x, pop_inversion_y)
+            
+            # Set any interpolated values outside the bounds of the original change_pop_inversion mesh to zero
+            change_pop_inversion[pop_inversion_x > lp_wfr.mesh.xFin,:] = 0.0
+            change_pop_inversion[pop_inversion_x < lp_wfr.mesh.xStart,:] = 0.0
+            
+            change_pop_inversion[:,pop_inversion_y > lp_wfr.mesh.yFin] = 0.0
+            change_pop_inversion[:,pop_inversion_y < lp_wfr.mesh.yStart] = 0.0     
+            
+        return change_pop_inversion
+
+    def calc_gain(self,thisSlice):
+        
+        lp_wfr = thisSlice.wfr
+        
+        # Interpolate the excited state density mesh of the current crystal slice to
+        # match the laser_pulse wavefront mesh 
+        temp_pop_inversion = self._interpolate_pop_inversion(lp_wfr)
+        
+        # Calculate gain
+        absorp_cross_sec = 2.0e-24             # [m^2] (2.0e-20 cm^2)
+        degen_factor = 1.0                     # Not sure what this value should be
+        
+        dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
+        dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
+        n_incident_photons = thisSlice.n_photons_2d / (dx * dy)   # [1/m^2]
+
+        energy_gain = (1.0 /(degen_factor *absorp_cross_sec *n_incident_photons)) \
+                *np.log(1 +np.exp(absorp_cross_sec *temp_pop_inversion *self.length) \
+                *(np.exp(degen_factor *absorp_cross_sec *n_incident_photons) -1.0))
+        
+        # Update the number of photons
+        thisSlice.n_photons_2d *= energy_gain
+        
+        # Calculate change factor for pop_inversion
+        change_pop_inversion = -(degen_factor * n_incident_photons * (energy_gain - 1.0) / self.length)
+        
+        # Interpolate the change to the excited state density mesh of the current crystal slice (change_pop_inversion)
+        # so that it matches self.pop_inversion
+        change_pop_inversion = self._interpolate_pop_change(lp_wfr, change_pop_inversion)
+        
+        # Update the pop_inversion_mesh  
+        self.pop_inversion_mesh += change_pop_inversion
+        
+        # Update the wavefront itself: (KW To Do: make this a separate method?)
+        #    First extract the electric fields
+        
+        # horizontal component of electric field
+        re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=True)
+        im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=True)
+        gain_re0_ex = re0_ex *np.sqrt(energy_gain).flatten(order='C')
+        gain_im0_ex = im0_ex *np.sqrt(energy_gain).flatten(order='C')
+
+        # vertical componenent of electric field
+        re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=True)
+        im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=True)
+        gain_re0_ey = re0_ey *np.sqrt(energy_gain).flatten(order='C')
+        gain_im0_ey = im0_ey *np.sqrt(energy_gain).flatten(order='C')
+        
+        ex_numpy = np.zeros(2*len(gain_re0_ex))
+        for i in range(len(gain_re0_ex)):
+            ex_numpy[2*i] = gain_re0_ex[i]
+            ex_numpy[2*i+1] = gain_im0_ex[i]
+
+        ey_numpy = np.zeros(2*len(gain_re0_ey))
+        for i in range(len(gain_re0_ey)):
+            ey_numpy[2*i] = gain_re0_ey[i]
+            ey_numpy[2*i+1] = gain_im0_ey[i]
+
+        ex = array.array('f', ex_numpy.tolist())
+        ey = array.array('f', ey_numpy.tolist())
+            
+        #    Pass changes to SRW
+        wfr1 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
+                _eStart=thisSlice.photon_e_ev, _eFin=thisSlice.photon_e_ev, _ne=1,
+                _xStart=lp_wfr.mesh.xStart, _xFin=lp_wfr.mesh.xFin, _nx=lp_wfr.mesh.nx,
+                _yStart=lp_wfr.mesh.yStart, _yFin=lp_wfr.mesh.yFin, _ny=lp_wfr.mesh.ny,
+                _zStart=0., _partBeam=None)
+
+        thisSlice.wfr = wfr1
+        return thisSlice
