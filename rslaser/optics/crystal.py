@@ -578,9 +578,10 @@ class CrystalSlice(Element):
         dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
         n_incident_photons = thisSlice.n_photons_2d / (dx * dy)   # [1/m^2]
 
-        energy_gain = (1.0 /(degen_factor *absorp_cross_sec *n_incident_photons)) \
-                *np.log(1 +np.exp(absorp_cross_sec *temp_pop_inversion *self.length) \
-                *(np.exp(degen_factor *absorp_cross_sec *n_incident_photons) -1.0))
+        energy_gain = np.zeros(np.shape(n_incident_photons))
+        energy_gain[np.where(n_incident_photons > 0)] = (1.0 /(degen_factor *absorp_cross_sec *n_incident_photons[np.where(n_incident_photons > 0)])) \
+                *np.log(1 +np.exp(absorp_cross_sec *temp_pop_inversion[np.where(n_incident_photons > 0)] *self.length) \
+                *(np.exp(degen_factor *absorp_cross_sec *n_incident_photons[np.where(n_incident_photons > 0)]) -1.0))
         
         # Update the number of photons
         thisSlice.n_photons_2d *= energy_gain
@@ -599,14 +600,14 @@ class CrystalSlice(Element):
         #    First extract the electric fields
         
         # horizontal component of electric field
-        re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=True)
-        im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=True)
+        re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
+        im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
         gain_re0_ex = re0_ex *np.sqrt(energy_gain).flatten(order='C')
         gain_im0_ex = im0_ex *np.sqrt(energy_gain).flatten(order='C')
 
         # vertical componenent of electric field
-        re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=True)
-        im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=True)
+        re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
+        im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
         gain_re0_ey = re0_ey *np.sqrt(energy_gain).flatten(order='C')
         gain_im0_ey = im0_ey *np.sqrt(energy_gain).flatten(order='C')
         
