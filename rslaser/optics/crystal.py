@@ -10,7 +10,7 @@ from rslaser.utils.validator import ValidatorBase
 from rslaser.utils import srwl_uti_data as srwutil
 from rslaser.optics.element import ElementException, Element
 
-_N_SLICE_DEFAULT = 3
+_N_SLICE_DEFAULT = 50
 _CRYSTAL_SLICE_DEFAULTS = PKDict(
     n0=1.75,
     n2=0.001,
@@ -21,13 +21,15 @@ _CRYSTAL_SLICE_DEFAULTS = PKDict(
     C = -1.14285279e-04,
     D = 9.99988571e-01,
     
+    slice_index = 0,
+    nslice = 1,
     inversion_n_cells = 64,
     inversion_mesh_extent = 0.01, # [m]
     
     crystal_alpha   = 1.2,      # [1/m]
     pump_waist      = 0.00164,  # [m]
     pump_wavelength = 532.0e-9, # [m]
-    pump_energy     = 0.02,     # [J], pump laser energy absorbed by the crystal
+    pump_energy     = 0.0211,   # [J], pump laser energy onto the crystal
 )
 
 _CRYSTAL_DEFAULTS = PKDict(
@@ -69,7 +71,9 @@ class Crystal(Element):
                         n0=params.n0[j],
                         n2=params.n2[j],
                         length=params.length / params.nslice,
-                        l_scale = params.l_scale
+                        l_scale = params.l_scale,
+                        nslice = params.nslice,
+                        slice_index = j
                     )
                 )
             )
@@ -131,10 +135,15 @@ class CrystalSlice(Element):
         y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
         xv, yv = np.meshgrid(x, y)
         
+        # z = distance from front of crystal to center of current slice (assumes all crystal slices have same length)
+        z = self.length *(params.slice_index+0.5)
         # Create a default mesh of [num_excited_states/m^3]
-        # NOTE: need to add exponential decay in 'z'?
-        self.pop_inversion_mesh = (params.pump_wavelength/(const.h *const.c)) *((2.0 *(2.0/3.0) *params.pump_energy *np.exp(-2.0 *(xv**2.0 +yv**2.0) /params.pump_waist**2.0))/(const.pi *params.pump_waist**2.0)) *(1.0 -np.exp(-params.crystal_alpha *self.length)) /self.length
-
+        self.pop_inversion_mesh = ((params.pump_wavelength/(const.h *const.c)) *((2.0 *(2.0/3.0) *params.pump_energy \
+                                *np.exp(-2.0 *(xv**2.0 +yv**2.0) /params.pump_waist**2.0))/(const.pi *params.pump_waist**2.0)) \
+                                *np.exp(-params.crystal_alpha *z)) \
+                                /(self.length *params.nslice)
+        
+    
     def _propagate_attenuate(self, laser_pulse):
         # n_x = wfront.mesh.nx  #  nr of grid points in x
         # n_y = wfront.mesh.ny  #  nr of grid points in y
@@ -437,12 +446,12 @@ class CrystalSlice(Element):
         return laser_pulse
 
     def _propagate_gain_test(self, laser_pulse):
-        print('prop_type = gain_test (n0n2_srw)')
+        #print('prop_type = gain_test (n0n2_srw)')
         nslices = len(laser_pulse.slice)
         L_cryst = self.length
         n0 = self.n0
         n2 = self.n2
-        print('n0: %g, n2: %g' %(n0, n2))
+        #print('n0: %g, n2: %g' %(n0, n2))
 
         for i in np.arange(nslices):
             thisSlice = laser_pulse.slice[i]
@@ -486,7 +495,7 @@ class CrystalSlice(Element):
                 #optBL = createABCDbeamline(A,B,C,D)
 
                 srwlib.srwl.PropagElecField(thisSlice.wfr, optBL) # thisSlice s.b. a pointer, not a copy
-                print('Propagated pulse slice ', i+1, ' of ', nslices)
+                #print('Propagated pulse slice ', i+1, ' of ', nslices)
         return laser_pulse
 
     def propagate(self, laser_pulse, prop_type):
@@ -577,7 +586,7 @@ class CrystalSlice(Element):
         dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
         dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
         n_incident_photons = thisSlice.n_photons_2d / (dx * dy)   # [1/m^2]
-
+        
         energy_gain = np.zeros(np.shape(n_incident_photons))
         energy_gain[np.where(n_incident_photons > 0)] = (1.0 /(degen_factor *absorp_cross_sec *n_incident_photons[np.where(n_incident_photons > 0)])) \
                 *np.log(1 +np.exp(absorp_cross_sec *temp_pop_inversion[np.where(n_incident_photons > 0)] *self.length) \
@@ -602,14 +611,14 @@ class CrystalSlice(Element):
         # horizontal component of electric field
         re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
         im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(lp_wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
-        gain_re0_ex = re0_ex *np.sqrt(energy_gain).flatten(order='C')
-        gain_im0_ex = im0_ex *np.sqrt(energy_gain).flatten(order='C')
+        gain_re0_ex = np.float64(re0_ex) *np.sqrt(energy_gain).flatten(order='C')
+        gain_im0_ex = np.float64(im0_ex) *np.sqrt(energy_gain).flatten(order='C')
 
         # vertical componenent of electric field
         re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
         im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(lp_wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
-        gain_re0_ey = re0_ey *np.sqrt(energy_gain).flatten(order='C')
-        gain_im0_ey = im0_ey *np.sqrt(energy_gain).flatten(order='C')
+        gain_re0_ey = np.float64(re0_ey) *np.sqrt(energy_gain).flatten(order='C')
+        gain_im0_ey = np.float64(im0_ey) *np.sqrt(energy_gain).flatten(order='C')
         
         ex_numpy = np.zeros(2*len(gain_re0_ex))
         for i in range(len(gain_re0_ex)):
