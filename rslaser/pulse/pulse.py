@@ -292,7 +292,7 @@ class LaserPulseSlice(ValidatorBase):
         srwl.CalcIntFromElecField(intensity, self.wfr, 0, 0, 3, self.wfr.mesh.eStart, 0, 0) #extracts intensity
 
         # Reshaping intensity data from flat to 2D array
-        intens_2d = np.array(intensity).reshape((self.wfr.mesh.nx, self.wfr.mesh.ny), order='C')
+        intens_2d = np.array(intensity).reshape((self.wfr.mesh.nx, self.wfr.mesh.ny), order='C').astype(np.float64)
 
         efield_abs_sqrd_2d = np.sqrt(const.mu_0 / const.epsilon_0) * 2.0 * intens_2d # [V^2/m^2]
 
