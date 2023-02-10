@@ -26,7 +26,7 @@ _CRYSTAL_SLICE_DEFAULTS = PKDict(
     inversion_n_cells = 64,
     inversion_mesh_extent = 0.01, # [m]
     
-    crystal_alpha   = 1.2,      # [1/m]
+    crystal_alpha   = 120.0,      # [1/m], 1.2 1/cm
     pump_waist      = 0.00164,  # [m]
     pump_wavelength = 532.0e-9, # [m]
     pump_energy     = 0.0211,   # [J], pump laser energy onto the crystal
@@ -138,7 +138,9 @@ class CrystalSlice(Element):
         # z = distance from front of crystal to center of current slice (assumes all crystal slices have same length)
         z = self.length *(params.slice_index+0.5)
         # Create a default mesh of [num_excited_states/m^3]
-        self.pop_inversion_mesh = ((params.pump_wavelength/(const.h *const.c)) *((2.0 *(2.0/3.0) *params.pump_energy \
+        length_crystal = self.length *params.nslice
+        self.pop_inversion_mesh = ((params.pump_wavelength/(const.h *const.c)) \
+                                *((2.0 *(1 -np.exp(-params.crystal_alpha *length_crystal)) *(2.0/3.0) *params.pump_energy \
                                 *np.exp(-2.0 *(xv**2.0 +yv**2.0) /params.pump_waist**2.0))/(const.pi *params.pump_waist**2.0)) \
                                 *np.exp(-params.crystal_alpha *z)) \
                                 /(self.length *params.nslice)
