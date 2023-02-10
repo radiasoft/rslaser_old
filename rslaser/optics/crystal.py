@@ -87,6 +87,8 @@ class Crystal(Element):
         p = super()._get_params(params)
         # TODO (gurhar1133): fail fast here or is defaulting to all
         # one value ok?
+        # TODO (gurhar1133): also do we want to
+        # handle this prior to super()._get_params()??
         if len(p.n0) != p.nslice:
             p.n0 = [p.n0[0] for _ in range(p.nslice)]
         if len(p.n2) != p.nslice:
