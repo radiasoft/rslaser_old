@@ -22,7 +22,9 @@ def test_instantiation01():
 
 def test_crystal_nslice():
     crystal.Crystal(PKDict(nslice=51))
-
+    crystal.Crystal(PKDict(n0=[1], n2=[1]))
+    with pykern.pkunit.pkexcept(element.ElementException, "you've specified"):
+        crystal.Crystal(PKDict(nslice=51, n0=[1], n2=[1]))
 
 def crystal_slice_prop_test(prop_type):
     c = crystal.CrystalSlice()

@@ -11,22 +11,6 @@ from rslaser.utils import srwl_uti_data as srwutil
 from rslaser.optics.element import ElementException, Element
 
 _N_SLICE_DEFAULT = 50
-# _CRYSTAL_SLICE_DEFAULTS = PKDict(
-#     n0=1.75,
-#     n2=0.001,
-
-
-
-#     slice_index = 0,
-#     nslice = 1,
-#     inversion_n_cells = 64,
-#     inversion_mesh_extent = 0.01, # [m]
-
-#     crystal_alpha   = 1.2,      # [1/m]
-#     pump_waist      = 0.00164,  # [m]
-#     pump_wavelength = 532.0e-9, # [m]
-#     pump_energy     = 0.0211,   # [J], pump laser energy onto the crystal
-# )
 
 _CRYSTAL_DEFAULTS = PKDict(
         n0=[1.75 for _ in range(_N_SLICE_DEFAULT)],
@@ -68,8 +52,6 @@ class Crystal(Element):
         self.l_scale = params.l_scale
         self.slice = []
         for j in range(self.nslice):
-            # print("initializing slice j=", j)
-            # print(f"where params.n0={len(params.n0)} and params.n2={params.n2}")
             self.slice.append(
                 CrystalSlice(
                     PKDict(
@@ -84,15 +66,23 @@ class Crystal(Element):
             )
 
     def _get_params(self, params):
+        def _update_n0_and_n2(params_final, params, field):
+            if len(params_final[field]) != params_final.nslice:
+                if not params.get(field):
+                    params_final[field] = [params_final[field][0] for _ in range(params_final.nslice)]
+                    return
+                raise self._INPUT_ERROR(f"you've specified an {field} unequal length to nslice")
+
+        o = params.copy() if type(params) == PKDict else PKDict()
         p = super()._get_params(params)
-        # TODO (gurhar1133): fail fast here or is defaulting to all
-        # one value ok?
-        # TODO (gurhar1133): also do we want to
-        # handle this prior to super()._get_params()??
-        if len(p.n0) != p.nslice:
-            p.n0 = [p.n0[0] for _ in range(p.nslice)]
-        if len(p.n2) != p.nslice:
-            p.n2 = [p.n2[0] for _ in range(p.nslice)]
+        if not o.get('nslice') and not o.get('n0') and not o.get('n2'):
+            return p
+        if o.get("nslice"):
+            _update_n0_and_n2(p, o, "n0")
+            _update_n0_and_n2(p, o, "n2")
+            return p
+        if o.get("n0") and len(p.n0) != p.nslice:
+            p.nslice = len(p.n0)
         return p
 
     def propagate(self, laser_pulse, prop_type='default'):
