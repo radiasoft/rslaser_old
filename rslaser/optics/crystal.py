@@ -13,22 +13,22 @@ from rslaser.optics.element import ElementException, Element
 _N_SLICE_DEFAULT = 50
 
 _CRYSTAL_DEFAULTS = PKDict(
-        n0=[1.75 for _ in range(_N_SLICE_DEFAULT)],
-        n2=[0.001 for _ in range(_N_SLICE_DEFAULT)],
-        length=0.2,
-        l_scale=1,
-        nslice=_N_SLICE_DEFAULT,
-        slice_index=0,
-        A = 9.99988571e-01,
-        B = 1.99999238e-01,
-        C = -1.14285279e-04,
-        D = 9.99988571e-01,
-        inversion_n_cells = 64,
-        inversion_mesh_extent = 0.01, # [m]
-        crystal_alpha   = 1.2,      # [1/m]
-        pump_waist      = 0.00164,  # [m]
-        pump_wavelength = 532.0e-9, # [m]
-        pump_energy     = 0.0211,   # [J], pump laser energy onto the crystal
+    n0=[1.75 for _ in range(_N_SLICE_DEFAULT)],
+    n2=[0.001 for _ in range(_N_SLICE_DEFAULT)],
+    length=0.2,
+    l_scale=1,
+    nslice=_N_SLICE_DEFAULT,
+    slice_index=0,
+    A = 9.99988571e-01,
+    B = 1.99999238e-01,
+    C = -1.14285279e-04,
+    D = 9.99988571e-01,
+    inversion_n_cells = 64,
+    inversion_mesh_extent = 0.01, # [m]
+    crystal_alpha   = 1.2,      # [1/m]
+    pump_waist      = 0.00164,  # [m]
+    pump_wavelength = 532.0e-9, # [m]
+    pump_energy     = 0.0211,   # [J], pump laser energy onto the crystal
 )
 
 class Crystal(Element):
@@ -52,23 +52,25 @@ class Crystal(Element):
         self.l_scale = params.l_scale
         self.slice = []
         for j in range(self.nslice):
-            self.slice.append(
-                CrystalSlice(
-                    PKDict(
-                        n0=params.n0[j],
-                        n2=params.n2[j],
-                        length=params.length / params.nslice,
-                        l_scale = params.l_scale,
-                        nslice = params.nslice,
-                        slice_index = j
-                    )
+            p = params.copy()
+            p.update(
+                PKDict(
+                    n0=params.n0[j],
+                    n2=params.n2[j],
+                    length=params.length / params.nslice,
+                    slice_index = j,
                 )
+            )
+            self.slice.append(
+                CrystalSlice(params=p)
             )
 
     def _get_params(self, params):
+
         def _update_n0_and_n2(params_final, params, field):
             if len(params_final[field]) != params_final.nslice:
                 if not params.get(field):
+                    # if no n0/n2 specified then we use default nlice times in array
                     params_final[field] = [params_final[field][0] for _ in range(params_final.nslice)]
                     return
                 raise self._INPUT_ERROR(f"you've specified an {field} unequal length to nslice")
@@ -76,13 +78,16 @@ class Crystal(Element):
         o = params.copy() if type(params) == PKDict else PKDict()
         p = super()._get_params(params)
         if not o.get('nslice') and not o.get('n0') and not o.get('n2'):
+            # user specified nothing, use defaults provided by _get_params
             return p
         if o.get("nslice"):
+            # user specifed nslice, but not necissarily n0/n2
             _update_n0_and_n2(p, o, "n0")
             _update_n0_and_n2(p, o, "n2")
             return p
-        if o.get("n0") and len(p.n0) != p.nslice:
-            p.nslice = len(p.n0)
+        if (o.get("n0") or o.get("n2")):
+            if len(p.n0) < p.nslice or len(p.n2) < p.nslice:
+                p.nslice = min(len(p.n0), len(p.n2))
         return p
 
     def propagate(self, laser_pulse, prop_type='default'):
