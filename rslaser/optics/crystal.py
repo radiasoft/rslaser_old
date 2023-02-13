@@ -11,10 +11,11 @@ from rslaser.utils import srwl_uti_data as srwutil
 from rslaser.optics.element import ElementException, Element
 
 _N_SLICE_DEFAULT = 50
-
+_N0_DEFAULT = 1.75
+_N2_DEFAULT = 0.001
 _CRYSTAL_DEFAULTS = PKDict(
-    n0=[1.75 for _ in range(_N_SLICE_DEFAULT)],
-    n2=[0.001 for _ in range(_N_SLICE_DEFAULT)],
+    n0=[_N0_DEFAULT for _ in range(_N_SLICE_DEFAULT)],
+    n2=[_N2_DEFAULT for _ in range(_N_SLICE_DEFAULT)],
     length=0.2,
     l_scale=1,
     nslice=_N_SLICE_DEFAULT,
@@ -71,7 +72,10 @@ class Crystal(Element):
             if len(params_final[field]) != params_final.nslice:
                 if not params.get(field):
                     # if no n0/n2 specified then we use default nlice times in array
-                    params_final[field] = [params_final[field][0] for _ in range(params_final.nslice)]
+                    params_final[field] = [PKDict(
+                            n0=_N0_DEFAULT,
+                            n2=_N2_DEFAULT,
+                        )[field] for _ in range(params_final.nslice)]
                     return
                 raise self._INPUT_ERROR(f"you've specified an {field} unequal length to nslice")
 
