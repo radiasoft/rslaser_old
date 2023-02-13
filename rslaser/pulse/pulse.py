@@ -14,6 +14,7 @@ import rsmath.const as rsc
 import rslaser.utils.unit_conversion as units
 import rslaser.utils.srwl_uti_data as srwutil
 import scipy.constants as const
+from scipy import special
 import srwlib
 from srwlib import srwl
 from rslaser.utils.validator import ValidatorBase
@@ -300,9 +301,12 @@ class LaserPulseSlice(ValidatorBase):
         dy = (self.wfr.mesh.yFin - self.wfr.mesh.yStart)/self.wfr.mesh.ny
 
         # Field energy per grid cell is the area of that cell times the energy density
-        cell_volume = self.ds * dx * dy
-        energy_2d = cell_volume * (const.epsilon_0 / 2.0) * efield_abs_sqrd_2d
-
+        cell_area = dx * dy
+        end1 = (self._pulse_pos -0.5*self.ds) /(np.sqrt(2.0) *self.sig_s)
+        end2 = (self._pulse_pos +0.5*self.ds) /(np.sqrt(2.0) *self.sig_s)
+        energy_2d = cell_area *(const.epsilon_0 /2.0) \
+                    *(efield_abs_sqrd_2d /np.exp(-self._pulse_pos**2.0/(np.sqrt(2.0) *self.sig_s)**2.0)) \
+                    *((np.sqrt(np.pi)/2.0) *(np.sqrt(2.0) *self.sig_s) *(special.erf(end2) -special.erf(end1)))
         # Get slice value of photon_e (will be in eV)
         photon_e = self.photon_e_ev * const.e
 
