@@ -137,15 +137,20 @@ class CrystalSlice(Element):
         
         # z = distance from front of crystal to center of current slice (assumes all crystal slices have same length)
         z = self.length *(params.slice_index+0.5)
-        # Create a default mesh of [num_excited_states/m^3]
         length_crystal = self.length *params.nslice
+        slice_front = z -(self.length /2.0)
+        slice_end = z +(self.length /2.0)
+        
+        correction_factor = ((np.exp(-params.crystal_alpha *slice_front) -np.exp(-params.crystal_alpha *slice_end)) \
+                             /params.crystal_alpha) / (np.exp(-params.crystal_alpha *z) *self.length)
+        # Create a default mesh of [num_excited_states/m^3]
         self.pop_inversion_mesh = ((params.pump_wavelength/(const.h *const.c)) \
                                 *((2.0 *(1 -np.exp(-params.crystal_alpha *length_crystal)) *(2.0/3.0) *params.pump_energy \
                                 *np.exp(-2.0 *(xv**2.0 +yv**2.0) /params.pump_waist**2.0))/(const.pi *params.pump_waist**2.0)) \
-                                *np.exp(-params.crystal_alpha *z)) \
+                                *np.exp(-params.crystal_alpha *z) *correction_factor) \
                                 /(self.length *params.nslice)
-        
-    
+
+
     def _propagate_attenuate(self, laser_pulse):
         # n_x = wfront.mesh.nx  #  nr of grid points in x
         # n_y = wfront.mesh.ny  #  nr of grid points in y
