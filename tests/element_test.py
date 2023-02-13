@@ -15,9 +15,9 @@ def test_instantiation01():
     with pykern.pkunit.pkexcept(element.ElementException):
         crystal.Crystal(PKDict(slice_params=PKDict()))
     c = crystal.Crystal()
-    for i, s in enumerate(c.slice):
+    for s in c.slice:
         if s.length != c.length/c.nslice:
-            pykern.pkunit.pkfail(f'CrystalSlice had length={s.length} not equal to Crystal wrapper length/nslice={c.length/c.nslice}')
+            pykern.pkunit.pkfail('CrystalSlice had length not equal to Crystal wrapper length/nslice')
 
 
 def test_crystal_nslice():
