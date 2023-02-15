@@ -484,13 +484,9 @@ class CrystalSlice(Element):
 
         for i in np.arange(nslices):
             thisSlice = laser_pulse.slice[i]
-            if with_gain_calc:
-                # TODO (gurhar1133): better way of defaulting differently for
-                # _propagate_gain_test
-
-                # Updates the self.n_photons_2d of the pulse wavefront
-                # and the self.pop_inversion_mesh values of the crystal slice
-                thisSlice = self.calc_gain(thisSlice)
+            # Updates the self.n_photons_2d of the pulse wavefront
+            # and the self.pop_inversion_mesh values of the crystal slice
+            thisSlice = self.calc_gain(thisSlice)
 
             if n2 == 0:
                 #print('n2 = 0')
