@@ -167,7 +167,7 @@ class CrystalSlice(Element):
                                 /(self.length *params.nslice)
 
 
-    def _propagate_attenuate(self, laser_pulse, with_gain_calc):
+    def _propagate_attenuate(self, laser_pulse, calc_gain):
         # n_x = wfront.mesh.nx  #  nr of grid points in x
         # n_y = wfront.mesh.ny  #  nr of grid points in y
         # sig_cr_sec = np.ones((n_x, n_y), dtype=np.float32)
@@ -181,14 +181,14 @@ class CrystalSlice(Element):
         raise NotImplementedError(f'{self}.propagate() with prop_type="attenuate" is not currently supported')
 
 
-    def _propagate_placeholder(self, laser_pulse, with_gain_calc):
+    def _propagate_placeholder(self, laser_pulse, calc_gain):
         # nslices = len(laser_pulse.slice)
         # for i in np.arange(nslices):
         #     print ('Pulse slice ', i+1, ' of ', nslices, ' propagated through crystal slice.')
         # return laser_pulse
         raise NotImplementedError(f'{self}.propagate() with prop_type="placeholder" is not currently supported')
 
-    def _propagate_n0n2_lct(self, laser_pulse, with_gain_calc):
+    def _propagate_n0n2_lct(self, laser_pulse, calc_gain):
         print('prop_type = n0n2_lct')
         nslices_pulse = len(laser_pulse.slice)
         L_cryst = self.length
@@ -221,7 +221,7 @@ class CrystalSlice(Element):
         for i in np.arange(nslices_pulse):
         # i = 0
             thisSlice = laser_pulse.slice[i]
-            if with_gain_calc:
+            if calc_gain:
                 thisSlice = self.calc_gain(thisSlice)
 
             # construct 2d numpy complex E_field from pulse wfr object
@@ -308,7 +308,7 @@ class CrystalSlice(Element):
         # return wfr1
         return laser_pulse
 
-    def _propagate_abcd_lct(self, laser_pulse, with_gain_calc):
+    def _propagate_abcd_lct(self, laser_pulse, calc_gain):
         print('prop_type = abcd_lct')
         nslices_pulse = len(laser_pulse.slice)
         l_scale = self.l_scale
@@ -336,7 +336,7 @@ class CrystalSlice(Element):
         for i in np.arange(nslices_pulse):
         # i = 0
             thisSlice = laser_pulse.slice[i]
-            if with_gain_calc:
+            if calc_gain:
                 thisSlice = self.calc_gain(thisSlice)
 
             # construct 2d numpy complex E_field from pulse wfr object
@@ -423,7 +423,7 @@ class CrystalSlice(Element):
         # return wfr1
         return laser_pulse
 
-    def _propagate_n0n2_srw(self, laser_pulse, with_gain_calc):
+    def _propagate_n0n2_srw(self, laser_pulse, calc_gain):
         print('prop_type = n0n2_srw')
         nslices = len(laser_pulse.slice)
         L_cryst = self.length
@@ -433,7 +433,7 @@ class CrystalSlice(Element):
 
         for i in np.arange(nslices):
             thisSlice = laser_pulse.slice[i]
-            if with_gain_calc:
+            if calc_gain:
                 thisSlice = self.calc_gain(thisSlice)
             #print(type(thisSlice))
 
@@ -474,7 +474,7 @@ class CrystalSlice(Element):
                 print('Propagated pulse slice ', i+1, ' of ', nslices)
         return laser_pulse
 
-    def _propagate_gain_test(self, laser_pulse, with_gain_calc):
+    def _propagate_gain_test(self, laser_pulse, calc_gain):
         #print('prop_type = gain_test (n0n2_srw)')
         nslices = len(laser_pulse.slice)
         L_cryst = self.length
@@ -525,7 +525,7 @@ class CrystalSlice(Element):
                 #print('Propagated pulse slice ', i+1, ' of ', nslices)
         return laser_pulse
 
-    def propagate(self, laser_pulse, prop_type, with_gain_calc=False):
+    def propagate(self, laser_pulse, prop_type, calc_gain=False):
         return PKDict(
             attenuate=self._propagate_attenuate,
             placeholder=self._propagate_placeholder,
@@ -534,7 +534,7 @@ class CrystalSlice(Element):
             n0n2_srw=self._propagate_n0n2_srw,
             gain_test=self._propagate_gain_test,
             default=super().propagate,
-        )[prop_type](laser_pulse, with_gain_calc)
+        )[prop_type](laser_pulse, calc_gain)
 
     # KW To Do: consider merging with _interpolate_pop_change()
     def _interpolate_pop_inversion(self, lp_wfr):
