@@ -127,7 +127,10 @@ class CrystalSlice(Element):
         self.n0 = params.n0
         self.n2 = params.n2
         self.l_scale = params.l_scale
-        # self.pop_inv = params._pop_inv
+        self.A = params.A
+        self.B = params.B
+        self.C = params.C
+        self.D = params.D
 
         #  Assuming wfr0 exsts, created e.g. via
         #  wfr0=createGsnSrcSRW(sigrW,propLen,pulseE,poltype,photon_e_ev,sampFact,mx,my)
