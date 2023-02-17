@@ -94,12 +94,9 @@ class Crystal(Element):
                 p.nslice = min(len(p.n0), len(p.n2))
         return p
 
-    def propagate(self, laser_pulse, prop_type='default'):
-        # TODO (gurhar1133): should this take laser_pulse and prop_type?
-        # also, should pass the same pulse through each slice and return
-        # the final pulse result?
+    def propagate(self, laser_pulse, prop_type, calc_gain=False):
         for s in self.slice:
-            laser_pulse = s.propagate(laser_pulse, prop_type)
+            laser_pulse = s.propagate(laser_pulse, prop_type, calc_gain)
         return laser_pulse
 
 
