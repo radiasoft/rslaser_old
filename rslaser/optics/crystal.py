@@ -20,10 +20,14 @@ _CRYSTAL_DEFAULTS = PKDict(
     l_scale=1,
     nslice=_N_SLICE_DEFAULT,
     slice_index=0,
-    A = 9.99988571e-01,
-    B = 1.99999238e-01,
-    C = -1.14285279e-04,
-    D = 9.99988571e-01,
+    # A = 9.99988571e-01,
+    # B = 1.99999238e-01,
+    # C = -1.14285279e-04,
+    # D = 9.99988571e-01,
+    A = 0.99765495,
+    B = 1.41975385,
+    C = -0.0023775,
+    D = 0.99896716,
     inversion_n_cells = 64,
     inversion_mesh_extent = 0.01, # [m]
     crystal_alpha   = 120.0,      # [1/m], 1.2 1/cm
@@ -131,7 +135,11 @@ class CrystalSlice(Element):
         self.n2 = params.n2
         self.l_scale = params.l_scale
         # self.pop_inv = params._pop_inv
-
+        self.A = params.A
+        self.B = params.B
+        self.C = params.C
+        self.D = params.D
+        
         #  Assuming wfr0 exsts, created e.g. via
         #  wfr0=createGsnSrcSRW(sigrW,propLen,pulseE,poltype,photon_e_ev,sampFact,mx,my)
         #n_x = wfr0.mesh.nx  #  nr of grid points in x
@@ -603,7 +611,7 @@ class CrystalSlice(Element):
         temp_pop_inversion = self._interpolate_pop_inversion(lp_wfr)
 
         # Calculate gain
-        absorp_cross_sec = 2.0e-24             # [m^2] (2.0e-20 cm^2)
+        absorp_cross_sec = 4.1e-23 #2.0e-24             # [m^2]
         degen_factor = 1.0                     # Not sure what this value should be
 
         dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
