@@ -521,7 +521,7 @@ class CrystalSlice(Element):
             b_y = np.linspace(b.mesh.yStart,b.mesh.yFin,b.mesh.ny) 
 
         original_total = np.sum(np.sum(temp_array))
-        #print(original_total)
+        print('Mesh original total: ', original_total)
         if not (np.array_equal(a_x, b_x) and np.array_equal(a_y, b_y)):
         
             # Create the spline for interpolation
@@ -537,19 +537,23 @@ class CrystalSlice(Element):
             temp_array[:,b_y < np.min(a_y)] = 0.0
 
         post_interp_total = np.sum(np.sum(temp_array))
-        #if np.max(b_x) > np.max(a_x):
-        #    print('  increasing mesh size\n')
+        if np.max(b_x) > np.max(a_x):
+            print('  increasing mesh size')
         #    temp_array *= (original_total/post_interp_total) #Only scale if final mesh is larger than original
-        #print(np.sum(np.sum(temp_array)))
+        elif np.max(b_x) < np.max(a_x):
+            print('  decreasing mesh size')
+        print('Mesh post-interp total: ', np.sum(np.sum(temp_array)))
         return temp_array  
     
     def calc_gain(self,thisSlice):
 
+        print('\nSlice ', thisSlice.slice_index)
+        
         lp_wfr = thisSlice.wfr
 
         # Interpolate the excited state density mesh of the current crystal slice to
         # match the laser_pulse wavefront mesh
-        #print('\nInterp pop_inversion:\n')
+        print('\nInterp pop_inversion:')
         temp_pop_inversion = self._interpolate_a_to_b('pop_inversion', lp_wfr)
 
         # Calculate gain
@@ -558,7 +562,7 @@ class CrystalSlice(Element):
 
         # Interpolate the excited state density mesh of the current crystal slice to
         # match the laser_pulse wavefront mesh
-        #print('\nInterp n_photons:\n')
+        print('\nInterp n_photons:')
         thisSlice.n_photons_2d['mesh'] = self._interpolate_a_to_b(thisSlice.n_photons_2d, lp_wfr)  
         thisSlice.n_photons_2d['x'] = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
         thisSlice.n_photons_2d['y'] = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
@@ -581,7 +585,7 @@ class CrystalSlice(Element):
 
         # Interpolate the change to the excited state density mesh of the current crystal slice (change_pop_inversion)
         # so that it matches self.pop_inversion
-        #print('\nInterp change_pop_inversion:\n')
+        print('\nInterp change_pop_inversion:')
         change_pop_inversion['mesh'] = self._interpolate_a_to_b(change_pop_inversion, 'pop_inversion')
 
         # Update the pop_inversion_mesh
