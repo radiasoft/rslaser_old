@@ -509,24 +509,24 @@ class CrystalSlice(Element):
 
         elif b == 'pop_inversion': 
             # interpolate copy of change_pop_inversion to match pop_inversion
-            temp_array = np.copy(a['mesh'])
+            temp_array = np.copy(a.mesh)
 
-            a_x = a['x']
-            a_y = a['y']
+            a_x = a.x
+            a_y = a.y
             b_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
             b_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
 
         else: 
             # interpolate copy of n_photons to match lp_wfr
-            temp_array = np.copy(a['mesh'])
+            temp_array = np.copy(a.mesh)
 
-            a_x = a['x']
-            a_y = a['y']
+            a_x = a.x
+            a_y = a.y
             b_x = np.linspace(b.mesh.xStart,b.mesh.xFin,b.mesh.nx)
             b_y = np.linspace(b.mesh.yStart,b.mesh.yFin,b.mesh.ny) 
 
         original_total = np.sum(np.sum(temp_array))
-        print('Mesh original total: ', original_total)
+        #print('Mesh original total: ', original_total)
         if not (np.array_equal(a_x, b_x) and np.array_equal(a_y, b_y)):
         
             # Create the spline for interpolation
@@ -542,23 +542,23 @@ class CrystalSlice(Element):
             temp_array[:,b_y < np.min(a_y)] = 0.0
 
         post_interp_total = np.sum(np.sum(temp_array))
-        if np.max(b_x) > np.max(a_x):
-            print('  increasing mesh size')
+        #if np.max(b_x) > np.max(a_x):
+        #    print('  increasing mesh size')
         #    temp_array *= (original_total/post_interp_total) #Only scale if final mesh is larger than original
-        elif np.max(b_x) < np.max(a_x):
-            print('  decreasing mesh size')
-        print('Mesh post-interp total: ', np.sum(np.sum(temp_array)))
+        #elif np.max(b_x) < np.max(a_x):
+        #    print('  decreasing mesh size')
+        #print('Mesh post-interp total: ', np.sum(np.sum(temp_array)))
         return temp_array  
     
     def calc_gain(self,thisSlice):
 
-        print('\nSlice ', thisSlice.slice_index)
+        #print('\nSlice ', thisSlice.slice_index)
         
         lp_wfr = thisSlice.wfr
 
         # Interpolate the excited state density mesh of the current crystal slice to
         # match the laser_pulse wavefront mesh
-        print('\nInterp pop_inversion:')
+        #print('\nInterp pop_inversion:')
         temp_pop_inversion = self._interpolate_a_to_b('pop_inversion', lp_wfr)
 
         # Calculate gain
@@ -567,14 +567,14 @@ class CrystalSlice(Element):
 
         # Interpolate the excited state density mesh of the current crystal slice to
         # match the laser_pulse wavefront mesh
-        print('\nInterp n_photons:')
-        thisSlice.n_photons_2d['mesh'] = self._interpolate_a_to_b(thisSlice.n_photons_2d, lp_wfr)  
-        thisSlice.n_photons_2d['x'] = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
-        thisSlice.n_photons_2d['y'] = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
+        #print('\nInterp n_photons:')
+        thisSlice.n_photons_2d.mesh = self._interpolate_a_to_b(thisSlice.n_photons_2d, lp_wfr)  
+        thisSlice.n_photons_2d.x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
+        thisSlice.n_photons_2d.y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
         
         dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
         dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
-        n_incident_photons = thisSlice.n_photons_2d['mesh'] / (dx * dy)   # [1/m^2]
+        n_incident_photons = thisSlice.n_photons_2d.mesh / (dx * dy)   # [1/m^2]
 
         energy_gain = np.zeros(np.shape(n_incident_photons))
         gain_condition = np.where(n_incident_photons > 0)
@@ -584,20 +584,22 @@ class CrystalSlice(Element):
 
         # Calculate change factor for pop_inversion, note it has the same dimensions as lp_wfr
         change_pop_mesh = -(degen_factor * n_incident_photons * (energy_gain - 1.0) / self.length)
-        change_pop_inversion = {'mesh':change_pop_mesh,
-                                'x':np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx),
-                                'y':np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)} 
+        change_pop_inversion = PKDict(
+                                mesh = change_pop_mesh,
+                                x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx),
+                                y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
+                                )
 
         # Interpolate the change to the excited state density mesh of the current crystal slice (change_pop_inversion)
         # so that it matches self.pop_inversion
-        print('\nInterp change_pop_inversion:')
-        change_pop_inversion['mesh'] = self._interpolate_a_to_b(change_pop_inversion, 'pop_inversion')
+        #print('\nInterp change_pop_inversion:')
+        change_pop_inversion.mesh = self._interpolate_a_to_b(change_pop_inversion, 'pop_inversion')
 
         # Update the pop_inversion_mesh
-        self.pop_inversion_mesh += change_pop_inversion['mesh']
+        self.pop_inversion_mesh += change_pop_inversion.mesh
 
         # Update the number of photons
-        thisSlice.n_photons_2d['mesh'] *= energy_gain
+        thisSlice.n_photons_2d.mesh *= energy_gain
         
         # Update the wavefront itself: (KW To Do: make this a separate method?)
         #    First extract the electric fields
