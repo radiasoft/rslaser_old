@@ -268,7 +268,7 @@ class LaserPulseSlice(ValidatorBase):
                 ex_numpy[2*i] = ex_real[i]
                 ex_numpy[2*i+1] = ex_imag[i]
             
-            number_slices_correction = np.exp(-self._pulse_pos**2.0/(np.sqrt(2.0) *self.sig_s)**2.0)
+            number_slices_correction = np.exp(-self._pulse_pos**2.0/(2.0 *self.sig_s)**2.0)
             ex = array.array('f', np.multiply(ex_numpy, number_slices_correction).tolist())
             
             # Need gaussian longitudinal profile... we need to scale ex on the 2d grid by the factor of where it is on the profile...
