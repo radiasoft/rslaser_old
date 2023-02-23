@@ -320,9 +320,11 @@ class LaserPulseSlice(ValidatorBase):
 
         # Number of photons in each grid cell can be found by dividing the
         # total energy of the laser in that grid cell by the energy of a photon
-        n_photons_2d = {'mesh': (energy_2d / photon_e),
-                        'x':np.linspace(self.wfr.mesh.xStart,self.wfr.mesh.xFin,self.wfr.mesh.nx),
-                        'y':np.linspace(self.wfr.mesh.yStart,self.wfr.mesh.yFin,self.wfr.mesh.ny)} 
+        n_photons_2d = PKDict(
+                        mesh = (energy_2d / photon_e),
+                        x = np.linspace(self.wfr.mesh.xStart,self.wfr.mesh.xFin,self.wfr.mesh.nx),
+                        y = np.linspace(self.wfr.mesh.yStart,self.wfr.mesh.yFin,self.wfr.mesh.ny)
+                        )
         return n_photons_2d
 
 
