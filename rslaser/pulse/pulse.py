@@ -36,6 +36,7 @@ _LASER_PULSE_DEFAULTS = PKDict(
         poltype = 1,
         mx = 0,
         my = 0,
+        pad_factor = 0.0
 )
 _ENVELOPE_DEFAULTS = PKDict(
     w0=.1,
@@ -60,6 +61,9 @@ class LaserPulse(ValidatorBase):
     """
     The LaserPulse contains an array of LaserPulseSlice instances, which track
     details of the evolution in time.
+    
+    Assumes a longitudinal gaussian profile when initializing
+    
     Args:
         params (PKDict):
                 photon_e_ev (float): Photon energy [eV]
@@ -124,9 +128,51 @@ class LaserPulse(ValidatorBase):
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
+    def extract_total_2d_elec_fields(self):
+        # Assumes gaussian shape
+        
+        nslices_pulse = len(self.slice)
+        
+        # Assumes each slice has the same dimensions
+        e_total = PKDict(
+            re = np.zeros((self.slice[0].wfr.mesh.nx,self.slice[0].wfr.mesh.ny,nslices_pulse)),
+            im = np.zeros((self.slice[0].wfr.mesh.nx,self.slice[0].wfr.mesh.ny,nslices_pulse))
+        )
+        
+        pulse_end1 = (self.slice[0]._pulse_pos -0.5 *self.slice[0].ds) /(2.0 *self.slice[0].sig_s)
+        pulse_end2 = (self.slice[-1]._pulse_pos +0.5 *self.slice[-1].ds) /(2.0 *self.slice[-1].sig_s)
+        pulse_factor = (special.erf(pulse_end2) -special.erf(pulse_end1))
+        
+        for laser_index_i in np.arange(nslices_pulse):
+            
+            thisSlice = self.slice[laser_index_i]
+            slice_wfr = thisSlice.wfr
+            
+            # total component of electric field
+            re0, re0_mesh = srwutil.calc_int_from_wfr(slice_wfr, _pol=6, _int_type=5, _det=None, _fname='', _pr=False)
+            im0, im0_mesh = srwutil.calc_int_from_wfr(slice_wfr, _pol=6, _int_type=6, _det=None, _fname='', _pr=False)
+            
+            e_total.re[:,:,laser_index_i] = np.array(re0).reshape((slice_wfr.mesh.nx, slice_wfr.mesh.ny), order='C').astype(np.float64)
+            e_total.im[:,:,laser_index_i] = np.array(im0).reshape((slice_wfr.mesh.nx, slice_wfr.mesh.ny), order='C').astype(np.float64)
+            
+            # gaussian scale
+            slice_end1 = (thisSlice._pulse_pos -0.5 *thisSlice.ds) /(2.0 *thisSlice.sig_s)
+            slice_end2 = (thisSlice._pulse_pos +0.5 *thisSlice.ds) /(2.0 *thisSlice.sig_s)
+            slice_width_factor = (1.0 /np.exp(-thisSlice._pulse_pos**2.0/(2.0 *thisSlice.sig_s)**2.0)) \
+                                    *((special.erf(slice_end2) -special.erf(slice_end1)) /pulse_factor)
+            
+            # scale slice fields by factor to represent full slice, not just middle value
+            e_total.re[:,:,laser_index_i] *= slice_width_factor
+            e_total.im[:,:,laser_index_i] *= slice_width_factor
+        
+        e_total.re = np.sum(e_total.re, axis=2)
+        e_total.im = np.sum(e_total.im, axis=2)
+        
+        return e_total   
+
     def _validate_params(self, input_params, files):
-        if files and input_params.nslice > 1:
-            raise self._INPUT_ERROR("cannot use file inputs with more than one slice")
+        # if files and input_params.nslice > 1:
+        #     raise self._INPUT_ERROR("cannot use file inputs with more than one slice")
         super()._validate_params(input_params)
 
     def compute_middle_slice_intensity(self):
@@ -165,6 +211,8 @@ class LaserPulseSlice(ValidatorBase):
     There will be a number of wavefronts each with different wavelengths (energy).
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
+    
+    Assumes a longitudinal gaussian profile when initializing
 
     Args:
         slice_index (int): index of slice
@@ -231,7 +279,8 @@ class LaserPulseSlice(ValidatorBase):
                         pixel_size_v = float(line.split(":")[-1].split(",")[0])  # microns
 
             # central wavelength of the laser pulse
-            lambda0_micron = 0.8
+            lambda0_micron = self._lambda0 *(1.0e6) #0.8
+            
             ccd_data = np.genfromtxt(files.ccd, skip_header=1)
             ccd_data = _reshape_data(ccd_data)
 
@@ -240,9 +289,9 @@ class LaserPulseSlice(ValidatorBase):
             ny = ccd_data.shape[0]
 
             # create the x,y arrays with physical units based on the diagnostic pixel dimensions
-            x_max = 0.002    # [m]
+            x_max = 0.5 * (nx + 1.) * pixel_size_h * 1.0e-6    # [m]      #0.002    # [m]
             x_min = -x_max
-            y_max = x_max
+            y_max = 0.5 * (ny + 1.) * pixel_size_v * 1.0e-6    # [m]      #x_max
             y_min = -y_max
 
             # parse the measured phases of the wavefront
@@ -251,10 +300,26 @@ class LaserPulseSlice(ValidatorBase):
             # clean up any NaN's
             indices = np.isnan(wfs_data)
             wfs_data = _reshape_data(_array_cleaner(wfs_data, indices))
-
+            
             # convert from microns to radians
             rad_per_micron = math.pi / lambda0_micron
             wfs_data *= rad_per_micron
+            
+            # pad the data with zeros to double the initial range
+            pad_factor = params.pad_factor
+            if pad_factor > 0:
+                n_init = nx # assumes nx = ny
+
+                x_max *= pad_factor
+                x_min *= pad_factor
+                y_max *= pad_factor
+                y_min *= pad_factor
+                nx *= int(pad_factor)
+                ny *= int(pad_factor)
+                
+                wfs_data = np.pad(wfs_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
+                ccd_data = np.pad(ccd_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
+            
             assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
 
             # Calulate the real and imaginary parts of the Ex,Ey electric field components
@@ -266,13 +331,21 @@ class LaserPulseSlice(ValidatorBase):
             for i in range(len(ex_real)):
                 ex_numpy[2*i] = ex_real[i]
                 ex_numpy[2*i+1] = ex_imag[i]
-            ex = array.array('f', ex_numpy.tolist())
-            ey = array.array('f', len(ex)*[0.])
+            
+            # scale the wfr sensor data
+            self.wfs_norm_factor = 3088.2025747914677
+            
+            # scale for slice location
+            number_slices_correction = np.exp(-self._pulse_pos**2.0/(2.0 *self.sig_s)**2.0)
+            ex = array.array('f', (ex_numpy *number_slices_correction *self.wfs_norm_factor).tolist())
+            
+            ey = array.array('f', len(ex)*[0.]) # Don't need to change because set to zero
             self.wfr = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
-                    _eStart=1.55, _eFin=1.55, _ne=1,
+                    _eStart=self.photon_e_ev, _eFin=self.photon_e_ev, _ne=1,   #_eStart=1.55, _eFin=1.55, _ne=1,
                     _xStart=x_min, _xFin=x_max, _nx=nx,
                     _yStart=y_min, _yFin=y_max, _ny=ny,
                     _zStart=0., _partBeam=None)
+            
             return
  
         # Adjust for the length of the pulse + a constant factor to make pulseE = sum(energy_2d)
@@ -289,12 +362,16 @@ class LaserPulseSlice(ValidatorBase):
 
     def calc_init_n_photons(self):
 
-        intensity = srwlib.array('f', [0]*self.wfr.mesh.nx*self.wfr.mesh.ny) # "flat" array to take 2D intensity data
-        srwl.CalcIntFromElecField(intensity, self.wfr, 0, 0, 3, self.wfr.mesh.eStart, 0, 0) #extracts intensity
+        # Note: assumes longitudinal gaussian profile when initializing
+        
+        # intensity = srwlib.array('f', [0]*self.wfr.mesh.nx*self.wfr.mesh.ny) # "flat" array to take 2D intensity data
+        # srwl.CalcIntFromElecField(intensity, self.wfr, 0, 0, 3, self.wfr.mesh.eStart, 0, 0) #extracts intensity
+        
+        # # Reshaping intensity data from flat to 2D array
+        # intens_2d = np.array(intensity).reshape((self.wfr.mesh.nx, self.wfr.mesh.ny), order='C').astype(np.float64)
 
-        # Reshaping intensity data from flat to 2D array
-        intens_2d = np.array(intensity).reshape((self.wfr.mesh.nx, self.wfr.mesh.ny), order='C').astype(np.float64)
-
+        intens_2d = srwutil.calc_int_from_elec(self.wfr) #extract 2d intensity
+        
         efield_abs_sqrd_2d = np.sqrt(const.mu_0 / const.epsilon_0) * 2.0 * intens_2d # [V^2/m^2]
 
         dx = (self.wfr.mesh.xFin - self.wfr.mesh.xStart)/self.wfr.mesh.nx
@@ -312,7 +389,12 @@ class LaserPulseSlice(ValidatorBase):
 
         # Number of photons in each grid cell can be found by dividing the
         # total energy of the laser in that grid cell by the energy of a photon
-        return energy_2d / photon_e
+        n_photons_2d = PKDict(
+                        mesh = (energy_2d / photon_e),
+                        x = np.linspace(self.wfr.mesh.xStart,self.wfr.mesh.xFin,self.wfr.mesh.nx),
+                        y = np.linspace(self.wfr.mesh.yStart,self.wfr.mesh.yFin,self.wfr.mesh.ny)
+                        )
+        return n_photons_2d
 
 
 class LaserPulseEnvelope(ValidatorBase):

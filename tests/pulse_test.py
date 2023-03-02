@@ -127,12 +127,3 @@ def test_from_file():
         data_dir.join("2d_wf_intensity.ndiff"),
         actual=str(intensity),
     )
-    pulse_inputs.nslice = 2
-    with pykern.pkunit.pkexcept(
-        pulse.InvalidLaserPulseInputError,
-        "cannot use file inputs with more than one slice",
-    ):
-        pulse.LaserPulse(
-            pulse_inputs,
-            f,
-        )

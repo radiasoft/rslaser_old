@@ -14,7 +14,7 @@ import srwlib
 from srwlib import srwl
 from srwlib import *
 
-
+import scipy.constants as const
 
 
 def createGsnSrcSRW(sigx, sigy, num_sig, dist_waist, pulseE, poltype, nx = 400, ny = 400, phE=10e3, mx = 0, my = 0):
@@ -225,3 +225,19 @@ def wfrGetPol(wfr):
     norm=math.sqrt(ReEx00**2+ImEx00**2+ReEy00**2+ImEy00**2)  ##Normalization so that abs(Re[Pvec])^2+abs(Im[Pvec])^2=1
     Pvec=(1/norm)*np.array([ReEx00+ImEx00*(1j), ReEy00+ImEy00*(1j)])
     return Pvec
+
+#Intensity from electric fields calculation function
+def calc_int_from_elec(_wfr):
+        
+    # total real and imag components of electric field
+    re0, re0_mesh = calc_int_from_wfr(_wfr, _pol=6, _int_type=5, _det=None, _fname='', _pr=False)
+    im0, im0_mesh = calc_int_from_wfr(_wfr, _pol=6, _int_type=6, _det=None, _fname='', _pr=False)
+        
+    # reshape to 2d mesh
+    elec_fields_re = np.array(re0).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
+    elec_fields_im = np.array(im0).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
+    
+    # calculate intensity
+    slice_intensity = 0.5 *const.c *const.epsilon_0 *(elec_fields_re**2.0 + elec_fields_im**2.0)
+    
+    return slice_intensity

@@ -194,12 +194,12 @@ class CrystalSlice(Element):
         raise NotImplementedError(f'{self}.propagate() with prop_type="placeholder" is not currently supported')
 
     def _propagate_n0n2_lct(self, laser_pulse, calc_gain):
-        print('prop_type = n0n2_lct')
+        #print('prop_type = n0n2_lct')
         nslices_pulse = len(laser_pulse.slice)
         L_cryst = self.length
         n0 = self.n0
         n2 = self.n2
-        print('n0: %g, n2: %g' %(n0, n2))
+        #print('n0: %g, n2: %g' %(n0, n2))
         l_scale = self.l_scale
 
         photon_e_ev = laser_pulse.photon_e_ev
@@ -207,7 +207,7 @@ class CrystalSlice(Element):
         ##Convert energy to wavelength
         hc_ev_um = 1.23984198   # hc [eV*um]
         phLambda = hc_ev_um / photon_e_ev * 1e-6 # wavelength corresponding to photon_e_ev in meters
-        print("Wavelength corresponding to %g keV: %g microns" %(photon_e_ev * 1e-3, phLambda / 1e-6))
+        #print("Wavelength corresponding to %g keV: %g microns" %(photon_e_ev * 1e-3, phLambda / 1e-6))
 
         # calculate components of ABCD matrix corrected with wavelength and scale factor for use in LCT algorithm
         gamma = np.sqrt(n2/n0)
@@ -217,10 +217,10 @@ class CrystalSlice(Element):
         D = np.cos(gamma*L_cryst)
         abcd_mat_cryst = np.array([[ A,  B  ],
                     [ C, D ]])
-        print('A: %g' %A)
-        print('B: %g' %B)
-        print('C: %g' %C)
-        print('D: %g' %D)
+        #print('A: %g' %A)
+        #print('B: %g' %B)
+        #print('C: %g' %C)
+        #print('D: %g' %D)
 
 
         for i in np.arange(nslices_pulse):
@@ -235,14 +235,14 @@ class CrystalSlice(Element):
             wfr0 = thisSlice.wfr
 
             # horizontal component of electric field
-            re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=5, _det=None, _fname='', _pr=True)
-            im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=6, _det=None, _fname='', _pr=True)
+            re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
+            im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
             re0_2d_ex = np.array(re0_ex).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
             im0_2d_ex = np.array(im0_ex).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
 
             # vertical componenent of electric field
-            re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(wfr0, _pol=1, _int_type=5, _det=None, _fname='', _pr=True)
-            im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(wfr0, _pol=1, _int_type=6, _det=None, _fname='', _pr=True)
+            re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(wfr0, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
+            im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(wfr0, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
             re0_2d_ey = np.array(re0_ey).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
             im0_2d_ey = np.array(im0_ey).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
 
@@ -314,7 +314,7 @@ class CrystalSlice(Element):
         return laser_pulse
 
     def _propagate_abcd_lct(self, laser_pulse, calc_gain):
-        print('prop_type = abcd_lct')
+        #print('prop_type = abcd_lct')
         nslices_pulse = len(laser_pulse.slice)
         l_scale = self.l_scale
 
@@ -323,7 +323,7 @@ class CrystalSlice(Element):
         ##Convert energy to wavelength
         hc_ev_um = 1.23984198   # hc [eV*um]
         phLambda = hc_ev_um / photon_e_ev * 1e-6 # wavelength corresponding to photon_e_ev in meters
-        print("Wavelength corresponding to %g keV: %g microns" %(photon_e_ev * 1e-3, phLambda / 1e-6))
+        #print("Wavelength corresponding to %g keV: %g microns" %(photon_e_ev * 1e-3, phLambda / 1e-6))
 
         # rescale ABCD matrix with wavelength and scale factor for use in LCT algorithm
         A = self.A
@@ -332,10 +332,10 @@ class CrystalSlice(Element):
         D = self.D
         abcd_mat_cryst = np.array([[ A,  B  ],
                     [ C, D ]])
-        print('A: %g' %A)
-        print('B: %g' %B)
-        print('C: %g' %C)
-        print('D: %g' %D)
+        #print('A: %g' %A)
+        #print('B: %g' %B)
+        #print('C: %g' %C)
+        #print('D: %g' %D)
 
 
         for i in np.arange(nslices_pulse):
@@ -350,14 +350,14 @@ class CrystalSlice(Element):
             wfr0 = thisSlice.wfr
 
             # horizontal component of electric field
-            re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=5, _det=None, _fname='', _pr=True)
-            im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=6, _det=None, _fname='', _pr=True)
+            re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
+            im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(wfr0, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
             re0_2d_ex = np.array(re0_ex).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
             im0_2d_ex = np.array(im0_ex).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
 
             # vertical componenent of electric field
-            re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(wfr0, _pol=1, _int_type=5, _det=None, _fname='', _pr=True)
-            im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(wfr0, _pol=1, _int_type=6, _det=None, _fname='', _pr=True)
+            re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(wfr0, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
+            im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(wfr0, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
             re0_2d_ey = np.array(re0_ey).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
             im0_2d_ey = np.array(im0_ey).reshape((wfr0.mesh.nx, wfr0.mesh.ny), order='C')
 
@@ -429,12 +429,12 @@ class CrystalSlice(Element):
         return laser_pulse
 
     def _propagate_n0n2_srw(self, laser_pulse, calc_gain):
-        print('prop_type = n0n2_srw')
+        #print('prop_type = n0n2_srw')
         nslices = len(laser_pulse.slice)
         L_cryst = self.length
         n0 = self.n0
         n2 = self.n2
-        print('n0: %g, n2: %g' %(n0, n2))
+        #print('n0: %g, n2: %g' %(n0, n2))
 
         for i in np.arange(nslices):
             thisSlice = laser_pulse.slice[i]
@@ -476,7 +476,7 @@ class CrystalSlice(Element):
                 #optBL = createABCDbeamline(A,B,C,D)
 
                 srwlib.srwl.PropagElecField(thisSlice.wfr, optBL) # thisSlice s.b. a pointer, not a copy
-                print('Propagated pulse slice ', i+1, ' of ', nslices)
+                #print('Propagated pulse slice ', i+1, ' of ', nslices)
         return laser_pulse
 
     def _propagate_gain_calc(self, laser_pulse, calc_gain):
@@ -497,102 +497,95 @@ class CrystalSlice(Element):
             default=super().propagate,
         )[prop_type](laser_pulse, calc_gain)
 
-    # KW To Do: consider merging with _interpolate_pop_change()
-    def _interpolate_pop_inversion(self, lp_wfr):
-        # Function returns a temporary mesh that is a copy of the original interpolated to match the wfr mesh
-        # (with possible zero-padding, if needed) for calling in the gain calculation
+    def _interpolate_a_to_b(self, a, b):
+        if a == 'pop_inversion':      
+            # interpolate copy of pop_inversion to match lp_wfr
+            temp_array = np.copy(self.pop_inversion_mesh)
 
-        pop_inversion_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
-        pop_inversion_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
+            a_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
+            a_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
+            b_x = np.linspace(b.mesh.xStart,b.mesh.xFin,b.mesh.nx)
+            b_y = np.linspace(b.mesh.yStart,b.mesh.yFin,b.mesh.ny)
 
-        lp_wfr_x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
-        lp_wfr_y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
+        elif b == 'pop_inversion': 
+            # interpolate copy of change_pop_inversion to match pop_inversion
+            temp_array = np.copy(a.mesh)
 
-        temp_mesh = self.pop_inversion_mesh.copy()
+            a_x = a.x
+            a_y = a.y
+            b_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
+            b_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
 
-        # Interpolate the excited states mesh to match the pulse wavefront params
-        if not (np.array_equal(pop_inversion_x, lp_wfr_x) and np.array_equal(pop_inversion_y, lp_wfr_y)):
+        else: 
+            # interpolate copy of n_photons to match lp_wfr
+            temp_array = np.copy(a.mesh)
 
+            a_x = a.x
+            a_y = a.y
+            b_x = np.linspace(b.mesh.xStart,b.mesh.xFin,b.mesh.nx)
+            b_y = np.linspace(b.mesh.yStart,b.mesh.yFin,b.mesh.ny) 
+
+        if not (np.array_equal(a_x, b_x) and np.array_equal(a_y, b_y)):
+        
             # Create the spline for interpolation
-            rect_biv_spline = RectBivariateSpline(pop_inversion_x, pop_inversion_y, temp_mesh)
+            rect_biv_spline = RectBivariateSpline(a_x, a_y, temp_array)
 
-            # Evaluate the spline at wavefront gridpoints (has same nx,ny,xstart,xfin,ystart,yfin as wfr.mesh)
-            temp_mesh = rect_biv_spline(lp_wfr_x, lp_wfr_y)
+            # Evaluate the spline at b gridpoints
+            temp_array = rect_biv_spline(b_x, b_y)
 
-            # Set any temp_mesh values outside the bounds of the pop_inversion mesh to zero
-            if (lp_wfr.mesh.xFin > self.pop_inversion_xfin) or (lp_wfr.mesh.xStart < self.pop_inversion_xstart):
-                temp_mesh[lp_wfr_x > self.pop_inversion_xfin,:] = 0.0
-                temp_mesh[lp_wfr_x < self.pop_inversion_xstart,:] = 0.0
-            if (lp_wfr.mesh.yFin > self.pop_inversion_yfin) or (lp_wfr.mesh.yStart < self.pop_inversion_ystart):
-                temp_mesh[:,lp_wfr_y > self.pop_inversion_yfin] = 0.0
-                temp_mesh[:,lp_wfr_y < self.pop_inversion_ystart] = 0.0
+            # Set any interpolated values outside the bounds of the original mesh to zero
+            temp_array[b_x > np.max(a_x),:] = 0.0
+            temp_array[b_x < np.min(a_x),:] = 0.0
+            temp_array[:,b_y > np.max(a_y)] = 0.0
+            temp_array[:,b_y < np.min(a_y)] = 0.0
 
-        return temp_mesh
-
-    # KW To Do: consider merging with _interpolate_pop_inversion()
-    def _interpolate_pop_change(self, lp_wfr, change_pop_inversion):
-        # Function takes the calculated change to the population inversion mesh and
-        # interpolates/pads/cuts it so that it can be added to self.pop_inversion
-
-        pop_inversion_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
-        pop_inversion_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
-
-        lp_wfr_x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
-        lp_wfr_y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
-        # Note: change_pop_inversion has params matching the laser pulse wavefront
-
-        # Interpolate the "change to the population inversion" mesh to match self.pop_inversion
-        if not (np.array_equal(pop_inversion_x, lp_wfr_x) and np.array_equal(pop_inversion_y, lp_wfr_y)):
-
-            # Create the spline for interpolation
-            rect_biv_spline = RectBivariateSpline(lp_wfr_x, lp_wfr_y, change_pop_inversion)
-
-            # Evaluate the spline at self.pop_inversion gridpoints
-            change_pop_inversion = rect_biv_spline(pop_inversion_x, pop_inversion_y)
-
-            # Set any interpolated values outside the bounds of the original change_pop_inversion mesh to zero
-            change_pop_inversion[pop_inversion_x > lp_wfr.mesh.xFin,:] = 0.0
-            change_pop_inversion[pop_inversion_x < lp_wfr.mesh.xStart,:] = 0.0
-
-            change_pop_inversion[:,pop_inversion_y > lp_wfr.mesh.yFin] = 0.0
-            change_pop_inversion[:,pop_inversion_y < lp_wfr.mesh.yStart] = 0.0
-
-        return change_pop_inversion
-
+        return temp_array  
+    
     def calc_gain(self,thisSlice):
-
+        
         lp_wfr = thisSlice.wfr
 
         # Interpolate the excited state density mesh of the current crystal slice to
         # match the laser_pulse wavefront mesh
-        temp_pop_inversion = self._interpolate_pop_inversion(lp_wfr)
+        temp_pop_inversion = self._interpolate_a_to_b('pop_inversion', lp_wfr)
 
         # Calculate gain
         absorp_cross_sec = 4.1e-23 #2.0e-24             # [m^2]
         degen_factor = 1.0                     # Not sure what this value should be
 
+        # Interpolate the excited state density mesh of the current crystal slice to
+        # match the laser_pulse wavefront mesh
+        thisSlice.n_photons_2d.mesh = self._interpolate_a_to_b(thisSlice.n_photons_2d, lp_wfr)  
+        thisSlice.n_photons_2d.x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
+        thisSlice.n_photons_2d.y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
+        
         dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
         dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
-        n_incident_photons = thisSlice.n_photons_2d / (dx * dy)   # [1/m^2]
+        n_incident_photons = thisSlice.n_photons_2d.mesh / (dx * dy)   # [1/m^2]
 
         energy_gain = np.zeros(np.shape(n_incident_photons))
-        energy_gain[np.where(n_incident_photons > 0)] = (1.0 /(degen_factor *absorp_cross_sec *n_incident_photons[np.where(n_incident_photons > 0)])) \
-                *np.log(1 +np.exp(absorp_cross_sec *temp_pop_inversion[np.where(n_incident_photons > 0)] *self.length) \
-                *(np.exp(degen_factor *absorp_cross_sec *n_incident_photons[np.where(n_incident_photons > 0)]) -1.0))
+        gain_condition = np.where(n_incident_photons > 0)
+        energy_gain[gain_condition] = (1.0 /(degen_factor *absorp_cross_sec *n_incident_photons[gain_condition])) \
+                *np.log(1 +np.exp(absorp_cross_sec *temp_pop_inversion[gain_condition] *self.length) \
+                *(np.exp(degen_factor *absorp_cross_sec *n_incident_photons[gain_condition]) -1.0))
 
-        # Update the number of photons
-        thisSlice.n_photons_2d *= energy_gain
-
-        # Calculate change factor for pop_inversion
-        change_pop_inversion = -(degen_factor * n_incident_photons * (energy_gain - 1.0) / self.length)
+        # Calculate change factor for pop_inversion, note it has the same dimensions as lp_wfr
+        change_pop_mesh = -(degen_factor * n_incident_photons * (energy_gain - 1.0) / self.length)
+        change_pop_inversion = PKDict(
+                                mesh = change_pop_mesh,
+                                x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx),
+                                y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny))
 
         # Interpolate the change to the excited state density mesh of the current crystal slice (change_pop_inversion)
         # so that it matches self.pop_inversion
-        change_pop_inversion = self._interpolate_pop_change(lp_wfr, change_pop_inversion)
+        change_pop_inversion.mesh = self._interpolate_a_to_b(change_pop_inversion, 'pop_inversion')
 
         # Update the pop_inversion_mesh
-        self.pop_inversion_mesh += change_pop_inversion
+        self.pop_inversion_mesh += change_pop_inversion.mesh
 
+        # Update the number of photons
+        thisSlice.n_photons_2d.mesh *= energy_gain
+        
         # Update the wavefront itself: (KW To Do: make this a separate method?)
         #    First extract the electric fields
 
