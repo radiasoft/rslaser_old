@@ -36,6 +36,7 @@ _LASER_PULSE_DEFAULTS = PKDict(
         poltype = 1,
         mx = 0,
         my = 0,
+        pad_factor = 0.0
 )
 _ENVELOPE_DEFAULTS = PKDict(
     w0=.1,
@@ -60,6 +61,9 @@ class LaserPulse(ValidatorBase):
     """
     The LaserPulse contains an array of LaserPulseSlice instances, which track
     details of the evolution in time.
+    
+    Assumes a longitudinal gaussian profile when initializing
+    
     Args:
         params (PKDict):
                 photon_e_ev (float): Photon energy [eV]
@@ -165,6 +169,8 @@ class LaserPulseSlice(ValidatorBase):
     There will be a number of wavefronts each with different wavelengths (energy).
     The slice is composed of an SRW wavefront object, which is defined here:
     https://github.com/ochubar/SRW/blob/master/env/work/srw_python/srwlib.py#L2048
+    
+    Assumes a longitudinal gaussian profile when initializing
 
     Args:
         slice_index (int): index of slice
@@ -256,6 +262,22 @@ class LaserPulseSlice(ValidatorBase):
             # convert from microns to radians
             rad_per_micron = math.pi / lambda0_micron
             wfs_data *= rad_per_micron
+            
+            # pad the data with zeros to double the initial range
+            pad_factor = params.pad_factor
+            if pad_factor > 0:
+                n_init = nx # assumes nx = ny
+
+                x_max *= pad_factor
+                x_min *= pad_factor
+                y_max *= pad_factor
+                y_min *= pad_factor
+                nx *= int(pad_factor)
+                ny *= int(pad_factor)
+                
+                wfs_data = np.pad(wfs_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
+                ccd_data = np.pad(ccd_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
+            
             assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
 
             # Calulate the real and imaginary parts of the Ex,Ey electric field components
@@ -268,10 +290,12 @@ class LaserPulseSlice(ValidatorBase):
                 ex_numpy[2*i] = ex_real[i]
                 ex_numpy[2*i+1] = ex_imag[i]
             
-            number_slices_correction = np.exp(-self._pulse_pos**2.0/(2.0 *self.sig_s)**2.0)
-            ex = array.array('f', np.multiply(ex_numpy, number_slices_correction).tolist())
+            # scale the wfr sensor data
+            self.wfs_norm_factor = 112.5059521158824
             
-            # Need gaussian longitudinal profile... we need to scale ex on the 2d grid by the factor of where it is on the profile...
+            # scale for slice location
+            number_slices_correction = np.exp(-self._pulse_pos**2.0/(2.0 *self.sig_s)**2.0)
+            ex = array.array('f', (ex_numpy *number_slices_correction *self.wfs_norm_factor).tolist())
             
             ey = array.array('f', len(ex)*[0.]) # Don't need to change because set to zero
             self.wfr = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
@@ -279,6 +303,7 @@ class LaserPulseSlice(ValidatorBase):
                     _xStart=x_min, _xFin=x_max, _nx=nx,
                     _yStart=y_min, _yFin=y_max, _ny=ny,
                     _zStart=0., _partBeam=None)
+            
             return
  
         # Adjust for the length of the pulse + a constant factor to make pulseE = sum(energy_2d)
@@ -295,7 +320,7 @@ class LaserPulseSlice(ValidatorBase):
 
     def calc_init_n_photons(self):
 
-        # comment: assume long gauss when initializing, add this further up in documentation as well
+        # Note: assumes longitudinal gaussian profile when initializing
         
         intensity = srwlib.array('f', [0]*self.wfr.mesh.nx*self.wfr.mesh.ny) # "flat" array to take 2D intensity data
         srwl.CalcIntFromElecField(intensity, self.wfr, 0, 0, 3, self.wfr.mesh.eStart, 0, 0) #extracts intensity
