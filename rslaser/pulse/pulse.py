@@ -128,6 +128,48 @@ class LaserPulse(ValidatorBase):
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
+    def extract_total_2d_elec_fields(self):
+        # Assumes gaussian shape
+        
+        nslices_pulse = len(self.slice)
+        
+        # Assumes each slice has the same dimensions
+        e_total = PKDict(
+            re = np.zeros((self.slice[0].wfr.mesh.nx,self.slice[0].wfr.mesh.ny,nslices_pulse)),
+            im = np.zeros((self.slice[0].wfr.mesh.nx,self.slice[0].wfr.mesh.ny,nslices_pulse))
+        )
+        
+        pulse_end1 = (self.slice[0]._pulse_pos -0.5 *self.slice[0].ds) /(2.0 *self.slice[0].sig_s)
+        pulse_end2 = (self.slice[-1]._pulse_pos +0.5 *self.slice[-1].ds) /(2.0 *self.slice[-1].sig_s)
+        pulse_factor = (special.erf(pulse_end2) -special.erf(pulse_end1))
+        
+        for laser_index_i in np.arange(nslices_pulse):
+            
+            thisSlice = self.slice[laser_index_i]
+            slice_wfr = thisSlice.wfr
+            
+            # total component of electric field
+            re0, re0_mesh = srwutil.calc_int_from_wfr(slice_wfr, _pol=6, _int_type=5, _det=None, _fname='', _pr=False)
+            im0, im0_mesh = srwutil.calc_int_from_wfr(slice_wfr, _pol=6, _int_type=6, _det=None, _fname='', _pr=False)
+            
+            e_total.re[:,:,laser_index_i] = np.array(re0).reshape((slice_wfr.mesh.nx, slice_wfr.mesh.ny), order='C').astype(np.float64)
+            e_total.im[:,:,laser_index_i] = np.array(im0).reshape((slice_wfr.mesh.nx, slice_wfr.mesh.ny), order='C').astype(np.float64)
+            
+            # gaussian scale
+            slice_end1 = (thisSlice._pulse_pos -0.5 *thisSlice.ds) /(2.0 *thisSlice.sig_s)
+            slice_end2 = (thisSlice._pulse_pos +0.5 *thisSlice.ds) /(2.0 *thisSlice.sig_s)
+            slice_width_factor = (1.0 /np.exp(-thisSlice._pulse_pos**2.0/(2.0 *thisSlice.sig_s)**2.0)) \
+                                    *((special.erf(slice_end2) -special.erf(slice_end1)) /pulse_factor)
+            
+            # scale slice fields by factor to represent full slice, not just middle value
+            e_total.re[:,:,laser_index_i] *= slice_width_factor
+            e_total.im[:,:,laser_index_i] *= slice_width_factor
+        
+        e_total.re = np.sum(e_total.re, axis=2)
+        e_total.im = np.sum(e_total.im, axis=2)
+        
+        return e_total   
+
     def _validate_params(self, input_params, files):
         # if files and input_params.nslice > 1:
         #     raise self._INPUT_ERROR("cannot use file inputs with more than one slice")
