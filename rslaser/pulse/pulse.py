@@ -291,7 +291,7 @@ class LaserPulseSlice(ValidatorBase):
                 ex_numpy[2*i+1] = ex_imag[i]
             
             # scale the wfr sensor data
-            self.wfs_norm_factor = 112.5059521158824
+            self.wfs_norm_factor = 3088.2025747914677
             
             # scale for slice location
             number_slices_correction = np.exp(-self._pulse_pos**2.0/(2.0 *self.sig_s)**2.0)
@@ -322,12 +322,14 @@ class LaserPulseSlice(ValidatorBase):
 
         # Note: assumes longitudinal gaussian profile when initializing
         
-        intensity = srwlib.array('f', [0]*self.wfr.mesh.nx*self.wfr.mesh.ny) # "flat" array to take 2D intensity data
-        srwl.CalcIntFromElecField(intensity, self.wfr, 0, 0, 3, self.wfr.mesh.eStart, 0, 0) #extracts intensity
+        # intensity = srwlib.array('f', [0]*self.wfr.mesh.nx*self.wfr.mesh.ny) # "flat" array to take 2D intensity data
+        # srwl.CalcIntFromElecField(intensity, self.wfr, 0, 0, 3, self.wfr.mesh.eStart, 0, 0) #extracts intensity
+        
+        # # Reshaping intensity data from flat to 2D array
+        # intens_2d = np.array(intensity).reshape((self.wfr.mesh.nx, self.wfr.mesh.ny), order='C').astype(np.float64)
 
-        # Reshaping intensity data from flat to 2D array
-        intens_2d = np.array(intensity).reshape((self.wfr.mesh.nx, self.wfr.mesh.ny), order='C').astype(np.float64)
-
+        intens_2d = srwutil.calc_int_from_elec(self.wfr) #extract 2d intensity
+        
         efield_abs_sqrd_2d = np.sqrt(const.mu_0 / const.epsilon_0) * 2.0 * intens_2d # [V^2/m^2]
 
         dx = (self.wfr.mesh.xFin - self.wfr.mesh.xStart)/self.wfr.mesh.nx
