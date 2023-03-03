@@ -348,10 +348,9 @@ class LaserPulseSlice(ValidatorBase):
             
             return
  
-        # Adjust for the length of the pulse + a constant factor to make pulseE = sum(energy_2d)
-        constant_factor = 2.94e-2
-
         # Since pulseE = fwhm_tau * spot_size * intensity, new_pulseE = old_pulseE / fwhm_tau
+        # Adjust for the length of the pulse + a constant factor to make pulseE = sum(energy_2d)
+        constant_factor = 7.635343458844132 #2.94e-2
         length_factor = constant_factor / self.ds
 
         # calculate field energy in this slice
