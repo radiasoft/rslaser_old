@@ -52,6 +52,11 @@ class Crystal(Element):
     def __init__(self, params=None):
         params = self._get_params(params)
         self._validate_params(params)
+        
+        # Check if n2<0, throw an exception if true
+        if (np.array(params.n2) < 0.0).any():
+            raise self._INPUT_ERROR(f"You've specified negative value(s) for n2")
+        
         self.length = params.length
         self.nslice = params.nslice
         self.l_scale = params.l_scale
