@@ -475,8 +475,8 @@ class CrystalSlice(Element):
                 optBL = srwlib.SRWLOptC([optLens1,optDrift,optLens2],[propagParLens1,propagParDrift,propagParLens2])
                 #optBL = createABCDbeamline(A,B,C,D)
 
-                srwlib.srwl.PropagElecField(thisSlice.wfr, optBL) # thisSlice s.b. a pointer, not a copy
-                #print('Propagated pulse slice ', i+1, ' of ', nslices)
+            srwlib.srwl.PropagElecField(thisSlice.wfr, optBL) # thisSlice s.b. a pointer, not a copy
+            #print('Propagated pulse slice ', i+1, ' of ', nslices)
         return laser_pulse
 
     def _propagate_gain_calc(self, laser_pulse, calc_gain):
