@@ -1,6 +1,10 @@
-
+# -*- coding: utf-8 -*-
+"""Definition of a crystal
+Copyright (c) 2021 RadiaSoft LLC. All rights reserved
+"""
 import numpy as np
 import array
+import math
 from pykern.pkcollections import PKDict
 import srwlib
 import scipy.constants as const
@@ -106,6 +110,7 @@ class Crystal(Element):
     def propagate(self, laser_pulse, prop_type, calc_gain=False):
         for s in self.slice:
             laser_pulse = s.propagate(laser_pulse, prop_type, calc_gain)
+            laser_pulse.restore_laser_mesh()
         return laser_pulse
 
 
@@ -501,7 +506,7 @@ class CrystalSlice(Element):
             gain_calc=self._propagate_gain_calc,
             default=super().propagate,
         )[prop_type](laser_pulse, calc_gain)
-
+    
     def _interpolate_a_to_b(self, a, b):
         if a == 'pop_inversion':      
             # interpolate copy of pop_inversion to match lp_wfr
