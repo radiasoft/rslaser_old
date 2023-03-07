@@ -15,6 +15,7 @@ import rslaser.utils.unit_conversion as units
 import rslaser.utils.srwl_uti_data as srwutil
 import scipy.constants as const
 from scipy import special
+from scipy import signal
 import srwlib
 from srwlib import srwl
 from rslaser.utils.validator import ValidatorBase
@@ -31,8 +32,8 @@ _LASER_PULSE_DEFAULTS = PKDict(
         sigx_waist = 1.0e-3,
         sigy_waist = 1.0e-3,
         num_sig_trans = 6,
-        nx_slice = 500,
-        ny_slice = 500,
+        nx_slice = 64,
+        ny_slice = 64,
         poltype = 1,
         mx = 0,
         my = 0,
@@ -875,4 +876,19 @@ def _reshape_data(data):
     data = np.delete(data, -3, axis=1)
     data = np.delete(data, -2, axis=1)
     data = np.delete(data, -1, axis=1)
+    
+    nx = np.shape(data)[0]
+    ny = np.shape(data)[1]
+    
+    assert nx == ny, 'ERROR -- data has diferent nx and ny!!'
+    
+    # Add Hanning window to the data
+    window = np.array(signal.windows.hann(nx))
+    np.outer(window,window)
+    data *= np.outer(window,window)
+    
+    # Increase the shape to 64x64 (likely at 32x32)
+    if (nx == ny) and (nx < 64):
+        data = np.pad(data, (int((64 - nx)/2), int((64 - ny)/2)), mode='constant')
+    
     return data
