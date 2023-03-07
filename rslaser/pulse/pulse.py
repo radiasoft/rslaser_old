@@ -129,6 +129,74 @@ class LaserPulse(ValidatorBase):
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
+    def restore_laser_mesh(self):
+        # Manually force mesh back to original extent + number of cells
+        
+        for laser_index_i in self.nslice:
+            thisSlice = self.slice[laser_index_i]
+            
+            new_x = np.linspace(thisSlice.wfr.mesh.xStart,thisSlice.wfr.mesh.xFin,thisSlice.wfr.mesh.nx)
+            new_y = np.linspace(thisSlice.wfr.mesh.yStart,thisSlice.wfr.mesh.yFin,thisSlice.wfr.mesh.ny)       
+            
+            # Check if need to make changes
+            if not (np.array_equal(new_x, thisSlice.initial_laser_xy.x) and np.array_equal(new_y, thisSlice.initial_laser_xy.y)):
+                
+                # Extract horizontal component of electric field
+                re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
+                im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
+
+                # Extract vertical componenent of electric field
+                re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
+                im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
+            
+                re_ex_2d = np.array(re0_ex).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
+                im_ex_2d = np.array(im0_ex).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
+                re_ey_2d = np.array(re0_ey).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
+                im_ey_2d = np.array(im0_ey).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
+            
+                # Interpolate ex meshes
+                rect_biv_spline_xre = RectBivariateSpline(new_x, new_y, re_ex_2d)
+                rect_biv_spline_xim = RectBivariateSpline(new_x, new_y, im_ex_2d)
+                new_re_ex_2d = rect_biv_spline_xre(thisSlice.initial_laser_xy.x, thisSlice.initial_laser_xy.y)
+                new_im_ex_2d = rect_biv_spline_xim(thisSlice.initial_laser_xy.x, thisSlice.initial_laser_xy.y)
+                
+                # Interpolate ey meshes
+                rect_biv_spline_yre = RectBivariateSpline(new_x, new_y, re_ey_2d)
+                rect_biv_spline_yim = RectBivariateSpline(new_x, new_y, im_ey_2d)
+                new_re_ey_2d = rect_biv_spline_yre(thisSlice.initial_laser_xy.x, thisSlice.initial_laser_xy.y)
+                new_im_ey_2d = rect_biv_spline_yim(thisSlice.initial_laser_xy.x, thisSlice.initial_laser_xy.y)
+                
+                # Flatten fields
+                new_re_ex = new_re_ex_2d.flatten(order='C')
+                new_im_ex = new_im_ex_2d.flatten(order='C')
+                new_re_ey = new_re_ey_2d.flatten(order='C')
+                new_im_ey = new_im_ey_2d.flatten(order='C')            
+                
+                # Combine real and imaginary fields into srw-preferred format
+                ex_numpy = np.zeros(2*len(new_re_ex))
+                    for i in range(len(new_re_ex)):
+                    ex_numpy[2*i] = new_re_ex[i]
+                    ex_numpy[2*i+1] = new_im_ex[i]
+            
+                ey_numpy = np.zeros(2*len(new_re_ey))
+                for i in range(len(new_re_ey)):
+                    ey_numpy[2*i] = new_re_ey[i]
+                    ey_numpy[2*i+1] = new_im_ey[i]
+                
+                # Convert to list
+                ex = array.array('f', ex_numpy.tolist())
+                ey = array.array('f', ey_numpy.tolist())
+                
+                # Pass changes to SRW
+                wfr1 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
+                                      _eStart=thisSlice.photon_e_ev, _eFin=thisSlice.photon_e_ev, _ne=1,
+                                      _xStart=np.min(thisSlice.initial_laser_xy.x), _xFin=np.max(thisSlice.initial_laser_xy.x), _nx=len(thisSlice.initial_laser_xy.x),
+                                      _yStart=np.min(thisSlice.initial_laser_xy.y), _yFin=np.max(thisSlice.initial_laser_xy.y), _ny=len(thisSlice.initial_laser_xy.y),
+                                      _zStart=0., _partBeam=None)
+                thisSlice.wfr = wfr1
+        
+        return laser_pulse
+    
     def extract_total_2d_elec_fields(self):
         # Assumes gaussian shape
         
@@ -268,6 +336,11 @@ class LaserPulseSlice(ValidatorBase):
 
         # Calculate the initial number of photons in 2d grid of each slice from pulseE_slice
         self.n_photons_2d = self.calc_init_n_photons() # 2d array
+        
+        self.initial_laser_xy = PKDict{
+            x = np.linspace(self.wfr.mesh.xStart,self.wfr.mesh.xFin,self.wfr.mesh.nx)
+            y = np.linspace(self.wfr.mesh.yStart,self.wfr.mesh.yFin,self.wfr.mesh.ny)
+        }
 
 
     def _wavefront(self, params, files):
