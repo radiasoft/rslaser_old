@@ -14,6 +14,7 @@ import rsmath.const as rsc
 import rslaser.utils.unit_conversion as units
 import rslaser.utils.srwl_uti_data as srwutil
 import scipy.constants as const
+from scipy.interpolate import RectBivariateSpline
 from scipy import special
 from scipy import signal
 import srwlib
@@ -32,12 +33,12 @@ _LASER_PULSE_DEFAULTS = PKDict(
         sigx_waist = 1.0e-3,
         sigy_waist = 1.0e-3,
         num_sig_trans = 6,
-        nx_slice = 64,
-        ny_slice = 64,
+        nx_slice = 32,#64,
+        ny_slice = 32,#64,
         poltype = 1,
         mx = 0,
         my = 0,
-        pad_factor = 0.0
+        pad_factor = 1.0
 )
 _ENVELOPE_DEFAULTS = PKDict(
     w0=.1,
@@ -129,10 +130,10 @@ class LaserPulse(ValidatorBase):
         self._sxvals = []  # horizontal slice data
         self._syvals = []  # vertical slice data
 
-    def restore_laser_mesh(self):
+    def resize_laser_mesh(self):
         # Manually force mesh back to original extent + number of cells
         
-        for laser_index_i in self.nslice:
+        for laser_index_i in np.arange(self.nslice):
             thisSlice = self.slice[laser_index_i]
             
             new_x = np.linspace(thisSlice.wfr.mesh.xStart,thisSlice.wfr.mesh.xFin,thisSlice.wfr.mesh.nx)
@@ -174,7 +175,7 @@ class LaserPulse(ValidatorBase):
                 
                 # Combine real and imaginary fields into srw-preferred format
                 ex_numpy = np.zeros(2*len(new_re_ex))
-                    for i in range(len(new_re_ex)):
+                for i in range(len(new_re_ex)):
                     ex_numpy[2*i] = new_re_ex[i]
                     ex_numpy[2*i+1] = new_im_ex[i]
             
@@ -189,13 +190,11 @@ class LaserPulse(ValidatorBase):
                 
                 # Pass changes to SRW
                 wfr1 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
-                                      _eStart=thisSlice.photon_e_ev, _eFin=thisSlice.photon_e_ev, _ne=1,
-                                      _xStart=np.min(thisSlice.initial_laser_xy.x), _xFin=np.max(thisSlice.initial_laser_xy.x), _nx=len(thisSlice.initial_laser_xy.x),
-                                      _yStart=np.min(thisSlice.initial_laser_xy.y), _yFin=np.max(thisSlice.initial_laser_xy.y), _ny=len(thisSlice.initial_laser_xy.y),
-                                      _zStart=0., _partBeam=None)
+                            _eStart=thisSlice.photon_e_ev, _eFin=thisSlice.photon_e_ev, _ne=1,
+                            _xStart=np.min(thisSlice.initial_laser_xy.x), _xFin=np.max(thisSlice.initial_laser_xy.x), _nx=len(thisSlice.initial_laser_xy.x),
+                            _yStart=np.min(thisSlice.initial_laser_xy.y), _yFin=np.max(thisSlice.initial_laser_xy.y), _ny=len(thisSlice.initial_laser_xy.y),
+                            _zStart=0., _partBeam=None)
                 thisSlice.wfr = wfr1
-        
-        return laser_pulse
     
     def extract_total_2d_elec_fields(self):
         # Assumes gaussian shape
@@ -337,10 +336,10 @@ class LaserPulseSlice(ValidatorBase):
         # Calculate the initial number of photons in 2d grid of each slice from pulseE_slice
         self.n_photons_2d = self.calc_init_n_photons() # 2d array
         
-        self.initial_laser_xy = PKDict{
-            x = np.linspace(self.wfr.mesh.xStart,self.wfr.mesh.xFin,self.wfr.mesh.nx)
+        self.initial_laser_xy = PKDict(
+            x = np.linspace(self.wfr.mesh.xStart,self.wfr.mesh.xFin,self.wfr.mesh.nx),
             y = np.linspace(self.wfr.mesh.yStart,self.wfr.mesh.yFin,self.wfr.mesh.ny)
-        }
+        )
 
 
     def _wavefront(self, params, files):
@@ -358,16 +357,6 @@ class LaserPulseSlice(ValidatorBase):
             ccd_data = np.genfromtxt(files.ccd, skip_header=1)
             ccd_data = _reshape_data(ccd_data)
 
-            # specify the mesh size
-            nx = ccd_data.shape[1]
-            ny = ccd_data.shape[0]
-
-            # create the x,y arrays with physical units based on the diagnostic pixel dimensions
-            x_max = 0.5 * (nx + 1.) * pixel_size_h * 1.0e-6    # [m]      #0.002    # [m]
-            x_min = -x_max
-            y_max = 0.5 * (ny + 1.) * pixel_size_v * 1.0e-6    # [m]      #x_max
-            y_min = -y_max
-
             # parse the measured phases of the wavefront
             wfs_data = np.genfromtxt(files.wfs, skip_header=1, skip_footer=0)
 
@@ -379,28 +368,50 @@ class LaserPulseSlice(ValidatorBase):
             rad_per_micron = math.pi / lambda0_micron
             wfs_data *= rad_per_micron
             
-            # pad the data with zeros to double the initial range
-            pad_factor = params.pad_factor
-            if pad_factor > 0:
-                n_init = nx # assumes nx = ny
-
-                x_max *= pad_factor
-                x_min *= pad_factor
-                y_max *= pad_factor
-                y_min *= pad_factor
-                nx *= int(pad_factor)
-                ny *= int(pad_factor)
-                
-                wfs_data = np.pad(wfs_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
-                ccd_data = np.pad(ccd_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
-            
             assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
 
             # Calulate the real and imaginary parts of the Ex,Ey electric field components
             e_norm = np.sqrt(ccd_data)
-            ex_real = np.multiply(e_norm, np.cos(wfs_data)).flatten(order='C')
-            ex_imag = np.multiply(e_norm, np.sin(wfs_data)).flatten(order='C')
+            
+            ex_real = np.multiply(e_norm, np.cos(wfs_data))
+            ex_imag = np.multiply(e_norm, np.sin(wfs_data))
+            nx = np.shape(ex_real)[0]
+            ny = np.shape(ex_real)[1]            
+            
+            assert nx == ny, 'ERROR -- data is not square'
+            
+            # Add Hanning window to the data (note, ey is assumed to be zero...)
+            window = np.array(signal.windows.hann(nx))
+            ex_real *= np.outer(window,window)
+            ex_imag *= np.outer(window,window)
+            
+            # Increase the shape to 64x64 (likely at 32x32)
+            if (nx == ny) and (nx < 64):
+                ex_real = np.pad(ex_real, (int((64 - nx)/2), int((64 - ny)/2)), mode='constant')
+                ex_imag = np.pad(ex_imag, (int((64 - nx)/2), int((64 - ny)/2)), mode='constant')
+                
+            nx = np.shape(ex_real)[0]
+            ny = np.shape(ex_real)[1]
 
+            # pad the data with zeros to double the initial range
+            pad_factor = params.pad_factor
+            if pad_factor > 0:
+                n_init = nx # assumes nx = ny
+                nx = int(nx *pad_factor)
+                ny = int(ny *pad_factor)
+                
+                ex_real = np.pad(ex_real, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
+                ex_imag = np.pad(ex_imag, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
+            
+            # create the x,y arrays with physical units based on the diagnostic pixel dimensions
+            x_max = 0.5 * (nx + 1.) * pixel_size_h * 1.0e-6    # [m]      #0.002    # [m]
+            x_min = -x_max
+            y_max = 0.5 * (ny + 1.) * pixel_size_v * 1.0e-6    # [m]      #x_max
+            y_min = -y_max
+            
+            ex_real = ex_real.flatten(order='C')
+            ex_imag = ex_imag.flatten(order='C')
+            
             ex_numpy = np.zeros(2*len(ex_real))
             for i in range(len(ex_real)):
                 ex_numpy[2*i] = ex_real[i]
@@ -949,19 +960,5 @@ def _reshape_data(data):
     data = np.delete(data, -3, axis=1)
     data = np.delete(data, -2, axis=1)
     data = np.delete(data, -1, axis=1)
-    
-    nx = np.shape(data)[0]
-    ny = np.shape(data)[1]
-    
-    assert nx == ny, 'ERROR -- data has diferent nx and ny!!'
-    
-    # Add Hanning window to the data
-    window = np.array(signal.windows.hann(nx))
-    np.outer(window,window)
-    data *= np.outer(window,window)
-    
-    # Increase the shape to 64x64 (likely at 32x32)
-    if (nx == ny) and (nx < 64):
-        data = np.pad(data, (int((64 - nx)/2), int((64 - ny)/2)), mode='constant')
     
     return data

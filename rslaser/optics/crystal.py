@@ -110,7 +110,7 @@ class Crystal(Element):
     def propagate(self, laser_pulse, prop_type, calc_gain=False):
         for s in self.slice:
             laser_pulse = s.propagate(laser_pulse, prop_type, calc_gain)
-            laser_pulse.restore_laser_mesh()
+            laser_pulse.resize_laser_mesh()
         return laser_pulse
 
 
