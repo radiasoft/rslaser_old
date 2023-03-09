@@ -526,15 +526,6 @@ class CrystalSlice(Element):
             b_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
             b_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
 
-        else: 
-            # interpolate copy of n_photons to match lp_wfr
-            temp_array = np.copy(a.mesh)
-
-            a_x = a.x
-            a_y = a.y
-            b_x = np.linspace(b.mesh.xStart,b.mesh.xFin,b.mesh.nx)
-            b_y = np.linspace(b.mesh.yStart,b.mesh.yFin,b.mesh.ny) 
-
         if not (np.array_equal(a_x, b_x) and np.array_equal(a_y, b_y)):
         
             # Create the spline for interpolation
@@ -562,12 +553,6 @@ class CrystalSlice(Element):
         # Calculate gain
         absorp_cross_sec = 3.0e-23 #2.0e-24             # [m^2]
         degen_factor = 1.0                     # Not sure what this value should be
-
-        # Interpolate the excited state density mesh of the current crystal slice to
-        # match the laser_pulse wavefront mesh
-        thisSlice.n_photons_2d.mesh = self._interpolate_a_to_b(thisSlice.n_photons_2d, lp_wfr)  
-        thisSlice.n_photons_2d.x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
-        thisSlice.n_photons_2d.y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
         
         dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
         dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
