@@ -560,7 +560,7 @@ class CrystalSlice(Element):
         temp_pop_inversion = self._interpolate_a_to_b('pop_inversion', lp_wfr)
 
         # Calculate gain
-        absorp_cross_sec = 4.1e-23 #2.0e-24             # [m^2]
+        absorp_cross_sec = 3.0e-23 #2.0e-24             # [m^2]
         degen_factor = 1.0                     # Not sure what this value should be
 
         # Interpolate the excited state density mesh of the current crystal slice to
