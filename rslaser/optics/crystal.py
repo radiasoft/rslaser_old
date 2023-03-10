@@ -17,7 +17,6 @@ _CRYSTAL_DEFAULTS = PKDict(
     n0=[_N0_DEFAULT for _ in range(_N_SLICE_DEFAULT)],
     n2=[_N2_DEFAULT for _ in range(_N_SLICE_DEFAULT)],
     length=0.2,
-    # TODO (gurhar): change default to 0.01
     l_scale=1,
     nslice=_N_SLICE_DEFAULT,
     slice_index=0,

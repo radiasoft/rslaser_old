@@ -6,6 +6,7 @@ import pykern.pkunit
 import pytest
 from rslaser.optics import element, lens, drift, crystal
 from rslaser.pulse import pulse
+import srwlib
 
 
 def test_instantiation01():
@@ -52,35 +53,33 @@ def test_propagation():
 
 
 def test_prop_with_gain():
-    # TODO (gurhar1133): add ndiff data
-    from pykern import pkio
-
     data_dir = pykern.pkunit.data_dir()
-    def _prop(prop_type):
 
+    def _prop(prop_type):
         c = crystal.Crystal(
             PKDict(
                 n2=[16],
-                # TODO (gurhar): change default to 0.01
                 l_scale=0.001,
             )
         )
-        p = pulse.LaserPulse()
+        p = pulse.LaserPulse(
+            PKDict(
+                nx_slice = 32,
+                ny_slice = 32,
+            )
+        )
         c.propagate(p, prop_type, calc_gain=True)
-        r = ""
-        # for s in p.slice:
-        #     for k in s.__dict__:
-        #         r += " " + k + " "
-        for s in p.slice:
-            for k in s.wfr.__dict__:
-                r += f" {k} "
-        # r = [x.wfr.__dict__ for x in p.slice]
+        w = p.slice_wfr(0)
+        i = srwlib.array('f', [0]*w.mesh.nx*w.mesh.ny)
+        srwlib.srwl.CalcIntFromElecField(i, w, 6, 0, 3, w.mesh.eStart, 0, 0)
+        pykern.pkunit.file_eq(
+            data_dir.join(prop_type+"_intensity.ndiff"),
+            actual=str(i),
+        )
 
-        pkio.write_text("TEST_DATA"+prop_type+".ndiff", str(r))
-        # print(p.slice[0].__dict__)
     _prop("n0n2_srw")
-    # _prop("n0n2_lct")
-    # _prop("gain_calc")
+    _prop("n0n2_lct")
+    _prop("gain_calc")
 
 
 def test_instantiation03():
