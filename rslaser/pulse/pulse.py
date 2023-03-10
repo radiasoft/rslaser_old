@@ -282,7 +282,6 @@ class LaserPulseSlice(ValidatorBase):
             lambda0_micron = self._lambda0 *(1.0e6) #0.8
             
             ccd_data = np.genfromtxt(files.ccd, skip_header=1)
-            ccd_data = _reshape_data(ccd_data)
 
             # specify the mesh size
             nx = ccd_data.shape[1]
@@ -299,7 +298,7 @@ class LaserPulseSlice(ValidatorBase):
 
             # clean up any NaN's
             indices = np.isnan(wfs_data)
-            wfs_data = _reshape_data(_array_cleaner(wfs_data, indices))
+            wfs_data = _array_cleaner(wfs_data, indices)
             
             # convert from microns to radians
             rad_per_micron = math.pi / lambda0_micron
@@ -864,15 +863,3 @@ def _array_cleaner(_arr, _ind):
     nans, x = _nan_helper(_arr)
     _arr[nans] = np.interp(x(nans), x(~nans), _arr[~nans])
     return _arr
-
-
-def _reshape_data(data):
-    data = np.delete(data, 0, axis=1)
-    data = np.delete(data, 1, axis=1)
-    data = np.delete(data, 2, axis=1)
-    data = np.delete(data, 3, axis=1)
-    data = np.delete(data, -4, axis=1)
-    data = np.delete(data, -3, axis=1)
-    data = np.delete(data, -2, axis=1)
-    data = np.delete(data, -1, axis=1)
-    return data
