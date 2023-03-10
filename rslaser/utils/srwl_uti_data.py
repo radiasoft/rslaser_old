@@ -241,25 +241,3 @@ def calc_int_from_elec(_wfr):
     slice_intensity = 0.5 *const.c *const.epsilon_0 *(elec_fields_re**2.0 + elec_fields_im**2.0)
     
     return slice_intensity
-
-#Extract the phase for plotting if it needs additional manipulation
-def extract_phase(_wfr):
- 
-    intensity_2d = calc_int_from_elec(_wfr)
-    max_intensity = np.max(intensity_2d)
-    
-    center_x = np.where(intensity_2d == max_intensity)[0][0]
-    center_y = np.where(intensity_2d == max_intensity)[1][0]
-    keep_indices = np.where(intensity_2d >= 0.01*max_intensity)
-    distance = math.ceil(np.max(np.sqrt((keep_indices[0] -center_x)**2.0 + (keep_indices[1] -center_y)**2.0)))
-    
-    phase = srwlib.array('d', [0]*_wfr.mesh.nx*_wfr.mesh.ny) # "flat" array to take 2D data
-    srwl.CalcIntFromElecField(phase, _wfr, 0, 4, 3, _wfr.mesh.eStart, 0, 0) #extracts the phase; must use double precision
-    phase_2d = np.array(phase).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
-    
-    phase_2d_cut = phase_2d[center_x-distance:center_x+distance,center_y-distance:center_y+distance]
-    phase_2d_new = np.pad(phase_2d_cut, ((center_x -distance, _wfr.mesh.nx -(center_x +distance)),
-                                         (center_y -distance, _wfr.mesh.ny -(center_y +distance))),
-                          mode='edge')
-    
-    return phase_2d_new

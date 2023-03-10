@@ -15,8 +15,10 @@ import rslaser.utils.unit_conversion as units
 import rslaser.utils.srwl_uti_data as srwutil
 import scipy.constants as const
 from scipy.interpolate import RectBivariateSpline
+from scipy.ndimage.filters import gaussian_filter
 from scipy import special
 from scipy import signal
+import scipy.optimize as opt
 import srwlib
 from srwlib import srwl
 from rslaser.utils.validator import ValidatorBase
@@ -33,8 +35,8 @@ _LASER_PULSE_DEFAULTS = PKDict(
         sigx_waist = 1.0e-3,
         sigy_waist = 1.0e-3,
         num_sig_trans = 6,
-        nx_slice = 32,#64,
-        ny_slice = 32,#64,
+        nx_slice = 64,
+        ny_slice = 64,
         poltype = 1,
         mx = 0,
         my = 0,
@@ -376,8 +378,10 @@ class LaserPulseSlice(ValidatorBase):
             if nx_ccd < 64:
                 ccd_data = np.pad(ccd_data, ((int((64 - nx_ccd)/2), int((64 - nx_ccd)/2)), (0, 0)), mode='constant')
             if ny_ccd < 64:
-                ccd_data = np.pad(ccd_data, ((0,0), (int((64 - ny_ccd)/2), int((64 - ny_ccd)/2))), mode='constant')                
-
+                ccd_data = np.pad(ccd_data, ((0,0), (int((64 - ny_ccd)/2), int((64 - ny_ccd)/2))), mode='constant')
+            
+            ccd_data = gaussian_pad(ccd_data)
+            
             assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
 
             nx_wfs = np.shape(wfs_data)[0]
@@ -386,13 +390,16 @@ class LaserPulseSlice(ValidatorBase):
             
             # pad the data to increase the initial range (pad wfs data with array edge, pad ccd data with zeros)
             pad_factor = params.pad_factor
-            if pad_factor > 0:
+            if pad_factor > 1:
                 n_init = np.shape(wfs_data)[0] # assumes nx = ny for wfs and ccd
                 nx = int(nx_wfs *pad_factor)
                 ny = int(ny_wfs *pad_factor)
                 
-                wfs_data = np.pad(wfs_data, ((int((nx - n_init)/2), int((nx - n_init)/2)),(int((ny - n_init)/2), int((ny - n_init)/2))), mode='edge')
-                ccd_data = np.pad(ccd_data, ((int((nx - n_init)/2), int((nx - n_init)/2)),(int((ny - n_init)/2), int((ny - n_init)/2))), mode='constant')
+                wfs_data = np.pad(wfs_data, ((int((nx - n_init)/2), int((nx - n_init)/2)),
+                                             (int((ny - n_init)/2), int((ny - n_init)/2))), mode='edge')
+                ccd_data = np.pad(ccd_data, ((int((nx - n_init)/2), int((nx - n_init)/2)),
+                                             (int((ny - n_init)/2), int((ny - n_init)/2))), mode='constant')
+                ccd_data = gaussian_pad(ccd_data)
                 
             # convert from microns to radians
             rad_per_micron = math.pi / lambda0_micron
@@ -413,7 +420,7 @@ class LaserPulseSlice(ValidatorBase):
             y_min = -y_max
             
             # scale the wfr sensor data
-            self.wfs_norm_factor = 3088.2025747914677
+            self.wfs_norm_factor = 2841.7370456965646
             
             # scale for slice location
             number_slices_correction = np.exp(-self._pulse_pos**2.0/(2.0 *self.sig_s)**2.0)
@@ -955,3 +962,33 @@ def _array_cleaner(_arr, _ind):
     nans, x = _nan_helper(_arr)
     _arr[nans] = np.interp(x(nans), x(~nans), _arr[~nans])
     return _arr
+
+def gaussian_pad(data):
+    # Takes a 2d array, fits a gaussian to the non-zero values, 
+    #  and replaces the zero values with their respective value from the fit,
+    #  then it smooths the result
+    
+    # Code taken from examples/smoothing/gaussian_01
+    def gaussian(params, amplitude, xo, yo, sigma):
+        xo = float(xo)
+        yo = float(yo)
+        r = np.sqrt((params[0] - xo)**2 + (params[1] - yo)**2)
+        g = amplitude * np.exp(-(r/sigma)**2)
+        return g.ravel()
+    
+    x = np.linspace(0, data.shape[1] - 1, data.shape[1])
+    y = np.linspace(0, data.shape[0] - 1, data.shape[0])
+    x, y = np.meshgrid(x, y)
+
+    initial_guess = (np.max(data), len(x), len(y), 10)
+    popt, pcov = opt.curve_fit(gaussian, (x, y), data.flatten(), p0=initial_guess, maxfev=10000)
+    data_fit = gaussian((x, y), *popt).reshape(data.shape)
+    
+    data_new = np.copy(data)
+    data_new[np.where(data == 0)] = data_fit[np.where(data == 0)]  
+    
+    # Smooth array
+    blur = 2
+    data_new_smooth = gaussian_filter(data_new, sigma=blur)
+    
+    return data_new_smooth
