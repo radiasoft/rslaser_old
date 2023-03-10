@@ -1,4 +1,3 @@
-
 import numpy as np
 import array
 from pykern.pkcollections import PKDict
@@ -199,7 +198,7 @@ class CrystalSlice(Element):
         raise NotImplementedError(f'{self}.propagate() with prop_type="placeholder" is not currently supported')
 
     def _propagate_n0n2_lct(self, laser_pulse, calc_gain):
-        print('prop_type = n0n2_lct')
+        # print('prop_type = n0n2_lct')
         nslices_pulse = len(laser_pulse.slice)
         L_cryst = self.length
         n0 = self.n0

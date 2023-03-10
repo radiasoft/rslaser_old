@@ -77,9 +77,8 @@ def test_prop_with_gain():
             actual=str(i),
         )
 
-    _prop("n0n2_srw")
-    _prop("n0n2_lct")
-    _prop("gain_calc")
+    for prop_type in ("n0n2_srw", "n0n2_lct", "gain_calc"):
+        _prop(prop_type)
 
 
 def test_instantiation03():
