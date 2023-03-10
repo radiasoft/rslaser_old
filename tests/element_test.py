@@ -52,30 +52,34 @@ def test_propagation():
 
 
 def test_prop_with_gain():
-    # TODO (gurhar1133):
-    # Tested prop_type values should include: n0n2_srw, n0n2_lct, and gain_calc.
-    # The tests should be run with 'gain = 1' set and with an n2 value of 16
-
     # TODO (gurhar1133): add ndiff data
+    from pykern import pkio
+
+    data_dir = pykern.pkunit.data_dir()
     def _prop(prop_type):
 
         c = crystal.Crystal(
             PKDict(
                 n2=[16],
+                # TODO (gurhar): change default to 0.01
+                l_scale=0.001,
             )
         )
         p = pulse.LaserPulse()
         c.propagate(p, prop_type, calc_gain=True)
+        r = ""
+        # for s in p.slice:
+        #     for k in s.__dict__:
+        #         r += " " + k + " "
+        for s in p.slice:
+            for k in s.wfr.__dict__:
+                r += f" {k} "
+        # r = [x.wfr.__dict__ for x in p.slice]
 
-
-    # _prop("n0n2_srw")
-    # print("HELLO")
-    # try:
-    _prop("n0n2_lct")
-    # print("FINISHED")
-    # except Exception as e:
-    #     print("FAILED")
-    #     assert 0, e
+        pkio.write_text("TEST_DATA"+prop_type+".ndiff", str(r))
+        # print(p.slice[0].__dict__)
+    _prop("n0n2_srw")
+    # _prop("n0n2_lct")
     # _prop("gain_calc")
 
 
