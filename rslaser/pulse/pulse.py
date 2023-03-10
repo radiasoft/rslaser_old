@@ -139,22 +139,23 @@ class LaserPulse(ValidatorBase):
             new_x = np.linspace(thisSlice.wfr.mesh.xStart,thisSlice.wfr.mesh.xFin,thisSlice.wfr.mesh.nx)
             new_y = np.linspace(thisSlice.wfr.mesh.yStart,thisSlice.wfr.mesh.yFin,thisSlice.wfr.mesh.ny)       
             
-            # Extract horizontal component of electric field
-            re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
-            im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
-            
-            # Extract vertical componenent of electric field
-            re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
-            im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
-            
-            re_ex_2d = np.array(re0_ex).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
-            im_ex_2d = np.array(im0_ex).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
-            re_ey_2d = np.array(re0_ey).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
-            im_ey_2d = np.array(im0_ey).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
-            
             # Check if need to make changes
             if not (np.array_equal(new_x, thisSlice.initial_laser_xy.x) and np.array_equal(new_y, thisSlice.initial_laser_xy.y)):
-            
+                
+                # Extract horizontal component of electric field
+                re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
+                im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
+                
+                # Extract vertical component of electric field
+                re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
+                im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(thisSlice.wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
+                
+                # Reshape arrays from 1d to 2d
+                re_ex_2d = np.array(re0_ex).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
+                im_ex_2d = np.array(im0_ex).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
+                re_ey_2d = np.array(re0_ey).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
+                im_ey_2d = np.array(im0_ey).reshape((thisSlice.wfr.mesh.nx, thisSlice.wfr.mesh.ny), order='C').astype(np.float64)
+                
                 # Interpolate ex meshes
                 rect_biv_spline_xre = RectBivariateSpline(new_x, new_y, re_ex_2d)
                 rect_biv_spline_xim = RectBivariateSpline(new_x, new_y, im_ex_2d)
@@ -195,9 +196,6 @@ class LaserPulse(ValidatorBase):
                             _yStart=np.min(thisSlice.initial_laser_xy.y), _yFin=np.max(thisSlice.initial_laser_xy.y), _ny=len(thisSlice.initial_laser_xy.y),
                             _zStart=0., _partBeam=None)
                 thisSlice.wfr = wfr1
-            
-            # Change the phase:
-            thisSlice.cut_phase(re_ex_2d,im_ex_2d)
     
     def extract_total_2d_elec_fields(self):
         # Assumes gaussian shape
@@ -357,22 +355,46 @@ class LaserPulseSlice(ValidatorBase):
             # central wavelength of the laser pulse
             lambda0_micron = self._lambda0 *(1.0e6) #0.8
             
+            # parse the ccd_data and wfs_data (measured phases of the wavefront)
             ccd_data = np.genfromtxt(files.ccd, skip_header=1)
-            ccd_data = _reshape_data(ccd_data)
-
-            # parse the measured phases of the wavefront
             wfs_data = np.genfromtxt(files.wfs, skip_header=1, skip_footer=0)
 
             # clean up any NaN's
             indices = np.isnan(wfs_data)
-            wfs_data = _reshape_data(_array_cleaner(wfs_data, indices))
+            wfs_data = _array_cleaner(wfs_data, indices)
             
+            nx_wfs = np.shape(wfs_data)[0]
+            ny_wfs = np.shape(wfs_data)[1]
+            nx_ccd = np.shape(ccd_data)[0]
+            ny_ccd = np.shape(ccd_data)[1]
+            
+            # Increase the shape to 64x64: pad wfs data with array edge, pad ccd data with zeros
+            if nx_wfs < 64:
+                wfs_data = np.pad(wfs_data, (int((64 - nx_wfs)/2), 0), mode='edge')
+            if ny_wfs < 64:
+                wfs_data = np.pad(wfs_data, (0, int((64 - ny_wfs)/2)), mode='edge')
+            if nx_ccd < 64:
+                ccd_data = np.pad(ccd_data, (int((64 - nx_ccd)/2), 0), mode='constant')
+            if ny_ccd < 64:
+                ccd_data = np.pad(ccd_data, (0, int((64 - ny_ccd)/2)), mode='constant')                
+
+            assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
+            assert nx_wfs == ny_wfs, 'ERROR -- data is not square' # Add method to square data if it is larger than 64x64?
+            
+            # pad the data to increase the initial range (pad wfs data with array edge, pad ccd data with zeros)
+            pad_factor = params.pad_factor
+            if pad_factor > 0:
+                n_init = np.shape(wfs_data)[0] # assumes nx = ny for wfs and ccd
+                nx = int(nx *pad_factor)
+                ny = int(ny *pad_factor)
+                
+                wfs_data = np.pad(wfs_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='edge')
+                ccd_data = np.pad(ccd_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
+                
             # convert from microns to radians
             rad_per_micron = math.pi / lambda0_micron
             wfs_data *= rad_per_micron
             
-            assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
-
             # Calulate the real and imaginary parts of the Ex,Ey electric field components
             e_norm = np.sqrt(ccd_data)
             
@@ -381,35 +403,10 @@ class LaserPulseSlice(ValidatorBase):
             nx = np.shape(ex_real)[0]
             ny = np.shape(ex_real)[1]            
             
-            assert nx == ny, 'ERROR -- data is not square'
-            
-            # Add Hanning window to the data (note, ey is assumed to be zero...)
-            window = np.array(signal.windows.hann(nx))
-            ex_real *= np.outer(window,window)
-            ex_imag *= np.outer(window,window)
-            
-            # Increase the shape to 64x64 (likely at 32x32)
-            if (nx == ny) and (nx < 64):
-                ex_real = np.pad(ex_real, (int((64 - nx)/2), int((64 - ny)/2)), mode='constant')
-                ex_imag = np.pad(ex_imag, (int((64 - nx)/2), int((64 - ny)/2)), mode='constant')
-                
-            nx = np.shape(ex_real)[0]
-            ny = np.shape(ex_real)[1]
-
-            # pad the data with zeros to double the initial range
-            pad_factor = params.pad_factor
-            if pad_factor > 0:
-                n_init = nx # assumes nx = ny
-                nx = int(nx *pad_factor)
-                ny = int(ny *pad_factor)
-                
-                ex_real = np.pad(ex_real, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
-                ex_imag = np.pad(ex_imag, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
-            
             # create the x,y arrays with physical units based on the diagnostic pixel dimensions
-            x_max = 0.5 * (nx + 1.) * pixel_size_h * 1.0e-6    # [m]      #0.002    # [m]
+            x_max = 0.5 * (nx + 1.) * pixel_size_h * 1.0e-6    # [m]
             x_min = -x_max
-            y_max = 0.5 * (ny + 1.) * pixel_size_v * 1.0e-6    # [m]      #x_max
+            y_max = 0.5 * (ny + 1.) * pixel_size_v * 1.0e-6    # [m]
             y_min = -y_max
             
             # scale the wfr sensor data
@@ -430,15 +427,12 @@ class LaserPulseSlice(ValidatorBase):
                 ex_numpy[2*i+1] = ex_imag_1d[i]
             
             ex = array.array('f', ex_numpy.tolist())
-            
-            ey = array.array('f', len(ex)*[0.]) # Don't need to change because set to zero
+            ey = array.array('f', len(ex)*[0.]) # Assume ey is zero
             self.wfr = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
-                    _eStart=self.photon_e_ev, _eFin=self.photon_e_ev, _ne=1,   #_eStart=1.55, _eFin=1.55, _ne=1,
+                    _eStart=self.photon_e_ev, _eFin=self.photon_e_ev, _ne=1,
                     _xStart=x_min, _xFin=x_max, _nx=nx,
                     _yStart=y_min, _yFin=y_max, _ny=ny,
                     _zStart=0., _partBeam=None)
-            
-            self.cut_phase(ex_real,ex_imag)
             
             return
  
@@ -488,48 +482,6 @@ class LaserPulseSlice(ValidatorBase):
                         y = np.linspace(self.wfr.mesh.yStart,self.wfr.mesh.yFin,self.wfr.mesh.ny)
                         )
         return n_photons_2d
-    
-    def cut_phase(self, ex_real, ex_imag):
-        
-        intensity_2d = 0.5 *const.c *const.epsilon_0 *(ex_real**2.0 + ex_imag**2.0)
-        max_intensity = np.max(intensity_2d)
-        
-        center_x = np.where(intensity_2d == max_intensity)[0][0]
-        center_y = np.where(intensity_2d == max_intensity)[1][0]
-        keep_indices = np.where(intensity_2d >= 0.01*max_intensity)
-        distance = math.ceil(np.max(np.sqrt((keep_indices[0] -center_x)**2.0 + (keep_indices[1] -center_y)**2.0)))
-        
-        phase = srwlib.array('d', [0]*self.wfr.mesh.nx*self.wfr.mesh.ny) # "flat" array to take 2D data
-        srwl.CalcIntFromElecField(phase, self.wfr, 0, 4, 3, self.wfr.mesh.eStart, 0, 0) #extracts the phase; must use double precision
-        phase_2d = np.array(phase).reshape((self.wfr.mesh.nx, self.wfr.mesh.ny), order='C').astype(np.float64)
-
-        phase_2d_cut = phase_2d[center_x-distance:center_x+distance,center_y-distance:center_y+distance]
-        phase_2d_new = np.pad(phase_2d_cut, (int((phase_2d.shape[0] - phase_2d_cut.shape[0])/2),
-                                             int((phase_2d.shape[1] - phase_2d_cut.shape[1])/2)),
-                              mode='edge')
-        
-        e_norm = np.sqrt(ex_real**2.0 + ex_imag**2.0)
-        ex_real = np.multiply(e_norm, np.cos(phase_2d_new))
-        ex_imag = np.multiply(e_norm, np.sin(phase_2d_new))
-        
-        ex_real = ex_real.flatten(order='C')
-        ex_imag = ex_imag.flatten(order='C')
-        
-        ex_numpy = np.zeros(2*len(ex_real))
-        for i in range(len(ex_real)):
-            ex_numpy[2*i] = ex_real[i]
-            ex_numpy[2*i+1] = ex_imag[i]
-            
-        ex = array.array('f', ex_numpy.tolist())
-        ey = array.array('f', len(ex)*[0.])
-        
-        new_wfr = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
-                                 _eStart=self.photon_e_ev, _eFin=self.photon_e_ev, _ne=1,
-                                 _xStart=self.wfr.mesh.xStart, _xFin=self.wfr.mesh.xFin, _nx=self.wfr.mesh.nx,
-                                 _yStart=self.wfr.mesh.yStart, _yFin=self.wfr.mesh.yFin, _ny=self.wfr.mesh.ny,
-                                 _zStart=0., _partBeam=None)
-        
-        self.wfr = new_wfr
 
 
 class LaserPulseEnvelope(ValidatorBase):
@@ -1000,16 +952,3 @@ def _array_cleaner(_arr, _ind):
     nans, x = _nan_helper(_arr)
     _arr[nans] = np.interp(x(nans), x(~nans), _arr[~nans])
     return _arr
-
-
-def _reshape_data(data):
-    data = np.delete(data, 0, axis=1)
-    data = np.delete(data, 1, axis=1)
-    data = np.delete(data, 2, axis=1)
-    data = np.delete(data, 3, axis=1)
-    data = np.delete(data, -4, axis=1)
-    data = np.delete(data, -3, axis=1)
-    data = np.delete(data, -2, axis=1)
-    data = np.delete(data, -1, axis=1)
-    
-    return data
