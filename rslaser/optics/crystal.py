@@ -52,11 +52,11 @@ class Crystal(Element):
     def __init__(self, params=None):
         params = self._get_params(params)
         self._validate_params(params)
-        
+
         # Check if n2<0, throw an exception if true
         if (np.array(params.n2) < 0.0).any():
             raise self._INPUT_ERROR(f"You've specified negative value(s) for n2")
-        
+
         self.length = params.length
         self.nslice = params.nslice
         self.l_scale = params.l_scale
@@ -141,7 +141,7 @@ class CrystalSlice(Element):
         self.B = params.B
         self.C = params.C
         self.D = params.D
-        
+
         #  Assuming wfr0 exsts, created e.g. via
         #  wfr0=createGsnSrcSRW(sigrW,propLen,pulseE,poltype,photon_e_ev,sampFact,mx,my)
         #n_x = wfr0.mesh.nx  #  nr of grid points in x
@@ -199,7 +199,7 @@ class CrystalSlice(Element):
         raise NotImplementedError(f'{self}.propagate() with prop_type="placeholder" is not currently supported')
 
     def _propagate_n0n2_lct(self, laser_pulse, calc_gain):
-        #print('prop_type = n0n2_lct')
+        print('prop_type = n0n2_lct')
         nslices_pulse = len(laser_pulse.slice)
         L_cryst = self.length
         n0 = self.n0
@@ -503,7 +503,7 @@ class CrystalSlice(Element):
         )[prop_type](laser_pulse, calc_gain)
 
     def _interpolate_a_to_b(self, a, b):
-        if a == 'pop_inversion':      
+        if a == 'pop_inversion':
             # interpolate copy of pop_inversion to match lp_wfr
             temp_array = np.copy(self.pop_inversion_mesh)
 
@@ -512,7 +512,7 @@ class CrystalSlice(Element):
             b_x = np.linspace(b.mesh.xStart,b.mesh.xFin,b.mesh.nx)
             b_y = np.linspace(b.mesh.yStart,b.mesh.yFin,b.mesh.ny)
 
-        elif b == 'pop_inversion': 
+        elif b == 'pop_inversion':
             # interpolate copy of change_pop_inversion to match pop_inversion
             temp_array = np.copy(a.mesh)
 
@@ -521,17 +521,17 @@ class CrystalSlice(Element):
             b_x = np.linspace(self.pop_inversion_xstart,self.pop_inversion_xfin,self.pop_inversion_nx)
             b_y = np.linspace(self.pop_inversion_ystart,self.pop_inversion_yfin,self.pop_inversion_ny)
 
-        else: 
+        else:
             # interpolate copy of n_photons to match lp_wfr
             temp_array = np.copy(a.mesh)
 
             a_x = a.x
             a_y = a.y
             b_x = np.linspace(b.mesh.xStart,b.mesh.xFin,b.mesh.nx)
-            b_y = np.linspace(b.mesh.yStart,b.mesh.yFin,b.mesh.ny) 
+            b_y = np.linspace(b.mesh.yStart,b.mesh.yFin,b.mesh.ny)
 
         if not (np.array_equal(a_x, b_x) and np.array_equal(a_y, b_y)):
-        
+
             # Create the spline for interpolation
             rect_biv_spline = RectBivariateSpline(a_x, a_y, temp_array)
 
@@ -544,10 +544,10 @@ class CrystalSlice(Element):
             temp_array[:,b_y > np.max(a_y)] = 0.0
             temp_array[:,b_y < np.min(a_y)] = 0.0
 
-        return temp_array  
-    
+        return temp_array
+
     def calc_gain(self,thisSlice):
-        
+
         lp_wfr = thisSlice.wfr
 
         # Interpolate the excited state density mesh of the current crystal slice to
@@ -560,10 +560,10 @@ class CrystalSlice(Element):
 
         # Interpolate the excited state density mesh of the current crystal slice to
         # match the laser_pulse wavefront mesh
-        thisSlice.n_photons_2d.mesh = self._interpolate_a_to_b(thisSlice.n_photons_2d, lp_wfr)  
+        thisSlice.n_photons_2d.mesh = self._interpolate_a_to_b(thisSlice.n_photons_2d, lp_wfr)
         thisSlice.n_photons_2d.x = np.linspace(lp_wfr.mesh.xStart,lp_wfr.mesh.xFin,lp_wfr.mesh.nx)
         thisSlice.n_photons_2d.y = np.linspace(lp_wfr.mesh.yStart,lp_wfr.mesh.yFin,lp_wfr.mesh.ny)
-        
+
         dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
         dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]
         n_incident_photons = thisSlice.n_photons_2d.mesh / (dx * dy)   # [1/m^2]
@@ -590,7 +590,7 @@ class CrystalSlice(Element):
 
         # Update the number of photons
         thisSlice.n_photons_2d.mesh *= energy_gain
-        
+
         # Update the wavefront itself: (KW To Do: make this a separate method?)
         #    First extract the electric fields
 

@@ -46,12 +46,37 @@ def test_propagation():
         crystal_slice_prop_test('attenuate')
     with pykern.pkunit.pkexcept(NotImplementedError):
         crystal_slice_prop_test('placeholder')
-    # TODO (gurhar1133): propagation is a work in progress.
-    # crystal_slice_prop_test('abcd_lct')
-    # crystal_slice_prop_test('n0n2')
     c = crystal.CrystalSlice()
     with pykern.pkunit.pkexcept(KeyError):
         c.propagate(pulse.LaserPulse(), 'should raise')
+
+
+def test_prop_with_gain():
+    # TODO (gurhar1133):
+    # Tested prop_type values should include: n0n2_srw, n0n2_lct, and gain_calc.
+    # The tests should be run with 'gain = 1' set and with an n2 value of 16
+
+    # TODO (gurhar1133): add ndiff data
+    def _prop(prop_type):
+
+        c = crystal.Crystal(
+            PKDict(
+                n2=[16],
+            )
+        )
+        p = pulse.LaserPulse()
+        c.propagate(p, prop_type, calc_gain=True)
+
+
+    # _prop("n0n2_srw")
+    # print("HELLO")
+    # try:
+    _prop("n0n2_lct")
+    # print("FINISHED")
+    # except Exception as e:
+    #     print("FAILED")
+    #     assert 0, e
+    # _prop("gain_calc")
 
 
 def test_instantiation03():
