@@ -370,26 +370,29 @@ class LaserPulseSlice(ValidatorBase):
             
             # Increase the shape to 64x64: pad wfs data with array edge, pad ccd data with zeros
             if nx_wfs < 64:
-                wfs_data = np.pad(wfs_data, (int((64 - nx_wfs)/2), 0), mode='edge')
+                wfs_data = np.pad(wfs_data, ((int((64 - nx_wfs)/2), int((64 - nx_wfs)/2)), (0, 0)), mode='edge')
             if ny_wfs < 64:
-                wfs_data = np.pad(wfs_data, (0, int((64 - ny_wfs)/2)), mode='edge')
+                wfs_data = np.pad(wfs_data, ((0,0), (int((64 - ny_wfs)/2), int((64 - ny_wfs)/2))), mode='edge')
             if nx_ccd < 64:
-                ccd_data = np.pad(ccd_data, (int((64 - nx_ccd)/2), 0), mode='constant')
+                ccd_data = np.pad(ccd_data, ((int((64 - nx_ccd)/2), int((64 - nx_ccd)/2)), (0, 0)), mode='constant')
             if ny_ccd < 64:
-                ccd_data = np.pad(ccd_data, (0, int((64 - ny_ccd)/2)), mode='constant')                
+                ccd_data = np.pad(ccd_data, ((0,0), (int((64 - ny_ccd)/2), int((64 - ny_ccd)/2))), mode='constant')                
 
             assert np.shape(wfs_data) == np.shape(ccd_data), 'ERROR -- WFS and CCD data have diferent shapes!!'
+
+            nx_wfs = np.shape(wfs_data)[0]
+            ny_wfs = np.shape(wfs_data)[1]
             assert nx_wfs == ny_wfs, 'ERROR -- data is not square' # Add method to square data if it is larger than 64x64?
             
             # pad the data to increase the initial range (pad wfs data with array edge, pad ccd data with zeros)
             pad_factor = params.pad_factor
             if pad_factor > 0:
                 n_init = np.shape(wfs_data)[0] # assumes nx = ny for wfs and ccd
-                nx = int(nx *pad_factor)
-                ny = int(ny *pad_factor)
+                nx = int(nx_wfs *pad_factor)
+                ny = int(ny_wfs *pad_factor)
                 
-                wfs_data = np.pad(wfs_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='edge')
-                ccd_data = np.pad(ccd_data, (int((nx - n_init)/2), int((ny - n_init)/2)), mode='constant')
+                wfs_data = np.pad(wfs_data, ((int((nx - n_init)/2), int((nx - n_init)/2)),(int((ny - n_init)/2), int((ny - n_init)/2))), mode='edge')
+                ccd_data = np.pad(ccd_data, ((int((nx - n_init)/2), int((nx - n_init)/2)),(int((ny - n_init)/2), int((ny - n_init)/2))), mode='constant')
                 
             # convert from microns to radians
             rad_per_micron = math.pi / lambda0_micron
