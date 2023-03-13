@@ -241,3 +241,52 @@ def calc_int_from_elec(_wfr):
     slice_intensity = 0.5 *const.c *const.epsilon_0 *(elec_fields_re**2.0 + elec_fields_im**2.0)
     
     return slice_intensity
+
+def extract_2d_fields(_wfr):
+    
+    # Extract horizontal component of electric field
+    re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(_wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
+    im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(_wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
+                
+    # Extract vertical component of electric field
+    re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(_wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
+    im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(_wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
+                
+    # Reshape arrays from 1d to 2d
+    re_ex_2d = np.array(re0_ex).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
+    im_ex_2d = np.array(im0_ex).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
+    re_ey_2d = np.array(re0_ey).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
+    im_ey_2d = np.array(im0_ey).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
+    
+    return re_ex_2d, im_ex_2d, re_ey_2d, im_ey_2d
+
+def make_wavefront(ex_re_2d, ex_im_2d, ey_re_2d, ey_im_2d, photon_e_ev, x, y):
+    
+    # Flatten fields
+    re_ex = ex_re_2d.flatten(order='C')
+    im_ex = ex_im_2d.flatten(order='C')
+    re_ey = ey_re_2d.flatten(order='C')
+    im_ey = ey_im_2d.flatten(order='C')
+    
+    # Combine real and imaginary fields into srw-preferred format
+    ex_numpy = np.zeros(2*len(re_ex))
+    for i in range(len(re_ex)):
+        ex_numpy[2*i] = re_ex[i]
+        ex_numpy[2*i+1] = im_ex[i]
+    
+    ey_numpy = np.zeros(2*len(re_ey))
+    for i in range(len(re_ey)):
+        ey_numpy[2*i] = re_ey[i]
+        ey_numpy[2*i+1] = im_ey[i]
+    
+    # Convert to list
+    ex = array.array('f', ex_numpy.tolist())
+    ey = array.array('f', ey_numpy.tolist())
+    
+    # Pass changes to SRW
+    wfr1 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
+                          _eStart=photon_e_ev, _eFin=photon_e_ev, _ne=1,
+                          _xStart=np.min(x), _xFin=np.max(x), _nx=len(x),
+                          _yStart=np.min(y), _yFin=np.max(y), _ny=len(y),
+                          _zStart=0., _partBeam=None)
+    return wfr1
