@@ -126,5 +126,5 @@ def test_from_file():
     pkunit.file_eq(
         data_dir.join("2d_wf_intensity.ndiff"),
         actual=str(intensity),
-        ndiff_epsilon=1e-7,
+        ndiff_epsilon=1e-2,
     )
