@@ -5,6 +5,7 @@ Copyright (c) 2021 RadiaSoft LLC. All rights reserved
 import numpy as np
 import array
 import math
+import copy
 from pykern.pkcollections import PKDict
 import srwlib
 import scipy.constants as const
@@ -64,6 +65,7 @@ class Crystal(Element):
         self.length = params.length
         self.nslice = params.nslice
         self.l_scale = params.l_scale
+        self.pump_waist = params.pump_waist
         self.slice = []
         for j in range(self.nslice):
             p = params.copy()
@@ -107,9 +109,36 @@ class Crystal(Element):
                 p.nslice = min(len(p.n0), len(p.n2))
         return p
 
-    def propagate(self, laser_pulse, prop_type, calc_gain=False):
+    def propagate(self, laser_pulse, prop_type, calc_gain=False, radial_n2=False):
         for s in self.slice:
-            laser_pulse = s.propagate(laser_pulse, prop_type, calc_gain)
+            
+            if radial_n2:
+                
+                assert prop_type == 'n0n2_srw', 'ERROR -- Only implemented for n0n2_srw'
+                
+                linear_cut_off = self.pump_waist /2.0   # This value and within is linear n2
+                zero_cut_off = self.pump_waist          # Outside this value is zero n2
+                
+                x = np.linspace(laser_pulse.slice[0].wfr.mesh.xStart,laser_pulse.slice[0].wfr.mesh.xFin,laser_pulse.slice[0].wfr.mesh.nx)
+                linear_index = (np.abs(x - linear_cut_off)).argmin()
+                zero_index = (np.abs(x - zero_cut_off)).argmin()
+                cut_offs = x[np.linspace(zero_index,linear_index,zero_index-linear_index+1).astype(int)]
+                n2_linear = np.linspace(0, s.n2, zero_index - linear_index + 2)
+                
+                laser_pulse_copies = {}
+                crystal_slice_copies = {}
+                for index in np.arange(zero_index - linear_index + 2):
+                    laser_pulse_copies[index] = copy.deepcopy(laser_pulse)
+                    crystal_slice_copies[index] = copy.deepcopy(s)
+                    
+                    crystal_slice_copies[index].n2 = n2_linear[index]
+                    laser_pulse_copies[index] = crystal_slice_copies[index].propagate(laser_pulse_copies[index], prop_type, calc_gain)
+                    
+                s.pop_inversion_mesh, laser_pulse = laser_pulse.combine_n2_variation(laser_pulse_copies, crystal_slice_copies, cut_offs)
+                
+            else:
+                laser_pulse = s.propagate(laser_pulse, prop_type, calc_gain)
+            
             laser_pulse.resize_laser_mesh()
         return laser_pulse
 
@@ -495,7 +524,7 @@ class CrystalSlice(Element):
             thisSlice = laser_pulse.slice[i]
             thisSlice = self.calc_gain(thisSlice)
         return laser_pulse
-
+    
     def propagate(self, laser_pulse, prop_type, calc_gain=False):
         return PKDict(
             attenuate=self._propagate_attenuate,

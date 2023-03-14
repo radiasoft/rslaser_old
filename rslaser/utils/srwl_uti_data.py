@@ -245,12 +245,12 @@ def calc_int_from_elec(_wfr):
 def extract_2d_fields(_wfr):
     
     # Extract horizontal component of electric field
-    re0_ex, re0_mesh_ex = srwutil.calc_int_from_wfr(_wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
-    im0_ex, im0_mesh_ex = srwutil.calc_int_from_wfr(_wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
+    re0_ex, re0_mesh_ex = calc_int_from_wfr(_wfr, _pol=0, _int_type=5, _det=None, _fname='', _pr=False)
+    im0_ex, im0_mesh_ex = calc_int_from_wfr(_wfr, _pol=0, _int_type=6, _det=None, _fname='', _pr=False)
                 
     # Extract vertical component of electric field
-    re0_ey, re0_mesh_ey = srwutil.calc_int_from_wfr(_wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
-    im0_ey, im0_mesh_ey = srwutil.calc_int_from_wfr(_wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
+    re0_ey, re0_mesh_ey = calc_int_from_wfr(_wfr, _pol=1, _int_type=5, _det=None, _fname='', _pr=False)
+    im0_ey, im0_mesh_ey = calc_int_from_wfr(_wfr, _pol=1, _int_type=6, _det=None, _fname='', _pr=False)
                 
     # Reshape arrays from 1d to 2d
     re_ex_2d = np.array(re0_ex).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
@@ -280,8 +280,8 @@ def make_wavefront(ex_re_2d, ex_im_2d, ey_re_2d, ey_im_2d, photon_e_ev, x, y):
         ey_numpy[2*i+1] = im_ey[i]
     
     # Convert to list
-    ex = array.array('f', ex_numpy.tolist())
-    ey = array.array('f', ey_numpy.tolist())
+    ex = array('f', ex_numpy.tolist())
+    ey = array('f', ey_numpy.tolist())
     
     # Pass changes to SRW
     wfr1 = srwlib.SRWLWfr(_arEx=ex, _arEy=ey, _typeE='f',
