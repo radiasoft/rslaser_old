@@ -234,8 +234,8 @@ def calc_int_from_elec(_wfr):
     im0, im0_mesh = calc_int_from_wfr(_wfr, _pol=6, _int_type=6, _det=None, _fname='', _pr=False)
         
     # reshape to 2d mesh
-    elec_fields_re = np.array(re0).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
-    elec_fields_im = np.array(im0).reshape((_wfr.mesh.nx, _wfr.mesh.ny), order='C').astype(np.float64)
+    elec_fields_re = np.array(re0).reshape((_wfr.mesh.ny, -1), order='C').astype(np.float64)
+    elec_fields_im = np.array(im0).reshape((_wfr.mesh.ny, -1), order='C').astype(np.float64)
     
     # calculate intensity
     slice_intensity = 0.5 *const.c *const.epsilon_0 *(elec_fields_re**2.0 + elec_fields_im**2.0)
