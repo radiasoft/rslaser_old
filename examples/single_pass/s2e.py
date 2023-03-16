@@ -1,6 +1,7 @@
 from __future__ import division, print_function, absolute_import
 from pykern.pkcollections import PKDict
 
+
 def main():
     #  Instantiate the objects corresponding to the optical line elements and
     #  specify the propagation sequence:
@@ -8,13 +9,13 @@ def main():
     dr1 = elsdr.Drift(0.2)  # drift of length 1.0 m with a unique label 'dr1'
     dr2 = elsdr.Drift(0.02)
     crystal = elsdr.CrystalSlice(PKDict(length=0.1))  # a single-slice crystal
-    #lattice = [(dr1,'default'), (crystal,'placeholder'), (dr2,'default')]
-    lattice = [(dr1,'default'), (crystal,'abcd'), (dr2,'default')]
+    # lattice = [(dr1,'default'), (crystal,'placeholder'), (dr2,'default')]
+    lattice = [(dr1, "default"), (crystal, "abcd"), (dr2, "default")]
 
     current_position = 0.0
-    print('Initial z position of the pulse:', current_position, 'm')
+    print("Initial z position of the pulse:", current_position, "m")
 
-  #  Initialize the laser pulse:
+    #  Initialize the laser pulse:
     _PHE_DEFAULT = const.h * const.c / 1e-6
     _Z_WAIST_DEFAULT = 0
     _Z_CENTER_DEFAULT = 0
@@ -24,25 +25,25 @@ def main():
         pulseE=0.001,
         poltype=1,
         sampFact=5,
-        numsig=3.,
+        numsig=3.0,
         mx=0,
-        my=0
+        my=0,
     )
     _LASER_PULSE_DEFAULTS = PKDict(
         phE=_PHE_DEFAULT,
         nslice=3,
         chirp=0,
-        w0=.1,
-        a0=.01,
+        w0=0.1,
+        a0=0.01,
         dw0x=0.0,
         dw0y=0.0,
         z_waist=_Z_WAIST_DEFAULT,
         dzwx=0.0,
         dzwy=0.0,
-        tau_fwhm=0.1 / const.c / math.sqrt(2.),
+        tau_fwhm=0.1 / const.c / math.sqrt(2.0),
         z_center=_Z_CENTER_DEFAULT,
-        x_shift = 0.,
-        y_shift=0.,
+        x_shift=0.0,
+        y_shift=0.0,
         d_to_w=_Z_WAIST_DEFAULT - _Z_CENTER_DEFAULT,
         slice_params=_LASER_PULSE_SLICE_DEFAULTS,
     )
@@ -54,23 +55,24 @@ def main():
     pupa.chirp = 0.0
     pupa.nslice = 2  #  the number of slices the pulse is divided into
 
-    #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)  # creates Gaussian wavefront in SRW
-    #wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE)  # defualt values for omitted arguments
+    # wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE,sampFact,mx,my)  # creates Gaussian wavefront in SRW
+    # wfront = rso.wavefront.createGsnSrcSRW(sigrW,propLen,pulseE,poltype,phE)  # defualt values for omitted arguments
     thisPulse = plsdv.LaserPulse(pupa)
 
     #  Propagate the pulse through the optical beamline:
 
     for i in lattice:
         current_elem, prop_type = i
-    #print (current_elem, prop_type)
+        # print (current_elem, prop_type)
         thisPulse = current_elem.propagate(thisPulse, prop_type)
         current_position += current_elem.length
-        print('Current position in the beamline:', current_position, ' m')
+        print("Current position in the beamline:", current_position, " m")
 
     #  Diagnostics, visualization, saving the output, etc.:
 
-if __name__=="__main__":
-    #from __future__ import division, print_function, absolute_import
+
+if __name__ == "__main__":
+    # from __future__ import division, print_function, absolute_import
     import numpy as np
     import matplotlib.pyplot as plt
 
