@@ -1,1 +1,1 @@
-pykern test
+pykern fmt diff ./ && pykern test
