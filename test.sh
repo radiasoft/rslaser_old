@@ -1,1 +1,4 @@
-pykern fmt diff ./ && pykern test
+#!/bin/bash
+set -eou pipefail
+pykern fmt diff rslaser tests setup.py
+pykern test
