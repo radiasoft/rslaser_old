@@ -6,6 +6,7 @@ import pykern.pkunit
 import pytest
 from rslaser.optics import element, lens, drift, crystal
 from rslaser.pulse import pulse
+import srwlib
 
 
 def test_instantiation01():
@@ -46,12 +47,38 @@ def test_propagation():
         crystal_slice_prop_test('attenuate')
     with pykern.pkunit.pkexcept(NotImplementedError):
         crystal_slice_prop_test('placeholder')
-    # TODO (gurhar1133): propagation is a work in progress.
-    # crystal_slice_prop_test('abcd_lct')
-    # crystal_slice_prop_test('n0n2')
     c = crystal.CrystalSlice()
     with pykern.pkunit.pkexcept(KeyError):
         c.propagate(pulse.LaserPulse(), 'should raise')
+
+
+def test_prop_with_gain():
+    data_dir = pykern.pkunit.data_dir()
+
+    def _prop(prop_type):
+        c = crystal.Crystal(
+            PKDict(
+                n2=[16],
+                l_scale=0.001,
+            )
+        )
+        p = pulse.LaserPulse(
+            PKDict(
+                nx_slice = 32,
+                ny_slice = 32,
+            )
+        )
+        c.propagate(p, prop_type, calc_gain=True)
+        w = p.slice_wfr(0)
+        i = srwlib.array('f', [0]*w.mesh.nx*w.mesh.ny)
+        srwlib.srwl.CalcIntFromElecField(i, w, 6, 0, 3, w.mesh.eStart, 0, 0)
+        pykern.pkunit.file_eq(
+            data_dir.join(prop_type+"_intensity.ndiff"),
+            actual=str(i),
+        )
+
+    for prop_type in ("n0n2_srw", "n0n2_lct", "gain_calc"):
+        _prop(prop_type)
 
 
 def test_instantiation03():
