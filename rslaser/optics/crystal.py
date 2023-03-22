@@ -115,27 +115,28 @@ class Crystal(Element):
             if radial_n2:
                 
                 assert prop_type == 'n0n2_srw', 'ERROR -- Only implemented for n0n2_srw'
+                laser_pulse_copies = PKDict(
+                    n2_max = copy.deepcopy(laser_pulse),
+                    n2_0 = copy.deepcopy(laser_pulse),
+                )
                 
-                linear_cut_off = self.pump_waist /2.0   # This value and within is linear n2
-                zero_cut_off = self.pump_waist          # Outside this value is zero n2
+                temp_crystal_slice = copy.deepcopy(s)
+                temp_crystal_slice.n2 = 0.0
                 
-                x = np.linspace(laser_pulse.slice[0].wfr.mesh.xStart,laser_pulse.slice[0].wfr.mesh.xFin,laser_pulse.slice[0].wfr.mesh.nx)
+                laser_pulse_copies.n2_max = s.propagate(laser_pulse_copies.n2_max, prop_type, calc_gain)
+                laser_pulse_copies.n2_0  = temp_crystal_slice.propagate(laser_pulse_copies.n2_0, prop_type, calc_gain)
+                
+                x = np.linspace(laser_pulse.slice[0].wfr.mesh.xStart,
+                                laser_pulse.slice[0].wfr.mesh.xFin,
+                                laser_pulse.slice[0].wfr.mesh.nx)
+                
+                zero_cut_off = 1.3 *self.pump_waist            # Outside this value is zero n2
+                linear_cut_off = self.pump_waist /np.sqrt(2.0) # This value and within is linear n2 (if used)
                 linear_index = (np.abs(x - linear_cut_off)).argmin()
-                zero_index = (np.abs(x - zero_cut_off)).argmin()
-                cut_offs = x[np.linspace(zero_index,linear_index,zero_index-linear_index+1).astype(int)]
-                n2_linear = np.linspace(0, s.n2, zero_index - linear_index + 2)
-                
-                laser_pulse_copies = {}
-                crystal_slice_copies = {}
-                for index in np.arange(zero_index - linear_index + 2):
-                    laser_pulse_copies[index] = copy.deepcopy(laser_pulse)
-                    crystal_slice_copies[index] = copy.deepcopy(s)
-                    
-                    crystal_slice_copies[index].n2 = n2_linear[index]
-                    laser_pulse_copies[index] = crystal_slice_copies[index].propagate(laser_pulse_copies[index], prop_type, calc_gain)
-                    
-                s.pop_inversion_mesh, laser_pulse = laser_pulse.combine_n2_variation(laser_pulse_copies, crystal_slice_copies, cut_offs)
-                
+                zero_index =  (np.abs(x - zero_cut_off)).argmin()
+
+                cut_offs = np.array([linear_index, zero_index])
+                laser_pulse = laser_pulse.combine_n2_variation(laser_pulse_copies, cut_offs, s.n2)
             else:
                 laser_pulse = s.propagate(laser_pulse, prop_type, calc_gain)
             
@@ -580,8 +581,8 @@ class CrystalSlice(Element):
         temp_pop_inversion = self._interpolate_a_to_b('pop_inversion', lp_wfr)
 
         # Calculate gain
-        absorp_cross_sec = 3.0e-23 #2.0e-24             # [m^2]
-        degen_factor = 1.0                     # Not sure what this value should be
+        absorp_cross_sec = 4.1e-23 #3.0e-23             # [m^2]
+        degen_factor = 1.0                    # Not sure what this value should be
         
         dx = (lp_wfr.mesh.xFin - lp_wfr.mesh.xStart)/lp_wfr.mesh.nx        # [m]
         dy = (lp_wfr.mesh.yFin - lp_wfr.mesh.yStart)/lp_wfr.mesh.ny        # [m]

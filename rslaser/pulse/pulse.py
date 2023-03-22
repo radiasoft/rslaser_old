@@ -14,15 +14,18 @@ import rsmath.const as rsc
 import rslaser.utils.unit_conversion as units
 import rslaser.utils.srwl_uti_data as srwutil
 import scipy.constants as const
+import scipy.ndimage as ndi
 from scipy.interpolate import RectBivariateSpline
 from scipy.ndimage.filters import gaussian_filter
 from scipy import special
 from scipy import signal
+from skimage import filters
+from skimage import img_as_float
 import scipy.optimize as opt
 import srwlib
 from srwlib import srwl
 from rslaser.utils.validator import ValidatorBase
-
+import matplotlib.pyplot as plt
 
 _LASER_PULSE_DEFAULTS = PKDict(
         nslice = 3,
@@ -203,53 +206,68 @@ class LaserPulse(ValidatorBase):
         
         return e_total   
 
-    def combine_n2_variation(self, laser_pulse_copies, crystal_slice_copies, cut_offs):
-        # cut offs runs from "This value and within is first non-zero n2" to "This value and within is linear n2"
+    def combine_n2_variation(self, laser_pulse_copies, cut_offs, max_n2):
         
         for laser_index_i in np.arange(self.nslice):
             # For each laser slice, combine the propagated wavefronts
+            wfr_max = laser_pulse_copies.n2_max.slice[laser_index_i].wfr
+            wfr_0  = laser_pulse_copies.n2_0.slice[laser_index_i].wfr
             
-            # extract the fields for all laser pulses
-            re_ex_2d = {}
-            im_ex_2d = {}
-            re_ey_2d = {}
-            im_ey_2d = {}
-            for index in np.arange(len(laser_pulse_copies)):
-                re_ex_2d[index], im_ex_2d[index], re_ey_2d[index], im_ey_2d[index] = srwutil.extract_2d_fields(laser_pulse_copies[index].slice[laser_index_i].wfr)
-                
+            # extract the intensity and phase for all laser pulses
+            intensity_2d = PKDict(
+                n2_max = srwutil.calc_int_from_elec(wfr_max),
+                n2_0  = srwutil.calc_int_from_elec(wfr_0),
+            )
+            
+            phase_1d_max = srwlib.array('d', [0]*wfr_max.mesh.nx*wfr_max.mesh.ny)
+            phase_1d_0  = srwlib.array('d', [0]*wfr_0.mesh.nx*wfr_0.mesh.ny)
+            srwl.CalcIntFromElecField(phase_1d_max, wfr_max, 0, 4, 3, wfr_max.mesh.eStart, 0, 0)
+            srwl.CalcIntFromElecField(phase_1d_0, wfr_0, 0, 4, 3, wfr_0.mesh.eStart, 0, 0)            
+            phase_2d = PKDict(
+                n2_max = np.unwrap(np.unwrap(np.array(phase_1d_max).reshape((wfr_max.mesh.nx, wfr_max.mesh.ny), order='C').astype(np.float64), axis=0), axis=1),
+                n2_0  = np.unwrap(np.unwrap(np.array(phase_1d_0).reshape((wfr_0.mesh.nx, wfr_0.mesh.ny), order='C').astype(np.float64), axis=0), axis=1),
+            )            
+
             # identify radial distance of every cell
-            x = np.linspace(self.slice[laser_index_i].wfr.mesh.xStart,self.slice[laser_index_i].wfr.mesh.xFin,self.slice[laser_index_i].wfr.mesh.nx)
-            y = np.linspace(self.slice[laser_index_i].wfr.mesh.yStart,self.slice[laser_index_i].wfr.mesh.yFin,self.slice[laser_index_i].wfr.mesh.ny)
+            x = np.linspace(wfr_0.mesh.xStart,wfr_0.mesh.xFin,wfr_0.mesh.nx)
+            y = np.linspace(wfr_0.mesh.yStart,wfr_0.mesh.yFin,wfr_0.mesh.ny)
             xv, yv = np.meshgrid(x, y)
             r = np.sqrt(xv**2.0 +yv**2.0)
             
+            x_loc = cut_offs[1]
+            y_loc = int(len(y)/2.0)
+            shift_value = phase_2d.n2_max[x_loc-1,y_loc] -phase_2d.n2_0[x_loc,y_loc]
+            phase_2d.n2_0 += shift_value
+            
             # Assign the n2 = 0 fields initially
-            re_ex = re_ex_2d[0]
-            im_ex = im_ex_2d[0]
-            re_ey = re_ey_2d[0]
-            im_ey = im_ey_2d[0]
+            intensity = intensity_2d.n2_0
+            phase = phase_2d.n2_0
             
-            self.slice[laser_index_i].n_photons_2d.mesh = laser_pulse_copies[0].slice[laser_index_i].n_photons_2d.mesh
-            # Assign each smaller circle of field values
-            for index in np.arange(len(cut_offs)):
-                location = np.where(r <= cut_offs[index])
-                re_ex[location] = re_ex_2d[index+1][location]
-                im_ex[location] = im_ex_2d[index+1][location]
-                re_ey[location] = re_ey_2d[index+1][location]
-                im_ey[location] = im_ey_2d[index+1][location]
-                self.slice[laser_index_i].n_photons_2d.mesh[location] = laser_pulse_copies[index+1].slice[laser_index_i].n_photons_2d.mesh[location]
+            n2 = np.zeros(np.shape(intensity))
+            self.slice[laser_index_i].n_photons_2d.mesh = laser_pulse_copies.n2_0.slice[laser_index_i].n_photons_2d.mesh
             
-            # smooth
-            self.slice[laser_index_i].n_photons_2d.mesh = gaussian_filter(self.slice[laser_index_i].n_photons_2d.mesh, sigma=1)
-            re_ex = gaussian_filter(re_ex, sigma=1)
-            im_ex = gaussian_filter(im_ex, sigma=1)
-            re_ey = gaussian_filter(re_ey, sigma=1)
-            im_ey = gaussian_filter(im_ey, sigma=1)
+            temp_x = np.linspace(0.0, 1.0, len(x[int(len(x)/2.0)+1:cut_offs[1]]))
+            a = 1.0-temp_x**2.0  
+            
+            def scaling_fn(index,array_1,array_2):
+                return ((1.0-a[index]) *array_1) +(a[index] *array_2)
+            
+            for index, value in enumerate(np.flip(x[int(len(x)/2.0)+1:cut_offs[1]])):
+                location = np.where(r <= value)
+                n2[location]        = scaling_fn(index,max_n2,0.0)
+                intensity[location] = scaling_fn(index,intensity_2d.n2_max[location],intensity_2d.n2_0[location])
+                phase[location]     = scaling_fn(index,phase_2d.n2_max[location],phase_2d.n2_0[location])
+            
+            e_norm = np.sqrt(2.0 *intensity /(const.c *const.epsilon_0))
+            re_ex = np.multiply(e_norm, np.cos(phase))
+            im_ex = np.multiply(e_norm, np.sin(phase))
+            re_ey = np.zeros(np.shape(re_ex))
+            im_ey = np.zeros(np.shape(im_ex))
             
             # remake the wavefront
             self.slice[laser_index_i].wfr = srwutil.make_wavefront(re_ex, im_ex, re_ey, im_ey, self.slice[laser_index_i].photon_e_ev, x, y)
             
-        return crystal_slice_copies[len(crystal_slice_copies)-1].pop_inversion_mesh, self
+        return self
     
     def _validate_params(self, input_params, files):
         # if files and input_params.nslice > 1:
@@ -415,19 +433,20 @@ class LaserPulseSlice(ValidatorBase):
             rad_per_micron = math.pi / lambda0_micron
             wfs_data *= rad_per_micron
             
-            # Calulate the real and imaginary parts of the Ex,Ey electric field components
-            e_norm = np.sqrt(ccd_data)
-            
-            ex_real = np.multiply(e_norm, np.cos(wfs_data))
-            ex_imag = np.multiply(e_norm, np.sin(wfs_data))
-            nx = np.shape(ex_real)[0]
-            ny = np.shape(ex_real)[1]            
+            nx = np.shape(wfs_data)[0]
+            ny = np.shape(wfs_data)[1]            
             
             # create the x,y arrays with physical units based on the diagnostic pixel dimensions
             x_max = 0.5 * (nx + 1.) * pixel_size_h * 1.0e-6    # [m]
             x_min = -x_max
             y_max = 0.5 * (ny + 1.) * pixel_size_v * 1.0e-6    # [m]
             y_min = -y_max
+            
+            # Calulate the real and imaginary parts of the Ex,Ey electric field components
+            e_norm = np.sqrt(ccd_data)
+            
+            ex_real = np.multiply(e_norm, np.cos(wfs_data))
+            ex_imag = np.multiply(e_norm, np.sin(wfs_data))
             
             # scale the wfr sensor data
             self.wfs_norm_factor = 2841.7370456965646
@@ -447,7 +466,7 @@ class LaserPulseSlice(ValidatorBase):
  
         # Since pulseE = fwhm_tau * spot_size * intensity, new_pulseE = old_pulseE / fwhm_tau
         # Adjust for the length of the pulse + a constant factor to make pulseE = sum(energy_2d)
-        constant_factor = 7.635343458844132 #2.94e-2
+        constant_factor = 7.3948753166511745
         length_factor = constant_factor / self.ds
 
         # calculate field energy in this slice
